@@ -1,0 +1,16 @@
+`include "uvm_macros.svh"
+import uvm_pkg::*;
+class {{ spec.dut_name }}_transaction extends uvm_sequence_item;
+{% for p in spec.transaction_inputs %}
+  rand logic {% if p.width > 1 %}[{{ p.width-1 }}:0] {% endif %}{{ p.signal }};
+{% endfor %}
+{% for p in spec.transaction_outputs %}
+  logic {% if p.width > 1 %}[{{ p.width-1 }}:0] {% endif %}{{ p.signal }};
+{% endfor %}
+  `uvm_object_utils_begin({{ spec.dut_name }}_transaction)
+{% for p in spec.transaction_inputs + spec.transaction_outputs %}
+    `uvm_field_int({{ p.signal }}, UVM_ALL_ON)
+{% endfor %}
+  `uvm_object_utils_end
+  function new(string name="{{ spec.dut_name }}_transaction"); super.new(name); endfunction
+endclass

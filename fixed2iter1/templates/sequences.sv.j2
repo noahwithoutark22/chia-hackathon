@@ -1,0 +1,27 @@
+`include "uvm_macros.svh"
+import uvm_pkg::*;
+{% for s in spec.scenarios %}
+class {{ spec.dut_name }}_seq_{{ s.name|lower|replace(" ","_") }} extends uvm_sequence #({{ spec.dut_name }}_transaction);
+  `uvm_object_utils({{ spec.dut_name }}_seq_{{ s.name|lower|replace(" ","_") }})
+  function new(string name="{{ spec.dut_name }}_seq_{{ s.name|lower|replace(" ","_") }}"); super.new(name); endfunction
+  task body();
+{% if s.directed %}
+{% for _ in range(s.repeat) %}
+    {{ spec.dut_name }}_transaction item={{ spec.dut_name }}_transaction::type_id::create("item");
+    start_item(item);
+{% for k,v in s.values.items() %}
+    item.{{ k }} = {{ v }};
+{% endfor %}
+    finish_item(item);
+{% endfor %}
+{% else %}
+    repeat({{ s.repeat }}) begin
+      {{ spec.dut_name }}_transaction item={{ spec.dut_name }}_transaction::type_id::create("item");
+      start_item(item);
+      if(!item.randomize()) `uvm_error(get_type_name(),"randomization failed")
+      finish_item(item);
+    end
+{% endif %}
+  endtask
+endclass
+{% endfor %}

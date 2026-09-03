@@ -1,0 +1,485 @@
+dut:
+  name: adder
+  file: examples/adder/adder.sv
+  description: Parameterized WIDTH-bit registered adder with carry-in and carry-out.
+
+parameters:
+  - name: WIDTH
+    default: 8
+    description: Bit-width of operands a and b. Also determines sum width. The carry-out is always 1 bit.
+    test_values:
+      - 4
+      - 8
+      - 16
+
+clock_and_reset:
+  clock:
+    name: clk
+    type: posedge
+    description: Single-phase positive-edge clock driving the registered adder.
+  reset:
+    name: rst_n
+    polarity: active-low
+    type: asynchronous
+    description: Active-low asynchronous reset. Clears sum and cout to zero independently of the clock.
+
+ports:
+  inputs:
+    - name: clk
+      width: 1
+      description: Positive-edge clock.
+    - name: rst_n
+      width: 1
+      description: Active-low asynchronous reset.
+    - name: a
+      width: WIDTH
+      description: First unsigned WIDTH-bit operand.
+    - name: b
+      width: WIDTH
+      description: Second unsigned WIDTH-bit operand.
+    - name: cin
+      width: 1
+      description: Carry-in bit.
+  outputs:
+    - name: sum
+      width: WIDTH
+      type: reg
+      latency: 1
+      description: Registered WIDTH-bit sum output.
+    - name: cout
+      width: 1
+      type: reg
+      latency: 1
+      description: Registered carry-out bit.
+  inouts: []
+
+functional_behavior:
+  description: >
+    On every rising edge of clk (or falling edge of rst_n), if rst_n is low
+    then sum and cout are asynchronously cleared to zero. Otherwise the
+    (WIDTH+1)-bit result of (a + b + cin) is registered into {cout, sum}.
+    All inputs are treated as unsigned values.
+  reset_behavior: >
+    Asynchronous active-low reset. When rst_n deasserts (goes low), sum and
+    cout are immediately driven to zero regardless of clock state.
+    Outputs remain zero until rst_n is released and a subsequent rising clock
+    edge samples the inputs.
+  reference_model:
+    language: python
+    file: examples/adder/ref_model.py
+    function: adder_ref
+    latency: 1
+
+directed_test_scenarios:
+  - name: basic_addition_no_carry
+    description: Simple addition where a + b produces no carry and cin is 0.
+    priority: high
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 5
+        - action: drive
+          signals:
+            a: 5
+            b: 3
+            cin: 0
+          description: a=5, b=3, cin=0
+        - action: check_output
+          signals:
+            sum: 8
+            cout: 0
+    note: 5 + 3 = 8, no overflow.
+
+  - name: addition_with_carry_in
+    description: Addition where cin contributes to the result but no carry-out.
+    priority: high
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 5
+        - action: drive
+          signals:
+            a: 0
+            b: 0
+            cin: 1
+          description: a=0, b=0, cin=1 to show cin in isolation
+        - action: check_output
+          signals:
+            sum: 1
+            cout: 0
+    note: cin alone produces sum=1.
+
+  - name: carry_out_overflow
+    description: Addition that produces a carry-out (cout=1).
+    priority: high
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 5
+        - action: drive
+          signals:
+            a: 255
+            b: 1
+            cin: 0
+          description: a=255 (max for WIDTH=8), b=1, cin=0
+        - action: check_output
+          signals:
+            sum: 0
+            cout: 1
+    note: 255 + 1 = 256, wraps sum to 0 with cout=1.
+
+  - name: full_overflow_with_cin
+    description: "Maximum overflow: a and b at max, cin=1."
+    priority: high
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 5
+        - action: drive
+          signals:
+            a: 255
+            b: 255
+            cin: 1
+          description: All inputs at maximum
+        - action: check_output
+          signals:
+            sum: 255
+            cout: 1
+    note: 255 + 255 + 1 = 511, sum=255, cout=1.
+
+  - name: cin_propagation_all_zeros
+    description: a and b zero, cin=0 to verify all-zero baseline.
+    priority: medium
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 5
+        - action: drive
+          signals:
+            a: 0
+            b: 0
+            cin: 0
+          description: All inputs zero
+        - action: check_output
+          signals:
+            sum: 0
+            cout: 0
+    note: Baseline zero check.
+
+  - name: carry_chain_propagation
+    description: Addition that causes carry to propagate through every bit position.
+    priority: high
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 5
+        - action: drive
+          signals:
+            a: 170
+            b: 85
+            cin: 0
+          description: 0xAA + 0x55 = 0xFF, no overflow but carries propagate through every position
+        - action: check_output
+          signals:
+            sum: 255
+            cout: 0
+    note: 170 (10101010) + 85 (01010101) = 255 (11111111).
+
+  - name: reset_clears_outputs
+    description: Verify asynchronous reset immediately clears sum and cout.
+    priority: high
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 5
+        - action: drive
+          signals:
+            a: 255
+            b: 255
+            cin: 1
+          description: Drive non-zero inputs
+        - action: check_output
+          signals:
+            sum: 255
+            cout: 1
+        - action: reset
+          cycles: 3
+          description: Assert reset asynchronously mid-operation
+        - action: check_output
+          signals:
+            sum: 0
+            cout: 0
+    note: Reset must clear outputs to zero asynchronously.
+
+  - name: cin_toggle
+    description: Same a and b values, toggle cin to observe its effect.
+    priority: medium
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 5
+        - action: drive
+          signals:
+            a: 100
+            b: 200
+            cin: 0
+          description: First pass with cin=0
+        - action: check_output
+          signals:
+            sum: 44
+            cout: 1
+        - action: reset
+          cycles: 3
+        - action: drive
+          signals:
+            a: 100
+            b: 200
+            cin: 1
+          description: Second pass with cin=1
+        - action: check_output
+          signals:
+            sum: 45
+            cout: 1
+    note: 100+200=300 => sum=44,cout=1. With cin=1 => 301 => sum=45,cout=1.
+
+corner_cases:
+  - name: all_zeros
+    description: All inputs driven to zero after reset.
+    expected:
+      sum: 0
+      cout: 0
+
+  - name: all_ones
+    description: a and b at all-ones for the default WIDTH (0xFF), cin=1.
+    expected:
+      sum: 255
+      cout: 1
+
+  - name: alternating_bit_patterns
+    description: a=0xAA (10101010), b=0x55 (01010101), cin=1 to exercise carry chain with cin propagation.
+    expected:
+      sum: 0
+      cout: 1
+
+  - name: single_bit_set_max
+    description: a has MSB set (0x80), b has MSB set (0x80), cin=0 — overflow from highest bit only.
+    expected:
+      sum: 0
+      cout: 1
+
+  - name: reset_during_active_addition
+    description: Assert rst_n asynchronously while inputs are being actively added. Outputs must go to zero immediately.
+    expected:
+      sum: 0
+      cout: 0
+
+  - name: minimal_width
+    description: WIDTH=4 boundary case — verify adder behavior with smallest non-trivial width.
+    expected:
+      sum: 0
+      cout: 1
+
+randomized_testing_strategy:
+  description: >
+    Randomly drive a across [0, 2^WIDTH-1], b across [0, 2^WIDTH-1],
+    and cin across {0, 1}. Compare registered output against the
+    Python reference model (ref_model.py adder_ref) on every clock cycle.
+    Run 1000+ iterations per width configuration.
+  constraints:
+    - variable: a
+      range: [0, 255]
+    - variable: b
+      range: [0, 255]
+    - variable: cin
+      range: [0, 1]
+  injection:
+    - type: async_reset_pulse
+      frequency: every 50 transactions
+      duration_cycles:
+        - 2
+        - 5
+      description: Periodically assert rst_n for 2-5 cycles to verify recovery.
+  pass_criteria: >
+    For every driven input combination, the registered sum and cout must
+    match the reference model output after exactly one clock cycle latency.
+    No X or Z on any output.
+
+functional_coverage:
+  covergroups:
+    - name: input_range_cg
+      description: Cover all meaningful input value ranges for a, b, and cin.
+      sample_on: posedge clk
+      bins:
+        - name: a_range
+          variable: a
+          bins:
+            - name: a_zero
+              range:
+                - 0
+                - 0
+            - name: a_low
+              range:
+                - 1
+                - 85
+            - name: a_mid
+              range:
+                - 86
+                - 170
+            - name: a_high
+              range:
+                - 171
+                - 254
+            - name: a_max
+              range:
+                - 255
+                - 255
+        - name: b_range
+          variable: b
+          bins:
+            - name: b_zero
+              range:
+                - 0
+                - 0
+            - name: b_low
+              range:
+                - 1
+                - 85
+            - name: b_mid
+              range:
+                - 86
+                - 170
+            - name: b_high
+              range:
+                - 171
+                - 254
+            - name: b_max
+              range:
+                - 255
+                - 255
+        - name: cin_val
+          variable: cin
+          bins:
+            - name: cin_zero
+              range:
+                - 0
+                - 0
+            - name: cin_one
+              range:
+                - 1
+                - 1
+      crosses:
+        - name: a_b_cin_cross
+          variables:
+            - a
+            - b
+            - cin
+          description: Cross all a/b/cin bins to ensure full input space coverage.
+    - name: overflow_cg
+      description: Cover carry-out scenarios and overflow conditions.
+      sample_on: posedge clk
+      bins:
+        - name: cout_val
+          variable: cout
+          bins:
+            - name: cout_zero
+              range:
+                - 0
+                - 0
+            - name: cout_one
+              range:
+                - 1
+                - 1
+        - name: sum_val
+          variable: sum
+          bins:
+            - name: sum_zero
+              range:
+                - 0
+                - 0
+            - name: sum_max
+              range:
+                - 255
+                - 255
+      crosses:
+        - name: cout_sum_cross
+          variables:
+            - cout
+            - sum
+          description: Cover all cout/sum output combinations.
+
+scoreboard_reference_model_strategy:
+  description: >
+    Use the Python reference model (adder_ref from examples/adder/ref_model.py)
+    as the golden scoreboard. On each clock cycle after stimulus application,
+    compare DUT sum and cout against the reference model output computed from
+    the same a, b, cin inputs.
+  architecture:
+    - type: reference_model_comparison
+      description: >
+        The scoreboard captures the input values (a, b, cin) on each clock
+        cycle and feeds them to the Python adder_ref function. After one
+        clock cycle of latency, the DUT outputs (sum, cout) are compared
+        against the reference model results. Any mismatch is flagged as an error.
+    - type: transaction_recording
+      description: >
+        Each stimulus transaction is recorded with inputs, expected outputs,
+        and actual DUT outputs for debug and regression triage.
+  pass_criteria: >
+    All observed (sum, cout) pairs must exactly match the reference model
+    output for the corresponding (a, b, cin) inputs, given one clock cycle
+    of registered output latency.
+  error_reporting: >
+    On mismatch, report the cycle number, input values (a, b, cin),
+    expected (sum, cout) from reference model, and actual (sum, cout)
+    from DUT.
+
+useful_assertions:
+  - name: reset_clears_outputs
+    description: When rst_n is deasserted (low), both sum and cout must be zero.
+    severity: error
+    assertion: "!rst_n |-> (sum == 0 && cout == 0)"
+
+  - name: no_x_on_outputs
+    description: Outputs must never be X or Z during normal operation.
+    severity: error
+    assertion: "rst_n |-> (!$isunknown(sum) && !$isunknown(cout))"
+
+  - name: output_matches_reference
+    description: After reset release, output must satisfy {cout, sum} == a + b + cin from previous cycle.
+    severity: error
+    assertion: "The registered output (sum, cout) must always equal the (WIDTH+1)-bit sum of the inputs from the previous cycle."
+    note: >
+      This is a behavioral assertion — the downstream generator should implement
+      a checker that computes expected = a_prev + b_prev + cin_prev and compares
+      against {cout, sum} on each active clock edge when rst_n is high.
+
+  - name: reset_is_asynchronous
+    description: Reset must take effect on the falling edge of rst_n without waiting for a clock edge.
+    severity: error
+    assertion: "If rst_n transitions from high to low, sum and cout must reach zero without requiring a posedge clk."
+    note: >
+      The RTL sensitivity list includes negedge rst_n, confirming asynchronous reset.
+      The spec incorrectly describes this as synchronous — see discrepancy DISC-001.
+
+discrepancies:
+  - id: DISC-001
+    severity: medium
+    title: Reset type mismatch between spec and RTL
+    rtl: >
+      The RTL uses "always @(posedge clk or negedge rst_n)" which is an
+      asynchronous reset — the block triggers on the falling edge of rst_n
+      independently of the clock.
+    spec: >
+      The spec states: "On the rising edge of clk, if rst_n is low, sum and
+      cout are cleared to 0 (active-low, synchronous reset)." This describes
+      a synchronous reset, which is incorrect per the RTL.
+    impact: >
+      The verification plan targets asynchronous reset behavior as implemented
+      in the RTL. If the spec is correct and the RTL has a bug, reset test
+      scenarios need to be re-evaluated. If the RTL is correct and the spec
+      has a documentation error, the spec should be updated.
+    recommendation: >
+      Clarify with the design team whether reset should be asynchronous or
+      synchronous. Update the spec to match the RTL implementation or fix
+      the RTL to match the spec. The verification plan assumes the RTL is
+      authoritative and tests asynchronous reset behavior.

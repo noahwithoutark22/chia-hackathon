@@ -1,0 +1,72 @@
+provider:
+    head_ip: ${THIS_MACHINE}
+auth:
+    ssh_user: ${USER}
+    ssh_private_key: ~/.ssh/<ssh_key_name>  # Comment if credentials are in SSH agent
+
+
+available_node_types:
+    # Unmodified reference node type from the chia example — kept for
+    # plain Verilator smoke-runs / comparison.
+    hello_verilator:
+        resources: {"verilator_run": 1}
+        num_workers: 1
+        compatible_ips: ["${THIS_MACHINE}"]  # Or [Another_host]
+        docker:
+            image: "ghcr.io/ucb-bar/chia-verilator-run:latest"
+            container_name: "chia-verilator-${USER}"
+            run_options:
+                - --ulimit nofile=65536:65536
+                - --shm-size=10.24gb
+
+    # New node type: runs the LLM-driven UVM testbench generator
+    # (plan_generator.py -> tb_generator.py) and, when needed, hands the
+    # generated TB off to Chipyard's Verilator flow inside the same box.
+    hello_opencode:
+        resources: {"opencode_creds": 1, "opencode_tools": 1}
+        num_workers: 1
+        compatible_ips: ["${THIS_MACHINE}"]
+        worker_setup_commands:
+            - "source ~/.bashrc"
+        docker:
+            image: "ghcr.io/ucb-bar/chia-opencode:latest"
+            container_name: "chia-opencode-${USER}"
+            run_options:
+                - --shm-size=4gb
+                - -v ${CHIA_PROJECT_ROOT}:/workspace
+                - -v ${HOME}/snap/code/259/.local/share/opencode/auth.json:/home/ray/.local/share/opencode/auth.json:ro
+    hello_rtl:
+        resources: {"rtl_extract": 1}
+        num_workers: 1
+        compatible_ips: ["${THIS_MACHINE}"]
+        docker:
+            image: "chia-rtl-worker:local"
+            container_name: "chia-rtl-${USER}"
+            pull_before_run: false
+            run_options:
+                - --shm-size=2gb
+                - -v ${CHIA_PROJECT_ROOT}:/workspace
+
+    hello_sim:
+        resources: {"sim_worker": 1}
+        num_workers: 1
+        compatible_ips: ["${THIS_MACHINE}"]
+        docker:
+            image: "chia-sim-worker:chia-local"
+            container_name: "chia-sim-${USER}"
+            pull_before_run: false
+            run_options:
+                - --ulimit nofile=65536:65536
+                - -v ${CHIA_PROJECT_ROOT}:/workspace
+
+head_env_commands: ["source ~/.bashrc && conda activate chia_env"]
+head_setup_commands: ["source ~/.bashrc && conda activate chia_env"]
+head_start_ray_commands:
+    - "source ~/.bashrc && conda activate chia_env && ray stop"
+    - "source ~/.bashrc && conda activate chia_env && \
+        ray start --head --port=6379 \
+        --include-dashboard=True --dashboard-agent-listen-port=0"
+
+worker_start_ray_commands:
+    - "ray stop"
+    - "ray start --address=$RAY_HEAD_IP:6379 --dashboard-agent-listen-port=0"

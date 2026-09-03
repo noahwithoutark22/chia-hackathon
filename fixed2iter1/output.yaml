@@ -1,0 +1,156 @@
+dut:
+  name: adder
+  description: Registered, parameterized WIDTH-bit adder with carry-in and carry-out, active-low reset that is asynchronous on assertion (and synchronous on deassertion).
+
+parameters:
+  - name: WIDTH
+    type: integer
+    default: 8
+    description: Bit width of the unsigned operands a, b, and registered output sum. Width of the sum carry-out result is (WIDTH+1) bits.
+
+clock_and_reset:
+  clock:
+    name: clk
+    active_edge: posedge
+  reset:
+    name: rst_n
+    active_level: low
+    type: asynchronous-assert, synchronous-deassert
+    reset_behavior: On rst_n assertion (low), sum and cout are cleared to zero immediately and asynchronously at that negedge, independent of clk; deassertion (high) takes effect only on the next rising edge of clk.
+
+ports:
+  - name: clk
+    direction: input
+    width: 1
+  - name: rst_n
+    direction: input
+    width: 1
+  - name: a
+    direction: input
+    width: WIDTH
+    signedness: unsigned
+  - name: b
+    direction: input
+    width: WIDTH
+    signedness: unsigned
+  - name: cin
+    direction: input
+    width: 1
+  - name: sum
+    direction: output
+    width: WIDTH
+    signedness: unsigned
+    type: reg
+  - name: cout
+    direction: output
+    width: 1
+    type: reg
+
+functional_behavior:
+  Registered operation: "On each rising edge of clk, if rst_n is deasserted (high), the (WIDTH+1)-bit result of a + b + cin is registered: sum holds the low WIDTH bits and cout holds the overflow (carry-out) bit."
+  Reset operation: "Asynchronous on assertion: as soon as rst_n is asserted (low), both sum and cout are cleared to zero at that negedge, regardless of clk or operand values. Deassertion is synchronous: once rst_n is high, normal registered behavior resumes on the next rising clk edge."
+  Operand semantics: "a and b are unsigned WIDTH-bit operands; cin is a single input carry bit; the full result {cout, sum} equals a + b + cin, where cout is the (WIDTH+1)-th bit."
+  Output timing: "sum and cout are registered and therefore appear one clock cycle after the inputs that produced them (sequential, one-cycle latency)."
+
+directed_test_scenarios:
+  - id: reset_clear
+    description: Assert rst_n low and verify sum and cout are cleared to zero immediately at the rst_n negedge (asynchronous assertion), independent of clk or input values.
+    stimulus: Drive arbitrary invalidating operands while rst_n is low; deassert rst_n and check outputs remain at zero until the first rising clk edge after deassertion.
+    expected: sum == 0 and cout == 0 immediately upon rst_n assertion, without waiting for a clk edge.
+  - id: zero_plus_zero
+    description: Basic addition with no carry.
+    stimulus: a = 0, b = 0, cin = 0.
+    expected: sum == 0, cout == 0.
+  - id: simple_add
+    description: Basic non-overflowing addition.
+    stimulus: a = 5, b = 3, cin = 0 (WIDTH = 8).
+    expected: sum == 8, cout == 0.
+  - id: carry_in_only
+    description: cin in isolation with zero operands.
+    stimulus: a = 0, b = 0, cin = 1.
+    expected: sum == 1, cout == 0.
+  - id: carry_propagation
+    description: Carry chain that propagates through several bit positions.
+    stimulus: a = 0x0F, b = 0x01, cin = 1 (carry propagates across the lower 4 bits).
+    expected: sum == 0x11, cout == 0.
+  - id: maximum_overflow
+    description: Overflow at maximum representable sum.
+    stimulus: a = 255, b = 1, cin = 0 (WIDTH = 8).
+    expected: sum == 0, cout == 1.
+  - id: maximum_plus_cin_overflow
+    description: Overflow with max operands and carry-in.
+    stimulus: a = 255, b = 255, cin = 1 (WIDTH = 8).
+    expected: sum == 0xFF, cout == 1.
+  - id: all_ones_no_carry_in
+    description: Maximum operands with no carry-in.
+    stimulus: a = 255, b = 255, cin = 0 (WIDTH = 8).
+    expected: sum == 0xFE, cout == 1.
+  - id: reset_interrupts_operation
+    description: Reset applied while a computation would otherwise occur; assert rst_n to asynchronously override the pending result.
+    stimulus: Drive operands producing overflow, then assert rst_n low before the result registers; remove reset afterward.
+    expected: Immediately upon rst_n assertion (asynchronously, at its negedge), sum == 0 and cout == 0 regardless of clk; a later normal add then produces the correct registered result.
+
+corner_cases:
+  - a == 0, b == 0, cin == 0, confirming zero result.
+  - a == all-ones, b == 0, cin == 0 (sum == max, no overflow).
+  - a == all-ones, b == all-ones, cin == 1 (maximum overflow, sum == max, cout == 1).
+  - a == all-ones, b == all-ones, cin == 0 (sum == max - 1, cout == 1).
+  - a == all-ones, b == 1, cin == 0 (wraps to zero with cout == 1).
+  - a == all-ones, b == 0, cin == 1 (wraps to zero with cout == 1).
+  - Boundary of WIDTH-width operands: values at WIDTH-bit extremes (0 and 2^WIDTH - 1).
+  - Consecutive-cycle reset assertion / deassertion to verify asynchronous assertion (clearing at the rst_n negedge) and synchronous deassertion (resuming on the next rising clk edge).
+  - Changing operands and cin in the same cycle the result registers, to confirm single-cycle sampling.
+
+randomized_testing_strategy:
+  description: For WIDTH = 8 (and any configured WIDTH), drive fully randomized unsigned inputs a, b, and single-bit cin across many cycles.
+  approach: Use a constrained-random stimulus with no restrictions on a, b (full [0, 2^WIDTH - 1] range) and cin in {0, 1}; apply one new stimulus per clock edge. Optionally bias toward corner weights (all-ones, zero, WIDTH-bit boundary) interspersed with uniform random values to increase corner-hit probability.
+  scoreboard_handling: For each stimulus applied at edge N, capture the registered {cout, sum} at edge N+1 and compare against the reference model output for the inputs sampled.
+  iteration_count: Run several thousand random vectors with seed randomization to cover the input space; functional coverage will govern when randomization can stop.
+
+functional_coverage:
+  - id: cov_sum_range
+    type: bin
+    coverpoint: sum
+    description: Bins over the output sum value across the WIDTH-bit space (e.g. zero, maximum, and range partitions).
+  - id: cov_a_corner
+    type: bin
+    coverpoint: a
+    description: Bins for a corner values zero and all-ones, plus range partitions.
+  - id: cov_b_corner
+    type: bin
+    coverpoint: b
+    description: Bins for b corner values zero and all-ones, plus range partitions.
+  - id: cov_cin
+    type: bin
+    coverpoint: cin
+    description: Bins for cin == 0 and cin == 1.
+  - id: cov_cout
+    type: bin
+    coverpoint: cout
+    description: Bins for cout == 0 and cout == 1.
+  - id: cross_ab_cin_cout
+    type: cross
+    description: Cross of a corners, b corners, cin, and cout to ensure corner operand combinations with both carry-out outcomes are exercised.
+  - id: cross_cin_overflow
+    type: cross
+    description: Cross of cin with cout to confirm both carry-in values are exercised in both carry-out states.
+
+scoreboard_reference_model_strategy:
+  architecture: "Implement an in-SystemVerilog scoreboard that, for each stimulus applied at clock edge N, captures the registered output {cout, sum} observed at edge N+1 and compares it against the reference computed as (a + b + cin), taking the low WIDTH bits as sum and bit WIDTH as cout. The reference model mirrors ref_model.py adder_ref: mask operands to WIDTH bits and cin to 1 bit, sum_out = total & ((1<<WIDTH)-1), cout = (total >> WIDTH) & 1."
+  alignment: "Accounts for the single-cycle registration delay: compare the output captured in the cycle following the input cycle with the reference computed from those same inputs."
+  reset_handling: When rst_n is asserted (low), sum and cout are cleared to zero immediately and asynchronously at the rst_n negedge, independent of clk; do not compare against the arithmetic reference during reset. Resume arithmetic comparison on the first rising clk edge after reset is deasserted.
+  portability: Parameterize the scoreboard by WIDTH so the same reference works for any configured width; the reference model is the ground truth for correctness.
+
+useful_assertions:
+  - id: rst_clears_sum
+    property: "Asynchronous assertion: whenever rst_n goes low, sum and cout become 0 immediately at that negedge, independent of clk; they remain 0 until the first rising clk edge after rst_n is deasserted."
+  - id: arithmetic_relationship
+    property: On each posedge of clk when rst_n is high, the registered {cout, sum} equals the value of a + b + cin sampled at the previous clock edge (one-cycle latency).
+  - id: one_cycle_latency
+    property: sum and cout reflect the inputs from exactly one cycle prior (1-cycle pipeline latency), captured with $past when rst_n is high.
+  - id: output_stability
+    property: When rst_n is high and no input change occurs, sum and cout remain stable across consecutive cycles.
+
+discrepancies:
+  - reset_semantics: "spec.md labels the reset synchronous, but the RTL implements an asynchronous-on-assertion reset: adder.sv uses always @(posedge clk or negedge rst_n), so when rst_n goes low, sum and cout are cleared immediately at that negedge, independent of clk. Deassertion is synchronous (cleared state persists until the next rising clk edge). This is a genuine spec/RTL discrepancy, not a wording clarification, and the plan describes reset accordingly."
+  - none_identified_elsewhere: RTL, rtl_info.json, and ref_model.py are otherwise consistent regarding ports, parameters (WIDTH=8 default), the registered (WIDTH+1)-bit {cout,sum} = a + b + cin operation, and one-cycle latency.

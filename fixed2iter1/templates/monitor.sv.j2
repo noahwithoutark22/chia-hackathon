@@ -1,0 +1,25 @@
+// Verilator 5.042 compatibility: use only the non-parameterized virtual interface type.
+`include "uvm_macros.svh"
+import uvm_pkg::*;
+class {{ spec.dut_name }}_monitor extends uvm_monitor;
+  `uvm_component_utils({{ spec.dut_name }}_monitor)
+  virtual {{ spec.dut_name }}_if vif;
+  uvm_analysis_port #({{ spec.dut_name }}_transaction) ap;
+  function new(string name, uvm_component parent); super.new(name,parent); ap=new("ap",this); endfunction
+  function void build_phase(uvm_phase phase);
+    super.build_phase(phase);
+    if (!uvm_config_db#(virtual {{ spec.dut_name }}_if)::get(this,"","vif",vif))
+      `uvm_fatal(get_type_name(),"virtual interface not set")
+  endfunction
+  task run_phase(uvm_phase phase);
+    {{ spec.dut_name }}_transaction tr;
+    forever begin
+      @(vif.monitor_cb);
+      tr={{ spec.dut_name }}_transaction::type_id::create("tr");
+{% for p in spec.transaction_inputs + spec.transaction_outputs %}
+      tr.{{ p.signal }}=vif.monitor_cb.{{ p.signal }};
+{% endfor %}
+      ap.write(tr);
+    end
+  endtask
+endclass

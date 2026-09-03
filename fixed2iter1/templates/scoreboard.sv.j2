@@ -1,0 +1,41 @@
+// Verilator 5.042 compatibility: use only the non-parameterized virtual interface type.
+`include "uvm_macros.svh"
+import uvm_pkg::*;
+import chia_ref_model_pkg::*;
+class {{ spec.dut_name }}_scoreboard extends uvm_component;
+  `uvm_component_utils({{ spec.dut_name }}_scoreboard)
+  uvm_analysis_imp #({{ spec.dut_name }}_transaction,{{ spec.dut_name }}_scoreboard) analysis_export;
+  int unsigned num_checked=0, num_errors=0;
+  virtual {{ spec.dut_name }}_if vif;
+  longint unsigned expected_q[$][2];
+  function new(string name,uvm_component parent); super.new(name,parent); analysis_export=new("analysis_export",this); endfunction
+  function void build_phase(uvm_phase phase);
+    super.build_phase(phase);
+    if(!uvm_config_db#(virtual {{ spec.dut_name }}_if)::get(this,"","vif",vif)) `uvm_fatal(get_type_name(),"virtual interface not set")
+  endfunction
+  function void write({{ spec.dut_name }}_transaction tr);
+    if(vif.{{ spec.reset_signal }} == {{ 0 if spec.reset_active_low else 1 }}) begin expected_q.delete(); return; end
+    longint unsigned args[$];
+    longint unsigned r0=0, r1=0;
+{% for a in spec.scoreboard.reference_model.arguments %}
+{% if a.source == "transaction" %}    args.push_back(tr.{{ a.signal }});{% else %}    args.push_back({{ a.value }});{% endif %}
+{% endfor %}
+    chia_ref_model_call(args,r0,r1);
+    expected_q.push_back('{r0,r1});
+    if(expected_q.size()>{{ spec.scoreboard.latency_cycles }}) begin
+      longint unsigned exp[2];
+      exp=expected_q.pop_front();
+      num_checked++;
+{% for o in spec.scoreboard.reference_model.outputs %}
+      if(tr.{{ o.signal }} !== exp[{{ loop.index0 }}][{{ o.width-1 }}:0]) begin
+        num_errors++;
+        `uvm_error(get_type_name(),$sformatf("{{ o.signal }} mismatch: expected=%0h actual=%0h",exp[{{ loop.index0 }}],tr.{{ o.signal }}))
+      end
+{% endfor %}
+    end
+  endfunction
+  function void report_phase(uvm_phase phase);
+    if(num_errors!=0) `uvm_error(get_type_name(),$sformatf("%0d mismatches",num_errors))
+    else `uvm_info(get_type_name(),$sformatf("Checked %0d transactions",num_checked),UVM_LOW)
+  endfunction
+endclass

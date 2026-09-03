@@ -1,0 +1,34 @@
+`timescale 1ns/1ps
+`include "uvm_macros.svh"
+import uvm_pkg::*;
+module {{ spec.dut_name }}_tb_top;
+  logic {{ spec.clock_signal }}=0;
+  always #5 {{ spec.clock_signal }}=~{{ spec.clock_signal }};
+  {{ spec.dut_name }}_if intf({{ spec.clock_signal }});
+  {{ spec.dut_name }} dut(
+    .{{ spec.clock_signal }}({{ spec.clock_signal }}),
+    .{{ spec.reset_signal }}(intf.{{ spec.reset_signal }}){% for p in spec.transaction_inputs + spec.transaction_outputs %},
+    .{{ p.signal }}(intf.{{ p.signal }}){% endfor %}
+  );
+  initial begin
+    intf.{{ spec.reset_signal }}={{ 0 if spec.reset_active_low else 1 }};
+    repeat(2) @(posedge {{ spec.clock_signal }});
+    intf.{{ spec.reset_signal }}={{ 1 if spec.reset_active_low else 0 }};
+  end
+  // Verilator compatibility: the interface type is intentionally
+  // non-parameterized. Widths are rendered concretely in interface.sv.j2.
+  // Do not change this to virtual {{ spec.dut_name }}_if#(...).
+  initial begin
+    uvm_config_db#(virtual {{ spec.dut_name }}_if)::set(null,"*","vif",intf);
+    run_test("{{ spec.dut_name }}_test_{{ spec.scenarios[0].name|lower|replace(" ","_") }}");
+  end
+
+  // Verilator safety watchdog: do not rely solely on UVM phase auto-exit.
+  // The marker lets the simulation worker distinguish a watchdog expiry from
+  // a normal $finish (which otherwise has exit code zero).
+  initial begin
+    #1000000;
+    $display("CHIA_WATCHDOG_EXPIRED");
+    $finish;
+  end
+endmodule

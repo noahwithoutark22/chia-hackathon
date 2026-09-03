@@ -1,0 +1,54 @@
+#include <Python.h>
+#include <cstdint>
+#include <cstdlib>
+#include <filesystem>
+#include <stdexcept>
+
+static PyObject* load_function() {
+    static PyObject* fn = nullptr;
+    if (fn) return fn;
+    PyObject* importlib = PyImport_ImportModule("importlib.util");
+    if (!importlib) return nullptr;
+    PyObject* spec_fn = PyObject_GetAttrString(importlib, "spec_from_file_location");
+    PyObject* module_fn = PyObject_GetAttrString(importlib, "module_from_spec");
+    Py_DECREF(importlib);
+    if (!spec_fn || !module_fn) return nullptr;
+    PyObject* spec = PyObject_CallFunction(spec_fn, "ss", "chia_ref_model", "ref_model.py");
+    Py_DECREF(spec_fn);
+    if (!spec) { Py_DECREF(module_fn); return nullptr; }
+    PyObject* module = PyObject_CallFunctionObjArgs(module_fn, spec, nullptr);
+    Py_DECREF(module_fn);
+    if (!module) { Py_DECREF(spec); return nullptr; }
+    PyObject* loader = PyObject_GetAttrString(spec, "loader");
+    Py_DECREF(spec);
+    if (!loader) { Py_DECREF(module); return nullptr; }
+    PyObject* exec_result = PyObject_CallMethod(loader, "exec_module", "O", module);
+    Py_DECREF(loader);
+    if (!exec_result) { Py_DECREF(module); return nullptr; }
+    Py_DECREF(exec_result);
+    fn = PyObject_GetAttrString(module, "{{ spec.scoreboard.reference_model.function }}");
+    Py_DECREF(module);
+    return fn;
+}
+
+extern "C" void chia_ref_model_dpi(
+{% for i in range(8) %}    uint64_t arg{{ i }},{% endfor %}
+    uint32_t argc,
+    uint64_t* result0,
+    uint64_t* result1) {
+    if (!Py_IsInitialized()) Py_Initialize();
+    PyObject* fn = load_function();
+    if (!fn) { PyErr_Print(); std::abort(); }
+    uint64_t args[8] = {arg0,arg1,arg2,arg3,arg4,arg5,arg6,arg7};
+    PyObject* tuple = PyTuple_New(argc);
+    for (uint32_t i=0; i<argc; ++i) PyTuple_SET_ITEM(tuple, i, PyLong_FromUnsignedLongLong(args[i]));
+    PyObject* ret = PyObject_CallObject(fn, tuple);
+    Py_DECREF(tuple);
+    if (!ret) { PyErr_Print(); std::abort(); }
+    if (!PyTuple_Check(ret) || PyTuple_Size(ret) != {{ spec.scoreboard.reference_model.outputs|length }}) { Py_DECREF(ret); std::abort(); }
+    *result0 = PyLong_AsUnsignedLongLong(PyTuple_GetItem(ret,0));
+{% if spec.scoreboard.reference_model.outputs|length > 1 %}    *result1 = PyLong_AsUnsignedLongLong(PyTuple_GetItem(ret,1));
+{% else %}    *result1 = 0;
+{% endif %}
+    Py_DECREF(ret);
+}

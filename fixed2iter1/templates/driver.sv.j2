@@ -1,0 +1,24 @@
+// Verilator 5.042 compatibility: use only the non-parameterized virtual interface type.
+`include "uvm_macros.svh"
+import uvm_pkg::*;
+class {{ spec.dut_name }}_driver extends uvm_driver #({{ spec.dut_name }}_transaction);
+  `uvm_component_utils({{ spec.dut_name }}_driver)
+  virtual {{ spec.dut_name }}_if vif;
+  function new(string name, uvm_component parent); super.new(name,parent); endfunction
+  function void build_phase(uvm_phase phase);
+    super.build_phase(phase);
+    if (!uvm_config_db#(virtual {{ spec.dut_name }}_if)::get(this,"","vif",vif))
+      `uvm_fatal(get_type_name(),"virtual interface not set")
+  endfunction
+  task run_phase(uvm_phase phase);
+    {{ spec.dut_name }}_transaction req;
+    forever begin
+      seq_item_port.get_next_item(req);
+      {% if spec.driver.drive_before_edge %}@(negedge vif.{{ spec.clock_signal }});{% else %}@(vif.driver_cb);{% endif %}
+{% for p in spec.driver.inputs %}
+      vif.{{ p.signal }} <= req.{{ p.signal }};
+{% endfor %}
+      seq_item_port.item_done();
+    end
+  endtask
+endclass
