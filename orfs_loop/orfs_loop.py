@@ -613,7 +613,7 @@ def run_closure_loop(
     introduced once there is a closed design to trade against.
 
     `batch_size` > 1 runs that many flow executions concurrently per round
-    instead of one at a time (see _decide_batch and CLAUDE.md's "Parallel
+    instead of one at a time (see _decide_batch and README.md's "Parallel
     batches" section) -- each parallel slot gets its
     own ORFS FLOW_VARIANT so `make clean_all` in one never touches another's
     in-flight files, even though all slots share the same design/checkout.
@@ -1365,7 +1365,7 @@ def run_closure_loop(
         them as concurrent Ray futures, then collect the whole round with
         ONE get([...]) call -- the driver still never lets the LLM call
         anything, it just now deliberately runs several of its OWN blocking
-        calls at once instead of one at a time (see CLAUDE.md's "Parallel
+        calls at once instead of one at a time (see README.md's "Parallel
         batches" section for why this doesn't reintroduce the old MCP
         overlapping-call hazard).
         """
@@ -1804,7 +1804,15 @@ def run_closure_loop(
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--design-name", default="tt_um_fft_adityaamehra")
+    ap.add_argument(
+        "--design-name", default="gcd",
+        help="Name of the design being tuned. This is a LABEL, not a path -- "
+             "the design itself comes from --design-config-mk/--reports-root -- "
+             "but it keys the ledger's identity (--seed-ledger refuses to carry "
+             "a ledger across designs by comparing this) and fills $DESIGN_NAME "
+             "in every prompt, so a stale value mislabels both. Pass it "
+             "explicitly whenever you aren't running gcd.",
+    )
     ap.add_argument("--flow-dir", default=DEFAULT_FLOW_DIR)
     ap.add_argument("--design-config-mk", required=True)
     ap.add_argument("--reports-root", required=True)
@@ -1830,7 +1838,7 @@ def main() -> int:
     ap.add_argument(
         "--minimal-schema", action="store_true",
         help="Use the reduced 12-tunable schema (orfs_tunables_schema_minimal.json) "
-             "instead of the full 22-tunable one, to test whether fewer options "
+             "instead of the full 24-tunable one, to test whether fewer options "
              "improves model reliability.",
     )
     ap.add_argument(
@@ -1906,7 +1914,7 @@ def main() -> int:
     ap.add_argument(
         "--batch-size", type=int, default=1,
         help="Run this many flow executions concurrently per round instead of "
-             "one at a time (see CLAUDE.md's 'Parallel batches' section). "
+             "one at a time (see README.md's 'Parallel batches' section). "
              "Requires that many 'orfs_run' Ray workers (cluster.yaml's "
              "hello_orfs.num_workers) to actually run in parallel rather than "
              "queue. Default 1 preserves today's exact serial behavior.",

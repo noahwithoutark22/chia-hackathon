@@ -9,7 +9,7 @@ knob, never gates a slot. That distinction matters: this project previously
 had an `orfs_advisor.py` that computed moves from a fixed rule table, and it
 was removed after a live trial showed it filling every batch slot itself for
 five consecutive rounds with no LLM involvement and no ability to notice it
-was bisecting a dead knob (see CLAUDE.md's "Parallel batches"). A ledger of
+was bisecting a dead knob (see README.md's "Parallel batches"). A ledger of
 observations is the opposite thing: it hands the model *evidence* and lets
 the model do the judging. Keep it that way -- if you ever find yourself
 adding a `suggest_*` function here, that's the advisor growing back.

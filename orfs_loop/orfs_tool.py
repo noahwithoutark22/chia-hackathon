@@ -132,7 +132,7 @@ def run_signoff_remote(
     checksum of the GDS it actually promoted: the result always reports the
     checksum of the GDS these checks really read, and flags a mismatch, so a
     verdict can never be silently attributed to a different layout (it once
-    was -- see CLAUDE.md's signoff-target entry).
+    was -- see README.md's "Signoff (DRC / LVS)" section).
     """
     env = os.environ.copy()
     env["DESIGN_CONFIG"] = working_config_mk
@@ -232,7 +232,7 @@ def run_signoff_remote(
 
     # netgen is authoritative, not KLayout (result["lvs"] above): it has both
     # series and parallel MOS combination, where KLayout's LVS deck only ever
-    # does parallel -- see CLAUDE.md's LVS section for why that's the wrong
+    # does parallel -- see README.md's signoff section for why that's the wrong
     # way round to gate on. `result["lvs"]["clean"]` stays informational only.
     ng = result["lvs_netgen"]
     if not ng.get("supported"):

@@ -206,10 +206,11 @@ Point it at a design that already has a `config.mk` under
 built-in examples (`gcd`, `riscv32i`, `aes`, `jpeg`, `ibex`, `chameleon`,
 `microwatt`, ...) or one you onboarded (below).
 
-Note `--design-name` defaults to `tt_um_fft_adityaamehra`, a Tiny Tapeout
-design that was onboarded locally rather than shipped with ORFS -- it does
-**not** exist in a fresh submodule checkout. Always pass `--design-name`
-explicitly (all the examples here do).
+`--design-name` is a **label**, not a path -- the design itself comes from
+`--design-config-mk`/`--reports-root`. But it keys the ledger's identity
+(`--seed-ledger` refuses to carry a ledger across designs by comparing it) and
+fills `$DESIGN_NAME` in every prompt, so a stale value mislabels both. It
+defaults to `gcd`; pass it explicitly for anything else.
 
 ```bash
 conda activate chia_env
@@ -247,7 +248,7 @@ uncapped -- the model itself ends a non-closing iteration by replying
 
 | Flag | Default | Notes |
 |---|---|---|
-| `--design-name` | `tt_um_fft_adityaamehra` | Used to label the tool + prompt. The default is a locally-onboarded design; pass this explicitly. |
+| `--design-name` | `gcd` | A label, not a path -- it keys the ledger and fills `$DESIGN_NAME` in prompts. Pass it explicitly for anything but `gcd`. |
 | `--flow-dir` | `/root/OpenROAD-flow-scripts/flow` | Rarely needs changing. |
 | `--design-config-mk` | *required* | Container-native path to baseline `config.mk`. |
 | `--reports-root` | *required* | Container-native path to `flow/reports/<platform>/<design>/base`. |
