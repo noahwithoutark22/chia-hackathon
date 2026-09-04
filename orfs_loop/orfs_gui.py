@@ -13,6 +13,7 @@ same artifacts) and survives the browser being closed.
 """
 from __future__ import annotations
 
+import getpass
 import json
 import os
 import re
@@ -30,7 +31,15 @@ REPO_ROOT = Path(__file__).parent.resolve()
 RUNS_DIR = REPO_ROOT / "orfs_runs"
 DESIGNS_DIR = REPO_ROOT / "orfs-native-build" / "flow" / "designs"
 CONTAINER_FLOW = "/root/OpenROAD-flow-scripts/flow"
-OPENCODE_CONTAINER = "chia-orfs-auralab-0".replace("orfs", "opencode")
+# cluster.yaml names every worker container "chia-<type>-${USER}-<n>", so the
+# username has to come from the environment -- hardcoding one made the model
+# dropdown (which shells out to `docker exec <this> opencode models`) fail
+# silently for every user but the author. ORFS_GUI_OPENCODE_CONTAINER overrides
+# it outright for a non-standard cluster.
+_CLUSTER_USER = os.environ.get("USER") or os.environ.get("LOGNAME") or getpass.getuser()
+OPENCODE_CONTAINER = os.environ.get(
+    "ORFS_GUI_OPENCODE_CONTAINER", f"chia-opencode-{_CLUSTER_USER}-0"
+)
 
 app = FastAPI(title="ORFS Closure Dashboard")
 

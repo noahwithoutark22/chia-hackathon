@@ -32,16 +32,15 @@ VERILOG_FILES and SDC_FILE from host paths to container paths, before
      land the whole design dir at the right spot inside the running
      container, end to end, one command.
 
-Usage (against the FFT repo, matching the real working run):
-    git clone https://github.com/adityaamehra/FFT-tiny-tapeout.git \
-        ~/Desktop/FFT-tiny-tapeout
+Usage (against any Tiny-Tapeout-style repo):
+    git clone https://github.com/<you>/<your-tt-repo>.git ~/<your-tt-repo>
 
     python orfs_onboard.py \
-        --design-repo ~/Desktop/FFT-tiny-tapeout \
-        --output-root ~/Desktop/chia-orfs/generated-flow-configs \
+        --design-repo ~/<your-tt-repo> \
+        --output-root ./generated-flow-configs \
         --container-flow-dir /root/OpenROAD-flow-scripts/flow \
         --platform sky130hd \
-        --docker-container chia-orfs-auralab-0
+        --docker-container chia-orfs-$USER-0
 
 This writes, on the HOST (staging area, not used by ORFS directly):
     <output-root>/designs/<platform>/<design_name>/config.mk
