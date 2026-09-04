@@ -1,5 +1,28 @@
 provider:
-    head_ip: ${THIS_MACHINE}
+    # Loopback, not ${THIS_MACHINE} -- this is a single-machine cluster, and
+    # every worker container runs --net=host (see hello_orfs's run_options
+    # below), so 127.0.0.1 inside a container already IS this host. This
+    # makes chia's OWN orchestration (SSH + docker exec/run targeting, and
+    # the RAY_HEAD_IP workers use to join) independent of the host's real
+    # IP -- no more recomputing/exporting an env var before every `chia up`,
+    # and no more `chia up` itself failing to even SSH in after the wifi's
+    # DHCP lease turns over. Verified live 2026-09-04: `chia up` reconciled
+    # 8 already-running containers cleanly with zero IP-related input.
+    #
+    # This does NOT make an already-running cluster survive the host's real
+    # IP changing mid-session. Ray's own node identity is a separate layer
+    # underneath chia's, and Ray deliberately refuses to let a node
+    # advertise 127.0.0.1 as itself (ray._private.services.
+    # resolve_ip_for_localhost substitutes the real outbound IP even when
+    # 127.0.0.1 is passed explicitly via --node-ip-address, precisely so a
+    # node never advertises an address other machines can't reach) --
+    # confirmed by reading that function's source and by a live
+    # `ray start --head --node-ip-address=127.0.0.1` test that still
+    # registered the node under the real LAN IP. So a live run still dies
+    # if the real IP rotates out from under it mid-flight; what's fixed is
+    # that recovering (`chia up cluster.yaml -y` again) now just works,
+    # with nothing to recompute first. See README.md's GCS-timeout entry.
+    head_ip: "127.0.0.1"
 
 auth:
     ssh_user: ${USER}
@@ -9,7 +32,7 @@ available_node_types:
     hello_verilator:
         resources: {"verilator_run": 1}
         num_workers: 1
-        compatible_ips: ["${THIS_MACHINE}"]
+        compatible_ips: ["127.0.0.1"]
         docker:
             image: "ghcr.io/ucb-bar/chia-verilator-run:latest"
             container_name: "chia-verilator-${USER}"
@@ -20,7 +43,7 @@ available_node_types:
     hello_opencode:
         resources: {"opencode_creds": 1}
         num_workers: 1
-        compatible_ips: ["${THIS_MACHINE}"]
+        compatible_ips: ["127.0.0.1"]
         worker_setup_commands: ["source ~/.bashrc"]
         docker:
             image: "ghcr.io/ucb-bar/chia-opencode:latest"
@@ -64,7 +87,7 @@ available_node_types:
         # a large design -- riscv32i's route stage is far heavier, so re-check
         # `docker stats` before running one of those 6-wide.
         num_workers: 6
-        compatible_ips: ["${THIS_MACHINE}"]
+        compatible_ips: ["127.0.0.1"]
         worker_setup_commands: ["source ~/.bashrc", "export USER=root", "export TMPDIR=/tmp"]
         docker:
             image: "chia-orfs-run:local"

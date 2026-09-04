@@ -135,7 +135,6 @@ client-timeout retry storm the original design hit.
 conda activate chia_env
 cd <this directory>               # the orfs_loop/ directory, the one holding cluster.yaml
 export CHIA_ORFS_REPO=$(pwd)      # cluster.yaml's bind-mount paths key off this
-export THIS_MACHINE=$(hostname -I | awk '{print $1}')
 chia up cluster.yaml -y
 ```
 
@@ -144,10 +143,19 @@ chia up cluster.yaml -y
 `${CHIA_ORFS_REPO}/orfs-native-build` at `/root/OpenROAD-flow-scripts` and
 `${CHIA_ORFS_REPO}` itself at `/root/chia-orfs` inside every worker.
 
-Recompute `THIS_MACHINE` right before `chia up` rather than setting it once in
-`~/.bashrc`: if the host's IP changes, every node stays registered under the
-old address and new drivers fail to join with `No node info found matching
-node ids: set()`, even though `ray status` still answers normally.
+`cluster.yaml`'s `head_ip` and every node type's `compatible_ips` are pinned
+to `127.0.0.1`, not a real network IP -- this is a single-machine cluster and
+every worker runs `--net=host`, so loopback inside a container already is
+this host. That makes chia's *own* orchestration (SSH targeting, docker
+exec/run, the `RAY_HEAD_IP` workers join through) independent of the host's
+real IP: no `THIS_MACHINE`-style env var to recompute, and `chia up
+cluster.yaml -y` reconciles cleanly no matter what the host's current address
+is. It does **not** make an already-running cluster survive that address
+changing mid-session -- Ray's own node identity is a layer underneath
+chia's, and Ray refuses to let a node advertise `127.0.0.1` as itself (it
+substitutes the real outbound IP even if you pass `--node-ip-address
+127.0.0.1` explicitly). See the GCS-timeout entry in Troubleshooting for what
+that means in practice.
 
 This brings up (or reconciles) the Ray head + one Docker worker per node type
 in `cluster.yaml`. The ORFS workers are named `chia-orfs-<your-username>-0`,
@@ -557,15 +565,45 @@ Before assuming a hang, check whether the flow is genuinely still working:
 state `R` with high CPU on an `openroad` process means it's grinding (e.g.
 TritonRoute working through a DRC-convergence stall), not stuck.
 
-**A long run dies with `Failed to connect to GCS within 60 seconds`.** Check
-whether the GCS actually died (`pgrep -af gcs_server`) before believing it.
-The usual cause is the host's IP rotating mid-run: every node stays registered
-under the old address, so a driver can no longer join. There's no client-side
-workaround -- `--ray-address 127.0.0.1:6379` looks like a fix and isn't (`ray
-status` will answer over loopback and report full capacity, while a real
-`ray.init` still fails with `No node info found matching node ids: set()`).
-Recompute `THIS_MACHINE` and re-run `chia up cluster.yaml -y`; containers are
-reused when the image hasn't changed, so it's much faster than a cold start.
+**A long run dies with `Failed to connect to GCS within 60 seconds`, or `No
+node info found matching node ids: set()`.** Check whether the GCS actually
+died (`pgrep -af gcs_server`) before believing it -- on flaky wifi the far
+more common cause is the host's real IP rotating mid-run (a DHCP lease
+turning over across a suspend/reboot, say). This is unrelated to
+`cluster.yaml`'s `head_ip`/`compatible_ips` being pinned to `127.0.0.1` --
+that pin only covers chia's own SSH/docker orchestration. **Ray's own node
+identity is a separate, lower layer that cannot be pinned to loopback**: Ray
+deliberately substitutes the real outbound IP for `127.0.0.1` even when you
+pass it explicitly (`ray._private.services.resolve_ip_for_localhost`), so
+every node is always registered under the host's real, rotating address.
+When that address changes mid-session, `ray status` keeps answering over
+loopback and reports full capacity, while a real `ray.init` fails to find
+any node matching the new address.
+
+There is no way to make the running session survive this -- the fix is
+recovery, not prevention: `chia up cluster.yaml -y` again. This is where the
+`127.0.0.1` pin actually pays off: recovery no longer depends on knowing (or
+recomputing) the host's current IP first, and it reconciles the existing
+Docker containers rather than rebuilding them, so it's much faster than a
+cold start. A run's in-progress state up to the crash (`summaries/`,
+`reports/`, `gds/`, `ledger.json`) survives; only `summary.json` and signoff
+are lost, since those are written at the very end.
+
+**The LLM turn fails with `AttributeError: Can't get attribute
+'OpenCodeQueryResult' on <module 'chia.models.opencode'>`** right after a
+flow run returns cleanly. This is Ray failing to unpickle the object the
+`hello_opencode` container's `chia` package sent back, because your machine's
+own `chia` framework checkout (whatever `import chia` resolves to on
+`PYTHONPATH`) is older than whatever `chia` version is baked into the
+`ghcr.io/ucb-bar/chia-opencode:latest` image -- `hello_opencode` has no
+`pull_before_run: false` pin the way `hello_orfs` does, so `chia up` can
+silently fetch a newer container while your local `chia` checkout sits
+still. There is no way to pin the container back to match once this drifts
+more than about a week: the image's own build workflow retains only
+`:latest` plus recent `:build-<run-id>` tags, deleting the latter after 7
+days. The fix is updating your `chia` checkout forward (`git pull --ff-only
+origin main` wherever it lives, no reinstall needed if it's linked rather
+than `pip install`ed) rather than trying to roll the container back.
 
 **A `place` stage crashes with `[ERROR GPL-0301] Utilization exceeds 100%`.**
 `CELL_PAD_IN_SITES_GLOBAL_PLACEMENT` inflates each cell's effective footprint,
