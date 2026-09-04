@@ -25,17 +25,19 @@ cd orfs_loop
 git apply orfs-native-build.patch --directory=orfs-native-build
 ```
 
-`orfs_runs/bp-sky-gcd/` is a complete sample run (gcd on sky130hs, 6
-iterations, closed, area-optimized) kept as a reference for what a finished
-run's output looks like.
+`orfs_runs/bp-sky-gcd/` is a complete sample run kept as a reference for what
+a finished run's output looks like: `gcd` on sky130hs under `--objective
+area`, 40 flow runs across 6 iterations, all 6 closed, final core area
+5591.2. (sky130hs configures no KLayout DRC/LVS deck, so that run's signoff
+step reports "not supported" rather than a verdict -- see "Signoff" below.)
 
 ## How it fits together
 
 ```
 orfs_loop.py  (driver, runs on the host, owns the whole loop)
   -> run_flow_remote / apply_tunables_remote     direct blocking Ray calls,
-       (orfs_tool.py, on the "orfs_run" Ray        no MCP, no tool-calling
-        worker -- exactly 1 unit cluster-wide)
+       (orfs_tool.py, on an "orfs_run" Ray         no MCP, no tool-calling
+        worker)
        -> make -C flow clean_all synth/floorplan/place/cts/route/finish/metadata
   -> OpenCodeLLM.prompt(..., tools=[])   one LLM turn per run: the model reads
        the flow result as a prompt and replies with a JSON tunable diff (or
@@ -49,9 +51,16 @@ broke: opencode's MCP client times out a call at ~60s, but a real flow run
 takes 90s-15min, so the client would retry mid-run and a second concurrent
 flow execution would `make clean_all` out from under the first one,
 corrupting both. The fix was removing the LLM's ability to call anything --
-the driver now owns every flow/tunable call directly, so two runs overlapping
-is structurally impossible, and the model's only interface is replying with
-text.
+the driver now owns every flow/tunable call directly, and the model's only
+interface is replying with text.
+
+*Uncontrolled* overlap on the same path is therefore still structurally
+impossible: nothing but the driver can start a flow run. The driver itself
+does run flows concurrently when you ask it to (`--batch-size N`, below), but
+each concurrent call gets its own ORFS `FLOW_VARIANT` and its own working
+config, and ORFS scopes every output directory by `FLOW_VARIANT` -- so no two
+in-flight runs ever share a path. That is a different thing from the
+client-timeout retry storm the original design hit.
 
 - **`orfs_loop.py`** -- the driver: connects to the Ray cluster, runs a
   two-level loop (**iterations** are the major unit -- iteration 1 ends the
@@ -73,6 +82,15 @@ text.
   a reduced 12-tunable variant, `--minimal-schema`) -- the closed whitelist:
   every key the LLM is allowed to touch, with type/range/enum bounds.
   Anything not listed here is invisible and unreachable to the LLM, full stop.
+- **`orfs_ledger.py`** -- accumulates what every tunable change *measurably
+  did*, across every run and every parallel slot, and renders it into each
+  prompt as `measured_effects_so_far`. It is evidence, never a decision-maker.
+  Two honesty rules it keeps: multi-knob moves are quarantined as "combined"
+  rather than averaged into a per-knob effect, and `CLOCK_PERIOD` moves are
+  flagged, since relaxing the clock improves slack by definition and would
+  otherwise read as "raising CLOCK_PERIOD reliably fixes timing" -- true,
+  useless, and exactly the trade `--objective` exists to prevent. Written to
+  `ledger.json`; carry it into a later run with `--seed-ledger`.
 - **`prompts/orfs_propose.md`** -- the LLM's entire interface: reads the
   current goal/schema/config/flow-result/history and replies with a fenced
   JSON tunable diff or a `CLOSURE:` sentinel. Its strategy section moves
@@ -81,6 +99,12 @@ text.
   ~10-15% relative steps per turn, always -- otherwise a model chasing
   closure will happily double the die area or give back most of the clock
   speed to get there.
+- **`prompts/orfs_referee.md`** -- one extra LLM turn per parallel round that
+  reads every slot's result side by side and writes the cross-slot note the
+  next round's calls all see. The only thing that reasons *across* slots, and
+  the only thing positioned to call a plateau. Disable with `--skip-referee`.
+- **`prompts/orfs_diagnose.md`** -- the stall-diagnosis turn, used only when
+  the last 3 runs all came back REGRESSED/UNCHANGED.
 - **`orfs_onboard.py`** -- one-time bridge to generate a `config.mk` for a
   fresh Tiny-Tapeout-style RTL repo that doesn't have one yet.
 - **`orfs_gui.py`** / **`gui/index.html`** -- the dashboard. Runs
@@ -91,24 +115,47 @@ text.
   verilator example workers). `chia up`/`chia down` (from the `chia` package)
   read this, not raw `ray up`. Bind-mount paths are parameterized via
   `${CHIA_ORFS_REPO}`/`${HOME}`, not hardcoded to one person's machine.
+  `hello_orfs.num_workers` (ships as `6`) is the `orfs_run` capacity, and
+  therefore how wide `--batch-size` can actually run in parallel.
+- **`Dockerfile.orfs-run`** -- builds the `chia-orfs-run:local` image the
+  `orfs_run` workers use. Thin by design: `FROM openroad/orfs:latest` plus a
+  conda/ray/`chia` layer and `netgen-lvs` -- it `COPY`s nothing from this
+  repo, so the image never contains local edits. `orfs-native-build/` and the
+  repo are bind-mounted at *runtime* instead.
+- **`lvs/sky130hd_netgen_setup.tcl`** -- a netgen device-combination setup
+  ported from open_pdks' `sky130_setup.tcl` (what OpenLane and Tiny Tapeout
+  use for sky130 signoff), run as a **second opinion alongside** KLayout's
+  LVS, never replacing it. See "Signoff" below.
+- **`orfs-native-build.patch`** -- the sky130hd LVS fixes to apply on top of
+  the pinned upstream ORFS checkout (see the top of this file).
 
 ## One-time setup
 
 ```bash
 conda activate chia_env
-cd ~/Desktop/chia-orfs
-export CHIA_ORFS_REPO=$(pwd)     # cluster.yaml's bind-mount paths key off this
+cd <this directory>               # the orfs_loop/ directory, the one holding cluster.yaml
+export CHIA_ORFS_REPO=$(pwd)      # cluster.yaml's bind-mount paths key off this
 export THIS_MACHINE=$(hostname -I | awk '{print $1}')
 chia up cluster.yaml -y
 ```
 
-This brings up (or reconciles) the Ray head + one Docker worker per node type
-in `cluster.yaml`, including `chia-orfs-auralab-0` -- the container with the
-ORFS toolchain, bind-mounted at `/root/OpenROAD-flow-scripts` (from
-`orfs-native-build/`) and `/root/chia-orfs` (the whole repo, live).
+`CHIA_ORFS_REPO` must point at **this** directory -- the one containing both
+`cluster.yaml` and `orfs-native-build/` -- because `cluster.yaml` mounts
+`${CHIA_ORFS_REPO}/orfs-native-build` at `/root/OpenROAD-flow-scripts` and
+`${CHIA_ORFS_REPO}` itself at `/root/chia-orfs` inside every worker.
 
-Check it's up: `chia status` or `ray status` should show `orfs_run: 1.0` total
-capacity.
+Recompute `THIS_MACHINE` right before `chia up` rather than setting it once in
+`~/.bashrc`: if the host's IP changes, every node stays registered under the
+old address and new drivers fail to join with `No node info found matching
+node ids: set()`, even though `ray status` still answers normally.
+
+This brings up (or reconciles) the Ray head + one Docker worker per node type
+in `cluster.yaml`. The ORFS workers are named `chia-orfs-<your-username>-0`,
+`-1`, ... -- substitute your own username wherever the examples below show
+`chia-orfs-<your-username>-0`.
+
+Check it's up: `chia status` or `ray status` should show `orfs_run: 6.0` total
+capacity with the shipped `num_workers: 6`.
 
 **Editing `orfs_tool.py` / `orfs_config_bridge.py`?** No extra step needed --
 the whole repo is bind-mounted into the container with `PYTHONPATH` pointing
@@ -148,19 +195,25 @@ Runs launch as ordinary `orfs_loop.py` subprocesses in their own session --
 identical `run_dir` layout to a CLI run, and they keep going if you close
 the browser. **Stop** terminates the active one.
 
-Only one run at a time: the cluster has a single `orfs_run` slot, so a
-second would just deadlock waiting for it.
+One loop at a time: a second dashboard-launched run would compete for the
+same `orfs_run` workers as the first. (Within a single run, `--batch-size`
+does use several workers at once -- see below.)
 
 ## Running the closure loop (CLI)
 
 Point it at a design that already has a `config.mk` under
 `orfs-native-build/flow/designs/<platform>/<design>/` -- either one of ORFS's
 built-in examples (`gcd`, `riscv32i`, `aes`, `jpeg`, `ibex`, `chameleon`,
-`microwatt`, `tt_um_fft_adityaamehra`, ...) or one you onboarded (below).
+`microwatt`, ...) or one you onboarded (below).
+
+Note `--design-name` defaults to `tt_um_fft_adityaamehra`, a Tiny Tapeout
+design that was onboarded locally rather than shipped with ORFS -- it does
+**not** exist in a fresh submodule checkout. Always pass `--design-name`
+explicitly (all the examples here do).
 
 ```bash
 conda activate chia_env
-cd ~/Desktop/chia-orfs
+cd <this directory>
 
 DESIGN=/root/OpenROAD-flow-scripts/flow/designs/sky130hd/riscv32i
 
@@ -194,7 +247,7 @@ uncapped -- the model itself ends a non-closing iteration by replying
 
 | Flag | Default | Notes |
 |---|---|---|
-| `--design-name` | `tt_um_fft_adityaamehra` | Used to label the tool + prompt. |
+| `--design-name` | `tt_um_fft_adityaamehra` | Used to label the tool + prompt. The default is a locally-onboarded design; pass this explicitly. |
 | `--flow-dir` | `/root/OpenROAD-flow-scripts/flow` | Rarely needs changing. |
 | `--design-config-mk` | *required* | Container-native path to baseline `config.mk`. |
 | `--reports-root` | *required* | Container-native path to `flow/reports/<platform>/<design>/base`. |
@@ -203,13 +256,69 @@ uncapped -- the model itself ends a non-closing iteration by replying
 | `--objective` | `area` | `area` or `clock`. What each iteration past the first must improve on. Ignored by iteration 1. |
 | `--model` | `google/gemini-3.6-flash` | Any `opencode` model string. See "Choosing a model" below. |
 | `--closure-criteria` | *(none)* | Overrides the closure target text given to the LLM. |
-| `--minimal-schema` | off | Use the reduced 12-tunable schema instead of the full 22-tunable one. |
+| `--minimal-schema` | off | Use the reduced 12-tunable schema instead of the full 24-tunable one. |
+| `--batch-size` | `1` | Flow runs to execute concurrently per round. `1` = serial. See below. |
+| `--skip-referee` | off | Skip the per-round cross-slot referee turn (only relevant with `--batch-size` > 1). |
+| `--seed-ledger PATH` | *(none)* | Warm-start the measured-effects ledger from an earlier run's `ledger.json`. Refused across designs. |
+| `--stage-timeout-seconds` | `3600` | Per-stage timeout. Raise it for anything bigger than a small example design. |
 | `--prompt-path` | `prompts/orfs_propose.md` | The proposal prompt template. |
+| `--diagnose-prompt-path` | `prompts/orfs_diagnose.md` | Stall-diagnosis prompt, used after 3 runs with no progress. |
+| `--referee-prompt-path` | `prompts/orfs_referee.md` | Cross-slot referee prompt. |
 | `--resume-config` | off | Continue from the previous run's tunables instead of resetting to baseline. |
 | `--skip-signoff` | off | Skip standalone `make drc`/`make lvs` after a successful close. |
 | `--lock KEY=VALUE` | *(none)* | Repeatable. Hard-locks a tunable -- see next section. |
 | `--ld-library-path` | `/opt/miniconda/lib` | Needed by some ORFS-bundled binaries; leave as-is. |
 | `--ray-address` | `auto` | Ray cluster address. |
+
+**`--stage-timeout-seconds` matters more than it looks.** The 3600s default
+was sized around `gcd`-scale designs. A bigger design's route stage can still
+be genuinely converging when it fires -- observed on `aes`/sky130hd, down to
+41 violations and actively shrinking when the default killed it at exactly the
+3600s mark, wasting the whole hour. Raising it doesn't paper over anything (a
+timeout is recorded as an ordinary crashed run either way), it just stops
+every attempt on a slow design from being a guaranteed hour-long crash.
+
+## Parallel batches (`--batch-size`)
+
+```bash
+python3 orfs_loop.py ... --batch-size 6
+```
+
+Instead of "one flow run, one decision, repeat", a **round** is "decide up to
+N candidates, run all N concurrently, keep the best". Each slot gets its own
+ORFS `FLOW_VARIANT` (`slot0`, `slot1`, ...) and its own
+`config.chia.slotN.mk`/`constraint.chia.slotN.sdc`, which is what makes the
+concurrency safe.
+
+- **Every slot's candidate is its own real LLM call.** There is no rule-based
+  candidate generator. Each call sees what earlier slots in the same round
+  already proposed, so a round diversifies instead of converging. A bad or
+  unparseable reply just drops that one slot; a round only ends the iteration
+  if *every* slot's call comes back empty.
+- **Duplicate and no-op candidates are rejected in code, not by the prompt.**
+  A slot proposing a change another slot is already testing, or proposing a
+  value a knob already holds, costs a bounded retry with the reason fed back
+  to the model. Both were observed live; the prompt alone does not prevent
+  them.
+- Slots are **correlated after every round**, not merely run side by side:
+  the round is rendered back as the controlled experiment it is (one starting
+  config, each slot's delta from it), a referee turn reads all N results
+  together and writes the note every slot sees next round, and the ledger
+  accumulates each knob's measured effect across all runs and slots.
+- **Width is capped by `hello_orfs.num_workers`** in `cluster.yaml` (ships as
+  `6`). Asking for a wider `--batch-size` than that just queues the extra
+  slots. Raise it only after checking host headroom with `docker stats` /
+  `free -m` during a real round -- measured on a 24-core/30GB host with `gcd`,
+  each concurrent run took ~1 core and ~1GB, so 6-wide fits comfortably. That
+  does **not** transfer to a large design; `riscv32i`'s route stage is far
+  heavier.
+- **Wall-clock does not improve proportionally with width**, because the
+  decision phase is sequential -- one LLM call per slot, in series, so each
+  can see the earlier ones. Measured here: median LLM call 62s, referee 41s,
+  flow round ~90s regardless of width. So a round costs roughly
+  `62 * batch_size + 41 + 90` seconds: 255s at width 2, but ~500s at width 6,
+  where most of the round is spent deciding rather than running flows.
+  Widening buys more experiments per round, not proportionally faster rounds.
 
 ## Locking tunables the LLM can never change
 
@@ -278,10 +387,10 @@ git clone https://github.com/<you>/<your-tt-repo>.git ~/Desktop/<your-tt-repo>
 
 python3 orfs_onboard.py \
   --design-repo ~/Desktop/<your-tt-repo> \
-  --output-root ~/Desktop/chia-orfs/generated-flow-configs \
+  --output-root ./generated-flow-configs \
   --container-flow-dir /root/OpenROAD-flow-scripts/flow \
   --platform sky130hd \
-  --docker-container chia-orfs-auralab-0
+  --docker-container chia-orfs-<your-username>-0
 ```
 
 This copies the RTL + a generated `config.mk`/`constraint.sdc` into
@@ -315,8 +424,15 @@ orfs_runs/<run-id>/
   gds/run_N_layout.webp
   summaries/run_N.json     the parsed closure summary for that run
   latest_summary.json      = summaries/<highest N>.json
-  signoff_logs/            drc.log / lvs.log -- only present if signoff ran
-                           (skipped by --skip-signoff, or never reached)
+  ledger.json              every tunable change's measured effect, accumulated
+                           across all runs/slots -- reusable via --seed-ledger
+  signoff_logs/            drc.log / lvs.log plus the report artifacts
+                           themselves (6_drc.lyrdb, 6_drc_count.rpt,
+                           6_lvs.lvsdb, 6_lvs.log) -- only if signoff ran
+  reports/run_N/           ORFS's own report directory, copied out per run:
+                           per-stage .rpt files, 6_finish.rpt, metadata.json,
+                           the DRC database, and ORFS's rendered webps
+                           (congestion, IR drop, routing, worst path, clocks)
   flow_logs/run_N/
     synth.log, floorplan.log, place.log, cts.log, route.log,
     finish.log, metadata.log      full stdout+stderr per stage (not the
@@ -325,13 +441,56 @@ orfs_runs/<run-id>/
                            subprocess stdout/stderr capture
 ```
 
+Copying `reports/run_N/` out is not optional bookkeeping: every flow run
+starts with `make clean_all`, so those files exist in ORFS's own tree only
+until the next execution of that variant. They are archived on **crashed**
+runs too, which is the case they matter most for -- a crash produces no
+`metadata.json` to parse, so the partial reports are the only quantitative
+record of how far the flow got. This is a different thing from
+`flow_logs/run_N/`, which is `make`'s stdout: the tools' narration, not the
+reports they produced.
+
 Files the container writes (everything except `summary.json` and the first
 line of `tool_trace.log`) are root-owned -- readable by you, but not
 writable/deletable directly. To remove a run folder:
 
 ```bash
-docker exec chia-orfs-auralab-0 rm -rf /root/chia-orfs/orfs_runs/<run-id>
+docker exec chia-orfs-<your-username>-0 rm -rf /root/chia-orfs/orfs_runs/<run-id>
 ```
+
+## Signoff (DRC / LVS)
+
+After a successful close the driver runs standalone KLayout `make drc` /
+`make lvs` on the **best** run -- not the last one tried, which is usually a
+different run. Skip it with `--skip-signoff`.
+
+Signoff targets the tree that actually holds the best run's GDS: in batch mode
+that's the winner's own `slotN` tree, with no rebuild at all, so the verdict is
+exact by construction rather than depending on a rebuild reproducing the same
+layout. As a cross-check the driver md5s the promoted `final.gds` and
+`run_signoff_remote` md5s the GDS it actually read, reporting
+`signed_off_gds{path, md5, expected_md5, matches_best}` into `summary.json`
+plus a warning on mismatch. A verdict for the wrong layout reads exactly like a
+real one, which is why that check exists.
+
+**On sky130hd, read `result["lvs_verdict"]`, not `result["lvs"]["clean"]`.**
+The former is netgen's answer and is authoritative; the latter is KLayout's.
+KLayout's own combiner only ever does *parallel* MOS combination with no series
+step, so it fails on cells whose layout folds devices differently from the
+schematic. `lvs/sky130hd_netgen_setup.tcl` ports open_pdks' netgen setup (the
+one OpenLane and Tiny Tapeout use) and runs as a second opinion alongside
+KLayout -- it needs no magic and no sky130A PDK, because it reads the
+`*_extracted.cir` KLayout already wrote. We borrow the comparator, not the
+extractor. On `riscv32i` that made device counts match exactly (5376 = 5376)
+where KLayout could not.
+
+One cell, `sky130_fd_sc_hd__a21oi_2`, is a verified-benign fold mismatch that
+neither comparator can close on its own, and it is gated on by exact signature
+in code (`KNOWN_NETGEN_FOLD_EXCEPTIONS` in `orfs_tool.py`) rather than by a
+blanket "ignore LVS" switch. Its NMOS AND-leg is laid out as two parallel
+half-width series stacks rather than the one full-width pair its `m=2`
+schematic collapses to -- a real, cell-intrinsic mask decision, not a missing
+connectivity rule. Any *other* mismatching subcircuit keeps the gate closed.
 
 ## Choosing a model
 
@@ -376,12 +535,11 @@ for `Nothing to be done` to confirm before trusting the result.
 
 **A run hangs forever / `ray status` shows `orfs_run` fully used with
 nothing running.** A previous run was killed uncleanly (e.g. `timeout`,
-`kill -9`, or a crash before `orfs_tool.stop()` ran in its `finally` block)
-and left an orphaned actor holding the cluster's only `orfs_run` slot --
-capacity is 1, so nothing new can ever schedule until it's freed:
+`kill -9`, or a crash before cleanup ran) and left orphaned actors holding
+`orfs_run` slots, so nothing new can schedule until they're freed:
 
 ```bash
-ray status   # confirms orfs_run: 1.0/1.0 used, "Pending Demands" for orfs_run
+ray status   # confirms orfs_run fully used, "Pending Demands" for orfs_run
 python3 -c "
 import ray
 ray.init(address='auto')
@@ -389,15 +547,39 @@ import ray.util.state as st
 for a in st.list_actors(filters=[('state','=','ALIVE')]):
     print(a['actor_id'], a['class_name'], a['pid'])
 "
-# find the orphaned _ToolServerActor's pid, then:
-docker exec chia-orfs-auralab-0 kill -9 <pid>
+# find the orphaned actor's pid, then (in whichever worker container it's in):
+docker exec chia-orfs-<your-username>-0 kill -9 <pid>
 ```
+
+Before assuming a hang, check whether the flow is genuinely still working:
+`docker exec chia-orfs-<your-username>-0 ps -eo pid,etime,pcpu,stat,comm` --
+state `R` with high CPU on an `openroad` process means it's grinding (e.g.
+TritonRoute working through a DRC-convergence stall), not stuck.
+
+**A long run dies with `Failed to connect to GCS within 60 seconds`.** Check
+whether the GCS actually died (`pgrep -af gcs_server`) before believing it.
+The usual cause is the host's IP rotating mid-run: every node stays registered
+under the old address, so a driver can no longer join. There's no client-side
+workaround -- `--ray-address 127.0.0.1:6379` looks like a fix and isn't (`ray
+status` will answer over loopback and report full capacity, while a real
+`ray.init` still fails with `No node info found matching node ids: set()`).
+Recompute `THIS_MACHINE` and re-run `chia up cluster.yaml -y`; containers are
+reused when the image hasn't changed, so it's much faster than a cold start.
+
+**A `place` stage crashes with `[ERROR GPL-0301] Utilization exceeds 100%`.**
+`CELL_PAD_IN_SITES_GLOBAL_PLACEMENT` inflates each cell's effective footprint,
+so it can push placement utilization over 100% even when `CORE_UTILIZATION`
+itself is well inside its legal range -- nothing cross-checks the two knobs
+against each other. Observed repeatedly across platforms, at padding values as
+low as `2`, so the safe threshold is design- and utilization-dependent rather
+than a constant. It stays non-fatal to a run: that slot's run is archived and
+marked crashed, and the round continues on the other slots.
 
 **`FileNotFoundError` on `config.mk` or the schema at startup.** You passed a
 host path instead of a container-native one, or `setup()`'s own file reads
 (schema, baseline config) landed on the wrong filesystem. Re-check every path
 argument is `/root/OpenROAD-flow-scripts/...` or `/root/chia-orfs/...`, never
-a bare host path like `~/Desktop/chia-orfs/...`.
+a bare host path like `~/chia-hackathon/orfs_loop/...`.
 
 **CTS stage fails with `kepler-formal: ... libpython3.14.so.1.0: cannot open
 shared object file`.** Missing `LD_LIBRARY_PATH=/opt/miniconda/lib` in the
@@ -410,11 +592,11 @@ available` warning on every shell `make` spawns (it shadows the system
 broken.
 
 **Edits to `orfs_tool.py` don't seem to take effect.** Confirm the container
-actually has the new mount: `docker exec chia-orfs-auralab-0 python3 -c
+actually has the new mount: `docker exec chia-orfs-<your-username>-0 python3 -c
 "import orfs_tool; print(orfs_tool.__file__)"` should print
 `/root/chia-orfs/orfs_tool.py`. If it prints somewhere under `site-packages`
 instead, the container predates the `cluster.yaml` mount fix -- recreate it:
-`docker stop chia-orfs-auralab-0 && docker rm chia-orfs-auralab-0 && chia up cluster.yaml -y`
+`docker stop chia-orfs-<your-username>-0 && docker rm chia-orfs-<your-username>-0 && chia up cluster.yaml -y`
 (only recreates this one container; the other worker containers are untouched).
 
 **The GUI's model dropdown is empty, or any `docker` command fails with
@@ -424,17 +606,41 @@ already-running session. Prefix the command with `sg docker -c "..."` or
 open a fresh terminal.
 
 **`make lvs` fails outright on sky130hd designs** (a parse error, not a
-mismatch verdict). The vendored `orfs-native-build/flow/platforms/sky130hd/
-cdl/sky130hd.cdl` has two upstream quirks KLayout's LVS netlist reader
-doesn't accept: literal `short` values on 6 tie-cell resistor lines (needs to
-be a numeric `0`), and a slash-delimited `net1 net2 ... / subcktname` format
-on 7 `X`-instance lines inside `macro_sparecell` (the reader doesn't support
-`/` as a delimiter -- it counts it as a spurious extra net). Both can be
-hand-patched on this file; the patch lives only in this host's copy of
-`orfs-native-build/` (not in `chia-orfs-run`'s Docker image, which is built
-straight from public `openroad/orfs:latest` with nothing local baked in), so
-it needs reapplying after a fresh clone/reset of that directory. Even
-patched, LVS on sky130hd currently reports a genuine `Netlists don't match`
-for the `conb_1`/`tapvpwrvgnd_1` tie cells specifically, because the deck's
-device extraction only covers MOSFETs, not the resistor-modeled ties those
-two cells use -- not yet fixed.
+mismatch verdict). You didn't apply `orfs-native-build.patch` -- see the top
+of this file. Upstream's `flow/platforms/sky130hd/cdl/sky130hd.cdl` has two
+quirks KLayout's LVS netlist reader rejects: literal `short` values on 6
+tie-cell resistor lines (needs a numeric `0`), and a slash-delimited
+`net1 net2 ... / subcktname` format on 7 `X`-instance lines inside
+`macro_sparecell` (the reader counts the `/` as a spurious extra net). The
+same patch also fixes `sky130hd.lylvs`, which called DRC's `report()` instead
+of `report_lvs()` -- so it wrote no LVS database at all, and a mismatch could
+not be diagnosed from any artifact the flow kept -- and enables the device
+combination it shipped with disabled.
+
+Note the patch applies to the `orfs-native-build/` checkout only. It is *not*
+in `chia-orfs-run`'s Docker image, which is built straight from public
+`openroad/orfs:latest` with nothing local baked in, so it needs reapplying
+after a fresh clone or reset of that submodule.
+
+**Even fully patched, sky130hd LVS reports a genuine `Netlists don't match`.**
+Measured on `riscv32i` (5687 cells): exactly 10 circuits fail, in three
+unrelated groups -- and the design's own top-level netlist is **not** among
+the things actually compared:
+
+- 7 **schematic-only** cells that are physical-only and unextractable, so the
+  schematic side declares devices/pins the layout side structurally cannot
+  produce. `conb_1` is the resistor case (the deck's `extract_devices` covers
+  MOSFETs only); `fill_1/2/4/8`, `diode_2` and `tapvpwrvgnd_1` are the *empty*
+  case -- their CDL bodies declare pins and contain no devices at all.
+- `riscv` (the top circuit) comes back **`Skipped`**, not matched: once
+  subcircuits fail, the top-level comparison is abandoned. A run in this state
+  gives *no* LVS assurance about the design's own connectivity, in either
+  direction. Don't read "only 10 mismatches" as "99.8% verified".
+- 2 real standard-cell fold failures (`a21oi_2`, `ha_4`) where the same device
+  classes appear on both sides but won't pair.
+
+The failing set tracks *which cell types the design happens to instantiate*,
+which is the clearest evidence this is a library/deck gap rather than a
+connectivity problem -- and nothing the closure loop's knobs influence.
+Measured DRC/LVS on a verified-correct best GDS: **DRC 0 violations, LVS 9
+mismatches with the top circuit `Skipped`.**
