@@ -86,7 +86,6 @@ text.
 - **`orfs_gui.py`** / **`gui/index.html`** -- the dashboard. Runs
   `orfs_loop.py` as a subprocess per run and polls its `tool_trace.log`/
   `summary.json` for live progress.
-- **`start_gui.sh`** -- the one command to launch the dashboard; see below.
 - **`cluster.yaml`** -- the `chia` cluster topology: one Docker-backed Ray
   worker per resource type (`orfs_run`, `opencode_creds`, plus the chipyard/
   verilator example workers). `chia up`/`chia down` (from the `chia` package)
@@ -102,10 +101,6 @@ export CHIA_ORFS_REPO=$(pwd)     # cluster.yaml's bind-mount paths key off this
 export THIS_MACHINE=$(hostname -I | awk '{print $1}')
 chia up cluster.yaml -y
 ```
-
-(`./start_gui.sh` sets `CHIA_ORFS_REPO` for you automatically -- only needed
-by hand if you're driving `chia up`/`orfs_loop.py` directly instead of
-through the dashboard.)
 
 This brings up (or reconciles) the Ray head + one Docker worker per node type
 in `cluster.yaml`, including `chia-orfs-auralab-0` -- the container with the
@@ -124,13 +119,14 @@ if you're curious how.)
 ## The dashboard (easiest way to drive this)
 
 ```bash
-./start_gui.sh       # then open http://127.0.0.1:8080
+python3 orfs_gui.py   # then open http://127.0.0.1:8080
 ```
 
-Handles the whole startup dance in one place: fixes the docker-group session
-issue if your terminal predates being added to the `docker` group, activates
-`chia_env`, brings the Ray cluster up if it isn't already, clears out any
-previous GUI instance, and launches a fresh one.
+`orfs_gui.py` is a FastAPI app that launches `orfs_loop.py` as a subprocess per
+run and polls its `tool_trace.log`/`summary.json` for live progress. If your
+shell session predates being added to the `docker` group, prefix the command
+with `sg docker -c "..."` or open a fresh terminal first -- otherwise every
+`docker exec` the GUI does will silently fail with a permission error.
 
 Everything the CLI does, without terminal juggling: pick a design and model
 from dropdowns, set iterations, lock tunables, hit **Start**, and watch it
@@ -424,9 +420,8 @@ instead, the container predates the `cluster.yaml` mount fix -- recreate it:
 **The GUI's model dropdown is empty, or any `docker` command fails with
 "permission denied".** Your shell session predates being added to the
 `docker` group -- group membership changes don't retroactively apply to an
-already-running session. `./start_gui.sh` detects and fixes this
-automatically (re-execs via `sg docker -c`); for anything else, prefix the
-command with `sg docker -c "..."` or open a fresh terminal.
+already-running session. Prefix the command with `sg docker -c "..."` or
+open a fresh terminal.
 
 **`make lvs` fails outright on sky130hd designs** (a parse error, not a
 mismatch verdict). The vendored `orfs-native-build/flow/platforms/sky130hd/
