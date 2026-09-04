@@ -1,75 +1,97 @@
-# LLM-Driven UVM Testbench Generator (Chipyard-integrated, Dockerized + Ray cluster)
+# CHIA LLM-Driven Cocotb + PyUVM Verification
 
-Pipeline: RTL + spec + reference model -> Claude -> verification_plan.yaml
--> Jinja2 UVM templates -> generated UVM testbench (.sv) -> optional
-Chipyard/Verilator run.
+An LLM-assisted hardware verification framework that generates a **Cocotb + PyUVM** verification environment from a hardware specification and reference model, and uses the generated environment to validate RTL.
 
-## Quick start (local, no Docker)
+## Flow
 
-    python3 -m venv .venv && source .venv/bin/activate
-    pip install -r requirements.txt
-    cp .env.example .env   # fill in ANTHROPIC_API_KEY
-    export $(grep -v '^#' .env | xargs)
-    ./scripts/run_pipeline.sh
-    cat generated_plans/verification_plan.yaml
-    ls generated_tb/
+```text
+Specification + Reference Model
+              │
+              ▼
+        CHIA + LLM Pipeline
+              │
+              ▼
+      Verification Contract
+              │
+              ▼
+     Cocotb + PyUVM Testbench
+              │
+        ┌─────┴─────┐
+        ▼           ▼
+   Reference      RTL / DUT
+     Model           │
+        │            │
+        └──────┬─────┘
+               ▼
+        Scoreboard / Checks
+               │
+               ▼
+       Coverage + Results
+```
 
-## Quick start (Docker)
+## Features
 
-    docker build -t llm-uvm-tb-generator:latest .
-    docker run --rm -it --env-file .env \
-      -v "$PWD/generated_plans:/opt/llm-uvm-tb-generator/generated_plans" \
-      -v "$PWD/generated_tb:/opt/llm-uvm-tb-generator/generated_tb" \
-      llm-uvm-tb-generator:latest \
-      "./scripts/run_pipeline.sh"
+* LLM-based verification-plan generation
+* Automatic **Cocotb + PyUVM** testbench generation
+* Reference-model-based scoreboarding
+* Directed and randomized testing
+* Functional coverage
+* Assertions and corner-case checking
+* Regression testing
+* Automatic verification contract and simulation manifest
+* Ray/CHIA-based distributed execution
+* Docker-based simulation environment
+* Verilator/Chipyard integration
 
-## Ray cluster (Chipyard-integrated Verilator runs)
+## Generated Testbench
 
-1. Build the image above so it's available locally (or push it to a
-   registry your cluster nodes can pull from).
-2. Edit `cluster.yaml`: set `${THIS_MACHINE}`, `${USER}`, your SSH key
-   name, and the `--env-file` / chipyard checkout `-v` mount paths under
-   the `llm_uvm_tb` node type.
-3. Bring the cluster up and submit the job:
+The generated environment includes:
 
-       ray up cluster.yaml
-       ray job submit --address http://<head_ip>:8265 --working-dir . \
-         -- python ray_pipeline_job.py \
-              --rtl examples/adder/adder.v \
-              --spec examples/adder/spec.md \
-              --ref-model examples/adder/ref_model.py \
-              --chipyard-dir /root/chipyard \
-              --chipyard-config RocketConfig
+```text
+generated_tb/
+├── *_transaction.py
+├── *_sequences.py
+├── *_driver.py
+├── *_monitor.py
+├── *_sequencer.py
+├── *_agent.py
+├── *_env.py
+├── *_scoreboard.py
+├── *_coverage.py
+├── *_assertions.py
+├── *_test.py
+├── test_top.py
+├── test_runner.py
+├── CONTRACT.md
+└── generation_manifest.yaml
+```
 
-   `ray_pipeline_job.py` schedules Stage 1 and Stage 2 on the
-   `llm_uvm_tb_gen` custom resource, and (if `--chipyard-dir` is given)
-   the Chipyard/Verilator run on `verilator_run` — matching the
-   `hello_verilator` pattern in cluster.yaml.
+## Setup
 
-## Project layout
+```bash
+./setup.sh
+```
 
-    llm-uvm-tb-generator/
-    ├── Dockerfile              # layers this pipeline on chia-verilator-run
-    ├── cluster.yaml            # Ray cluster config (hello_verilator + llm_uvm_tb)
-    ├── ray_pipeline_job.py     # Ray job: schedules Stage 1/2 (+ Chipyard run)
-    ├── config/config.yaml      # LLM + path settings
-    ├── src/
-    │   ├── rtl_parser.py       # lightweight RTL port/param extraction
-    │   ├── llm_client.py       # Anthropic API wrapper
-    │   ├── schema.py           # pydantic schema for verification_plan.yaml
-    │   ├── plan_generator.py   # Stage 1: RTL+spec+ref -> plan
-    │   └── tb_generator.py     # Stage 2: plan -> UVM .sv files
-    ├── templates/*.j2          # Jinja2 UVM templates
-    ├── examples/adder/         # sample RTL + spec + ref model
-    ├── chipyard_integration/   # run_in_chipyard.sh
-    ├── scripts/                # CLI entry points + pipeline runner
-    └── Makefile                # local Verilator smoke-test build/run
+The setup script configures the environment and starts the CHIA/Ray-based simulation infrastructure.
 
-## Customizing
+## Example
 
-- **Templates** (`templates/*.j2`): edit to match your house UVM style,
-  add coverage, hook the scoreboard's `predict_expected()` up to a real
-  DPI-C reference model.
-- **Schema** (`src/schema.py`): the contract between the LLM and the
-  templates — extend together with the prompt in `src/plan_generator.py`.
-- **Model**: set `LLM_MODEL` in `.env`.
+The current example uses an `adder` DUT and demonstrates:
+
+* Basic arithmetic tests
+* Carry and overflow cases
+* Reset testing
+* Randomized transactions
+* Reference-model checking
+* Functional coverage
+* Regression execution
+
+## Project Goal
+
+The long-term goal is to enable **RTL-independent verification generation**, where verification infrastructure can be created from the specification and reference model before the final RTL is available, and subsequently used to validate the RTL.
+
+## Status
+
+🚧 **Active development**
+
+The current repository demonstrates automated generation and execution of a Cocotb + PyUVM verification environment for an example hardware block.
