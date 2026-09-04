@@ -1,0 +1,244 @@
+make: Entering directory '/root/OpenROAD-flow-scripts/flow'
+/root/OpenROAD-flow-scripts/flow/scripts/flow.sh 6_1_fill density_fill
+Running density_fill.tcl, stage 6_1_fill
+read_liberty /root/OpenROAD-flow-scripts/flow/platforms/sky130hs/lib/sky130_fd_sc_hs__tt_025C_1v80.lib
+read_db ./results/sky130hs/gcd/slot0/5_route.odb
+read_sdc ./results/sky130hs/gcd/slot0/5_route.sdc
+source /root/OpenROAD-flow-scripts/flow/platforms/sky130hs/setRC.tcl
+exec cp ./results/sky130hs/gcd/slot0/5_route.odb ./results/sky130hs/gcd/slot0/6_1_fill.odb
+Log                       Ext     Elapsed/s Peak Memory/MB sha1sum result [0:20)
+6_1_fill                  .odb            0            144 39ca88959cf385ace5e0
+cp ./results/sky130hs/gcd/slot0/5_route.sdc ./results/sky130hs/gcd/slot0/6_1_fill.sdc
+/root/OpenROAD-flow-scripts/flow/scripts/flow.sh 6_report final_report
+Running final_report.tcl, stage 6_report
+read_liberty /root/OpenROAD-flow-scripts/flow/platforms/sky130hs/lib/sky130_fd_sc_hs__tt_025C_1v80.lib
+read_db ./results/sky130hs/gcd/slot0/6_1_fill.odb
+read_sdc ./results/sky130hs/gcd/slot0/6_1_fill.sdc
+source /root/OpenROAD-flow-scripts/flow/platforms/sky130hs/setRC.tcl
+[WARNING STA-0450] virtual clock vclk_core_clock can not be propagated.
+write_db ./results/sky130hs/gcd/slot0/6_final.odb
+write_sdc -no_timestamp ./results/sky130hs/gcd/slot0/6_final.sdc
+Deleted 0 routing obstructions
+[INFO RCX-0431] Defined process_corner X with ext_model_index 0
+[INFO RCX-0029] Defined extraction corner X
+[WARNING RCX-0514] The ext_model_file option is deprecated. Use set_extraction_rules_file command instead.
+[INFO RCX-0435] Reading extraction model file /root/OpenROAD-flow-scripts/flow/platforms/sky130hs/rcx_patterns.rules ...
+[INFO RCX-0436] RC segment generation gcd (max_merge_res 50.0) ...
+[INFO RCX-0040] Final 1665 rc segments
+[INFO RCX-0439] Coupling Cap extraction gcd ...
+[INFO RCX-0440] Coupling threshhold is 0.1000 fF, coupling capacitance less than 0.1000 fF will be grounded.
+[INFO RCX-0442] 52% of 3314 wires extracted
+[INFO RCX-0442] 100% of 3314 wires extracted
+[INFO RCX-0045] Extract 611 nets, 2276 rsegs, 2276 caps, 3702 ccs
+[INFO RCX-0443] 611 nets finished
+[INFO PSM-0040] All shapes on net VDD are connected.
+########## IR report #################
+Net              : VDD
+Corner           : default
+Total power      : 7.19e-03 W
+Supply voltage   : 1.80e+00 V
+Worstcase voltage: 1.80e+00 V
+Average voltage  : 1.80e+00 V
+Average IR drop  : 3.54e-04 V
+Worstcase IR drop: 1.47e-03 V
+Percentage drop  : 0.08 %
+######################################
+[INFO PSM-0040] All shapes on net VSS are connected.
+########## IR report #################
+Net              : VSS
+Corner           : default
+Total power      : 7.19e-03 W
+Supply voltage   : 0.00e+00 V
+Worstcase voltage: 7.46e-04 V
+Average voltage  : 2.82e-04 V
+Average IR drop  : 2.82e-04 V
+Worstcase IR drop: 7.46e-04 V
+Percentage drop  : 0.04 %
+######################################
+Cell type report:                       Count       Area
+  Fill cell                               390    1465.73
+  Tap cell                                 84     134.27
+  Clock buffer                              6     119.88
+  Timing Repair Buffer                    192    1612.79
+  Inverter                                 25     129.47
+  Clock inverter                            2       9.59
+  Sequential cell                          35    1462.54
+  Multi-Input combinational cell          318    2712.48
+  Total                                  1052    7646.75
+Report metrics stage 6, finish...
+
+==========================================================================
+finish report_design_area
+--------------------------------------------------------------------------
+Design area 6181 um^2 81% utilization.
+[WARNING GUI-0076] QStandardPaths: XDG_RUNTIME_DIR not set, defaulting to '/tmp/runtime-root'
+Log                       Ext     Elapsed/s Peak Memory/MB sha1sum result [0:20)
+6_report                                  1            206                  N/A
+cp /root/OpenROAD-flow-scripts/flow/platforms/sky130hs/lef/sky130_fd_sc_hs.tlef ./objects/sky130hs/gcd/slot0/klayout_tech.lef
+/opt/miniconda/envs/chia_env/bin/python3 /root/OpenROAD-flow-scripts/flow/util/generate_klayout_tech.py \
+	--template /root/OpenROAD-flow-scripts/flow/platforms/sky130hs/sky130hs.lyt \
+	--output ./objects/sky130hs/gcd/slot0/klayout.lyt \
+	--lef-files ./objects/sky130hs/gcd/slot0/klayout_tech.lef /root/OpenROAD-flow-scripts/flow/platforms/sky130hs/lef/sky130_fd_sc_hs_merged.lef   \
+	--map-files 
+/opt/miniconda/envs/chia_env/bin/python3 /root/OpenROAD-flow-scripts/flow/scripts/run_command.py --log /root/OpenROAD-flow-scripts/flow/logs/sky130hs/gcd/slot0/6_1_merge.log --tee -- \
+        /root/OpenROAD-flow-scripts/flow/scripts/klayout.sh -zz -rd design_name=gcd \
+        -rd in_def=./results/sky130hs/gcd/slot0/6_final.def \
+        -rd in_files="/root/OpenROAD-flow-scripts/flow/platforms/sky130hs/gds/sky130_fd_sc_hs.gds  " \
+        -rd seal_file="" \
+        -rd out_file=./results/sky130hs/gcd/slot0/6_1_merged.gds \
+        -rd tech_file=./objects/sky130hs/gcd/slot0/klayout.lyt \
+        -rd layer_map= \
+        -r /root/OpenROAD-flow-scripts/flow/util/def2stream.py
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+KLayout 0.30.7
+[INFO] Reporting cells prior to loading DEF ...
+	/root/OpenROAD-flow-scripts/flow/platforms/sky130hs/gds/sky130_fd_sc_hs.gds
+[INFO] All LEF cells have matching GDS/OAS cells
+[INFO] No orphan cells in the final layout
+cp results/sky130hs/gcd/slot0/6_1_merged.gds results/sky130hs/gcd/slot0/6_final.gds
+./logs/sky130hs/gcd/slot0
+Log                       Ext     Elapsed/s Peak Memory/MB sha1sum result [0:20)
+1_1_yosys_canonicalize    .rtlil          0            121 2e75b25be8e5a7e88cdf
+1_2_yosys                 .v              1            124 1c0f31d55e53b1392ca7
+1_2_yosys                 .sdc                             6b95ee329fb10311b5ed
+1_synth                   .odb            0            145 80fc2cf135103259ee5c
+1_synth                   .sdc                             15c4a3f0f3443523b7a2
+2_1_floorplan             .odb            0            163 78b264b0fa0e1a09e7a7
+2_1_floorplan             .sdc                             15c4a3f0f3443523b7a2
+2_2_floorplan_macro       .odb            0            143 78b264b0fa0e1a09e7a7
+2_3_floorplan_tapcell     .odb            0            142 53224956af318c07003e
+2_4_floorplan_pdn         .odb            0            145 a265b3592277da1a4296
+3_1_place_gp_skip_io      .odb            0            144 d67bfc6c3684540d07b5
+3_2_place_iop             .odb            0            143 91b3306f230719d08432
+3_3_place_gp              .odb            1            270 ed558e8d1e0debe7073b
+3_4_place_resized         .odb            1            173 2ab72ad99f2307024f49
+3_5_place_dp              .odb            0            149 a717381896cdd654a8b0
+4_1_cts                   .odb            2            186 75b5d3ff3e1ffc7612f0
+5_1_grt                   .odb           18            283 da2ea6041323a6dd32e2
+5_1_grt                   .sdc                             51aec277d801de39e77e
+5_2_route                 .odb           23            614 1d3958a63435360f9d91
+5_3_fillcell              .odb            0            146 39ca88959cf385ace5e0
+6_1_fill                  .odb            0            144 39ca88959cf385ace5e0
+6_1_fill                  .sdc                             51aec277d801de39e77e
+6_1_merge                                 1            430                  N/A
+6_report                                  1            206                  N/A
+Total                                    48            614                     
+make: Leaving directory '/root/OpenROAD-flow-scripts/flow'
+
+STDERR:
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+Elapsed time: 0:00.72[h:]min:sec. CPU time: user 0.66 sys 0.06 (99%). Peak memory: 147920KB.
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+Elapsed time: 0:01.62[h:]min:sec. CPU time: user 1.51 sys 0.12 (100%). Peak memory: 211552KB.
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+Elapsed time: 0:01.09[h:]min:sec. CPU time: user 0.95 sys 0.11 (98%). Peak memory: 440812KB.
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)

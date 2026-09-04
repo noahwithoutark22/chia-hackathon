@@ -1,0 +1,122 @@
+make: Entering directory '/root/OpenROAD-flow-scripts/flow'
+./logs/sky130hs/gcd/base
+Log                       Ext     Elapsed/s Peak Memory/MB sha1sum result [0:20)
+1_1_yosys_canonicalize    .rtlil          0            122 2e75b25be8e5a7e88cdf
+1_2_yosys                 .v              1            124 1c0f31d55e53b1392ca7
+1_2_yosys                 .sdc                             6b95ee329fb10311b5ed
+1_synth                   .odb            0            145 80fc2cf135103259ee5c
+1_synth                   .sdc                             15c4a3f0f3443523b7a2
+2_1_floorplan             .odb            0            164 78b264b0fa0e1a09e7a7
+2_1_floorplan             .sdc                             15c4a3f0f3443523b7a2
+2_2_floorplan_macro       .odb            0            142 78b264b0fa0e1a09e7a7
+2_3_floorplan_tapcell     .odb            0            143 53224956af318c07003e
+2_4_floorplan_pdn         .odb            0            145 a265b3592277da1a4296
+3_1_place_gp_skip_io      .odb            0            145 d67bfc6c3684540d07b5
+3_2_place_iop             .odb            0            144 91b3306f230719d08432
+3_3_place_gp              .odb            1            269 ed558e8d1e0debe7073b
+3_4_place_resized         .odb            0            163 ed558e8d1e0debe7073b
+3_5_place_dp              .odb            0            149 29788c0cd5092879e74f
+4_1_cts                   .odb            3            185 28523a677029f3c69dab
+5_1_grt                   .odb           20            283 86609123108fcc315ab5
+5_1_grt                   .sdc                             51aec277d801de39e77e
+5_2_route                 .odb           24            615 112081751adb00a81e9f
+5_3_fillcell              .odb            0            147 fc87ac24c6302a769adf
+6_1_fill                  .odb            0            143 fc87ac24c6302a769adf
+6_1_fill                  .sdc                             51aec277d801de39e77e
+6_1_merge                                 1            429                  N/A
+6_report                                  1            205                  N/A
+Total                                    51            615                     
+mkdir -p ./reports/sky130hs/gcd/base
+echo /root/OpenROAD-flow-scripts/flow/designs/sky130hs/gcd > ./reports/sky130hs/gcd/base/design-dir.txt
+/opt/miniconda/envs/chia_env/bin/python3 /root/OpenROAD-flow-scripts/flow/util/genMetrics.py -d gcd \
+    -p sky130hs \
+    -v base \
+    --logs ./logs/sky130hs/gcd/base \
+    --reports ./reports/sky130hs/gcd/base \
+    --results ./results/sky130hs/gcd/base \
+    -o ./reports/sky130hs/gcd/base/metadata.json 2>&1 \
+    | tee /root/OpenROAD-flow-scripts/flow/reports/sky130hs/gcd/base/metadata-generate.log
+[WARN] not a git repo: /root/OpenROAD-flow-scripts/flow/util/../
+[WARN] not a git repo: /root/OpenROAD-flow-scripts/flow/platforms/sky130hs
+[WARN] Tag globalroute__timing__clock__slack not found in ./logs/sky130hs/gcd/base/5_1_grt.log. Will use N/A.
+[WARN] Overwriting Tag synth__runtime__total
+[WARN] Overwriting Tag synth__cpu__total
+[WARN] Overwriting Tag synth__mem__peak
+[WARN] Overwriting Tag finish__runtime__total
+[WARN] Overwriting Tag finish__cpu__total
+[WARN] Overwriting Tag finish__mem__peak
+/opt/miniconda/envs/chia_env/bin/python3 /root/OpenROAD-flow-scripts/flow/util/checkMetadata.py \
+    -m ./reports/sky130hs/gcd/base/metadata.json \
+    -r /root/OpenROAD-flow-scripts/flow/designs/sky130hs/gcd/rules-base.json 2>&1 \
+    | tee /root/OpenROAD-flow-scripts/flow/reports/sky130hs/gcd/base/metadata-check.log
+[WARN] synth__canonical_netlist__hash differs test: 2e75b25be8e5a7e88cdf2b3a483c9bb05aa77354 == 0d441c6dac63d1d618655898f232573a121554ab
+[WARN] synth__netlist__hash differs test: 1c0f31d55e53b1392ca7d037aed9ca1338bd00f8 == e598d077042e416747a790b1a77de09f8600deb2
+[INFO] synth__design__instance__area__stdcell pass test: 3981.61 <= 4470
+[INFO] constraints__clocks__count pass test: 2 == 2
+[INFO] placeopt__design__instance__area pass test: 5488.91 <= 6112
+[INFO] placeopt__design__instance__count__stdcell pass test: 630 <= 715
+[INFO] detailedplace__design__violations pass test: 0 == 0
+[INFO] cts__design__instance__count__setup_buffer pass test: 36 <= 62
+[INFO] cts__design__instance__count__hold_buffer pass test: 0 <= 54
+[INFO] cts__timing__setup__ws pass test: -0.242086 >= -0.358
+[INFO] cts__timing__setup__tns pass test: -7.26223 >= -12
+[INFO] cts__timing__hold__ws pass test: 0.156745 >= -0.07
+[INFO] cts__timing__hold__tns pass test: 0 >= -0.28
+[INFO] globalroute__antenna_diodes_count pass test: 0 <= 100
+[INFO] globalroute__timing__setup__ws pass test: -0.377676 >= -1
+[INFO] globalroute__timing__setup__tns pass test: -13.7339 >= -25
+[INFO] globalroute__timing__hold__ws pass test: 0.19865 >= -0.07
+[INFO] globalroute__timing__hold__tns pass test: 0 >= -0.28
+[INFO] detailedroute__route__wirelength pass test: 12538 <= 18000
+[INFO] detailedroute__route__drc_errors pass test: 0 <= 0
+[INFO] detailedroute__antenna__violating__nets pass test: 0 <= 0
+[INFO] detailedroute__antenna_diodes_count pass test: 0 <= 100
+[INFO] finish__timing__setup__ws pass test: -0.295631 >= -1
+[INFO] finish__timing__setup__tns pass test: -9.65714 >= -23
+[INFO] finish__timing__hold__ws pass test: 0.169921 >= -0.07
+[INFO] finish__timing__hold__tns pass test: 0 >= -0.28
+[INFO] finish__design__instance__area pass test: 6363.23 <= 7136
+Metadata check warnings: 2
+All metadata rules passed (27 rules)
+make: Leaving directory '/root/OpenROAD-flow-scripts/flow'
+
+STDERR:
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)

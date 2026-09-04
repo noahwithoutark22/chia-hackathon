@@ -1,0 +1,95 @@
+provider:
+    head_ip: ${THIS_MACHINE}
+
+auth:
+    ssh_user: ${USER}
+    ssh_private_key: ~/.ssh/id_ed25519   # comment out if key is in ssh-agent
+
+available_node_types:
+    hello_verilator:
+        resources: {"verilator_run": 1}
+        num_workers: 1
+        compatible_ips: ["${THIS_MACHINE}"]
+        docker:
+            image: "ghcr.io/ucb-bar/chia-verilator-run:latest"
+            container_name: "chia-verilator-${USER}"
+            run_options:
+                - --ulimit nofile=65536:65536
+                - --shm-size=10.24gb
+
+    hello_opencode:
+        resources: {"opencode_creds": 1}
+        num_workers: 1
+        compatible_ips: ["${THIS_MACHINE}"]
+        worker_setup_commands: ["source ~/.bashrc"]
+        docker:
+            image: "ghcr.io/ucb-bar/chia-opencode:latest"
+            container_name: "chia-opencode-${USER}"
+            run_options:
+                # OpenCodeLLM.prompt(tools=[orfs_tool]) ships the driver's live
+                # ORFSTool instance to whichever worker runs this task -- Ray
+                # cloudpickles it by module reference (module `orfs_tool`,
+                # class `ORFSTool`), so this container must be able to import
+                # that module too, not just the orfs_run one. Mounted under
+                # /home/ray (not /root) because this image runs as uid 1000
+                # (ray), unlike the orfs_run container which runs as root.
+                - -v ${CHIA_ORFS_REPO}:/home/ray/chia-orfs
+                - -e PYTHONPATH=/home/ray/chia-orfs
+                # opencode's own login session -- without this a freshly
+                # recreated container (e.g. after `chia down`/`chia up`) has
+                # no credentials and every OpenCodeLLM.prompt call fails auth.
+                - -v ${HOME}/.local/share/opencode/auth.json:/home/ray/.local/share/opencode/auth.json:ro
+
+    hello_orfs:
+        resources: {"orfs_run": 1}
+        # num_workers = orfs_run capacity, i.e. how wide orfs_loop.py's
+        # --batch-size can actually run in parallel rather than queue behind
+        # a single worker -- see CLAUDE.md's "Parallel batches" section.
+        # Each additional worker is one more Docker container
+        # (chia-orfs-${USER}-0, -1, ...) bind-mounting the SAME
+        # orfs-native-build/ and repo trees; safe because every
+        # run_flow_remote call sets a distinct FLOW_VARIANT, and ORFS's own
+        # flow/scripts/variables.mk scopes LOG_DIR/OBJECTS_DIR/REPORTS_DIR/
+        # RESULTS_DIR by FLOW_VARIANT, so one call's `make clean_all` can't
+        # touch another's in-flight files. Must stay a literal int -- chia's
+        # ${VAR} substitution only touches string fields, and every
+        # available_node_types example in the chia framework hardcodes this.
+        # Raise only after confirming host RAM/CPU headroom at the current
+        # width empirically (docker stats + free -m during a real batch
+        # round) -- a flow run's route stage can peg a full core for
+        # minutes, and per-run memory footprint is design-dependent.
+        # Width 6 measured OK on this host for `gcd` (24 cores / 30GB: each
+        # concurrent run pegged ~1 core and ~1GB peak, so 6-wide is ~6 cores
+        # and ~6GB against ~19GB free). That headroom is NOT transferable to
+        # a large design -- riscv32i's route stage is far heavier, so re-check
+        # `docker stats` before running one of those 6-wide.
+        num_workers: 6
+        compatible_ips: ["${THIS_MACHINE}"]
+        worker_setup_commands: ["source ~/.bashrc", "export USER=root", "export TMPDIR=/tmp"]
+        docker:
+            image: "chia-orfs-run:local"
+            container_name: "chia-orfs-${USER}"
+            pull_before_run: false
+            run_options:
+                - --shm-size=10.24gb
+                - -v ${CHIA_ORFS_REPO}/orfs-native-build:/root/OpenROAD-flow-scripts
+                # Live-mounts the repo so orfs_tool.py / orfs_config_bridge.py
+                # (imported inside this container when the ORFSTool actor
+                # unpickles) always match what's on disk here -- no more
+                # stale installed copies silently ignoring code changes.
+                # PYTHONPATH takes precedence over site-packages, so this
+                # also covers any new .py file the tool code starts using.
+                - -v ${CHIA_ORFS_REPO}:/root/chia-orfs
+                - -e PYTHONPATH=/root/chia-orfs
+
+head_env_commands: ["source ~/.bashrc && conda activate chia_env"]
+head_setup_commands: ["source ~/.bashrc && conda activate chia_env"]
+head_start_ray_commands:
+    - "source ~/.bashrc && conda activate chia_env && ray stop"
+    - "source ~/.bashrc && conda activate chia_env && \
+        ray start --head --port=6379 \
+        --include-dashboard=True --dashboard-agent-listen-port=0"
+
+worker_start_ray_commands:
+    - "ray stop"
+    - "ray start --address=$RAY_HEAD_IP:6379 --dashboard-agent-listen-port=0"
