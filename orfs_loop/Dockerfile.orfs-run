@@ -1,0 +1,43 @@
+FROM openroad/orfs:latest
+USER root
+ENV TMPDIR=/tmp
+ENV USER=root
+
+# Install Miniconda for exact Python version control (matching host chia_env)
+RUN apt-get update && apt-get install -y wget git
+RUN wget -q https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh \
+    && bash /tmp/miniconda.sh -b -p /opt/miniconda \
+    && rm /tmp/miniconda.sh
+ENV PATH="/opt/miniconda/bin:${PATH}"
+
+RUN conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main \
+    && conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
+
+RUN conda create -y -n chia_env python=3.10.19 \
+    && conda clean -afy
+
+# Activate chia_env by default for all subsequent RUN/exec commands
+SHELL ["conda", "run", "-n", "chia_env", "/bin/bash", "-c"]
+
+RUN pip install --no-cache-dir ray[default]==2.54.0 psutil pydantic pydantic-settings typing-extensions
+RUN git clone https://github.com/ucb-bar/chia.git /opt/chia \
+    && pip install --no-cache-dir /opt/chia
+
+RUN sed -i '/If not running interactively/,/^esac$/d' /root/.bashrc
+
+RUN /opt/miniconda/bin/conda init bash
+
+RUN echo "conda activate chia_env" >> /root/.bashrc \
+    && echo 'if [ -f ~/.bashrc ]; then . ~/.bashrc; fi' >> /root/.bash_profile
+
+# netgen, for the second-opinion LVS `run_signoff_remote` runs alongside
+# KLayout's. This is the comparison engine OpenLane (and therefore Tiny
+# Tapeout) uses for sky130 signoff, and it does the one thing KLayout's LVS
+# cannot: series-plus-parallel device combination, which is what reconciles
+# sky130's folded standard cells (`m=2` on a transistor stack extracts as
+# parallel finger chains against doubled-width schematic devices). Extraction
+# still comes from KLayout -- netgen reads the `*_extracted.cir` KLayout
+# already writes -- so this adds no PDK dependency, just the comparator.
+# Last layer on purpose: it invalidates nothing above it on rebuild.
+RUN apt-get update && apt-get install -y --no-install-recommends netgen-lvs \
+    && rm -rf /var/lib/apt/lists/*

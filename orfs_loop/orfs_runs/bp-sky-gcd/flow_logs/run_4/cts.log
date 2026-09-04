@@ -1,0 +1,474 @@
+make: Entering directory '/root/OpenROAD-flow-scripts/flow'
+/root/OpenROAD-flow-scripts/flow/scripts/flow.sh 4_1_cts cts
+Running cts.tcl, stage 4_1_cts
+read_liberty /root/OpenROAD-flow-scripts/flow/platforms/sky130hs/lib/sky130_fd_sc_hs__tt_025C_1v80.lib
+read_db ./results/sky130hs/gcd/slot2/3_place.odb
+read_sdc ./results/sky130hs/gcd/slot2/3_place.sdc
+source /root/OpenROAD-flow-scripts/flow/platforms/sky130hs/setRC.tcl
+clock_tree_synthesis -sink_clustering_enable -repair_clock_nets
+[INFO CTS-0050] Root buffer is sky130_fd_sc_hs__clkbuf_8.
+[INFO CTS-0051] Sink buffer is sky130_fd_sc_hs__clkbuf_16.
+[INFO CTS-0052] The following clock buffers will be used for CTS:
+                    sky130_fd_sc_hs__clkbuf_8
+                    sky130_fd_sc_hs__clkbuf_16
+[INFO CTS-0049] Characterization buffer is sky130_fd_sc_hs__clkbuf_16.
+[INFO CTS-0007] Net "clk" found for clock "core_clock".
+[INFO CTS-0010]  Clock net "clk" has 35 sinks.
+[INFO CTS-0008] TritonCTS found 1 clock nets.
+[INFO CTS-0097] Characterization used 2 buffer(s) types.
+[INFO CTS-0201] 0 blockages from hard placement blockages and placed macros will be used.
+[INFO CTS-0027] Generating H-Tree topology for net clk.
+[INFO CTS-0028]  Total number of sinks: 35.
+[INFO CTS-0090]  Sinks will be clustered based on buffer max cap.
+[INFO CTS-0030]  Number of static layers: 0.
+[INFO CTS-0020]  Wire segment unit: 16650  dbu (16 um).
+[INFO CTS-0023]  Original sink region: [(1755, 4695), (52095, 88545)].
+[INFO CTS-0024]  Normalized sink region: [(0.105405, 0.281982), (3.12883, 5.31802)].
+[INFO CTS-0025]     Width:  3.0234.
+[INFO CTS-0026]     Height: 5.0360.
+ Level 1
+    Direction: Vertical
+    Sinks per sub-region: 18
+    Sub-region size: 3.0234 X 2.5180
+[INFO CTS-0034]     Segment length (rounded): 1.
+ Level 2
+    Direction: Horizontal
+    Sinks per sub-region: 9
+    Sub-region size: 1.5117 X 2.5180
+[INFO CTS-0034]     Segment length (rounded): 1.
+[INFO CTS-0038]  Stop criterion found. Sink region hpwl is smaller than max wirelength (1742.811 um) and max number of sinks is 15.
+[INFO CTS-0035]  Number of sinks covered: 35.
+[INFO CTS-0018]     Created 5 clock buffers.
+[INFO CTS-0012]     Minimum number of buffers in the clock path: 2.
+[INFO CTS-0013]     Maximum number of buffers in the clock path: 2.
+[INFO CTS-0015]     Created 5 clock nets.
+[INFO CTS-0016]     Fanout distribution for the current clock = 6:1, 8:1, 10:1, 11:1..
+[INFO CTS-0017]     Max level of the clock tree: 2.
+[INFO CTS-0098] Clock net "clk"
+[INFO CTS-0099]  Sinks 38
+[INFO CTS-0100]  Leaf buffers 0
+[INFO CTS-0101]  Average sink wire length 112.07 um
+[INFO CTS-0102]  Path depth 2 - 2
+[INFO CTS-0207]  Dummy loads inserted 3
+[INFO CTS-0500] Runtime: 0.98s
+estimate_parasitics -placement
+detailed_placement
+[INFO DPL-0006] Core area: 7646.75 um^2
+[INFO DPL-0007] Movable instances area: 5482.51 um^2
+[INFO DPL-0008] Fixed instances area within core: 134.27 um^2
+[INFO DPL-0009] Utilization: 73.5%
+[INFO DPL-0005] Diamond search max displacement: +/- 500 sites horizontally, +/- 100 rows vertically.
+[INFO DPL-1102] Legalizing using negotiation legalizer.
+[INFO DPL-1103] Negotiation base search window: +/-20 sites horizontally, +/-5 rows vertically 
+	Automatic search window extension enabled.
+	Search window extendable up to the max displacement cap of +/-500 sites, +/-100 rows near walls.
+[INFO DPL-1104] NegotiationLegalizer DRC penalty: 5.
+[INFO DPL-0392] Negotiation cell height distribution (1 unique row-count(s)):
+[INFO DPL-0393]   height 1 row(s): 636 cells
+          |      Total |  Illegal |  Illegal
+Iteration | Violations |    Cells |    Sites
+---------------------------------------------
+        0 |         30 |         6 |        24
+        1 |         17 |         3 |        14
+        2 |         28 |         2 |        26
+        3 |         10 |         2 |         8
+        4 |          0 |         0 |         0
+Negotiation phase 1 converged at iteration 4.
+[INFO DPL-0500] Runtime: 0.00s
+Placement Analysis
+---------------------------------
+total displacement        592.9 u
+average displacement        0.9 u
+max displacement           21.4 u
+original HPWL            8636.5 u
+legalized HPWL           9033.1 u
+delta HPWL                    5 %
+
+estimate_parasitics -placement
+repair_timing -setup_margin 1 -hold_margin 0 -repair_tns 100 -match_cell_footprint -verbose
+[INFO RSZ-0100] Repair move sequence: UnbufferMove SizeUpMove SwapPinsMove BufferMove CloneMove SplitLoadMove 
+[INFO RSZ-0094] Found 85 endpoints with setup violations.
+[INFO RSZ-0099] Repairing 85 out of 85 (100.00%) violating endpoints...
+   Iter   | Removed | Resized | Inserted | Cloned |  Pin  |   Area   |    WNS   |   StTNS    |   EnTNS    |  Viol  |  Worst  
+          | Buffers |  Gates  | Buffers  |  Gates | Swaps |          |          |            |            | Endpts | St/EnPt 
+------------------------------------------------------------------------------------------------------------------------------
+       0* |       0 |       0 |        0 |      0 |     0 |    +0.0% |   -0.253 |       -6.6 |       -5.8 |     85 | dpath.b_reg.out\[14\]$_DFFE_PP_/DE
+      10* |       0 |       2 |        6 |      0 |     2 |    +0.9% |   -0.242 |       -6.3 |       -5.7 |     85 | dpath.b_reg.out\[14\]$_DFFE_PP_/DE
+      20* |       0 |       6 |        9 |      1 |     4 |    +1.8% |   -0.219 |       -6.3 |       -5.8 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+      30* |       0 |       9 |       13 |      1 |     7 |    +2.8% |   -0.225 |       -6.3 |       -6.6 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+      40* |       0 |      12 |       17 |      1 |    10 |    +4.5% |   -0.223 |       -6.3 |       -6.8 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+      46* |       0 |       8 |       10 |      1 |     4 |    +2.1% |   -0.214 |       -6.2 |       -5.7 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+      50* |       0 |       8 |       13 |      1 |     4 |    +2.7% |   -0.210 |       -6.1 |       -6.3 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+      60* |       0 |      10 |       20 |      1 |     5 |    +3.7% |   -0.204 |       -5.9 |       -6.2 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+      60* |       0 |      10 |       17 |      1 |     5 |    +3.4% |   -0.204 |       -5.9 |       -6.2 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+      64* |       0 |      10 |       17 |      1 |     5 |    +3.4% |   -0.204 |       -5.9 |       -6.2 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+      68* |       0 |      10 |       17 |      1 |     5 |    +3.4% |   -0.204 |       -5.9 |       -6.2 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+      70* |       0 |      10 |       18 |      1 |     5 |    +3.5% |   -0.204 |       -5.9 |       -6.2 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+      72* |       0 |      10 |       17 |      1 |     5 |    +3.4% |   -0.204 |       -5.9 |       -6.2 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+      76* |       0 |      10 |       17 |      1 |     5 |    +3.4% |   -0.204 |       -5.9 |       -6.2 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+      80* |       0 |      10 |       20 |      1 |     5 |    +3.7% |   -0.204 |       -5.9 |       -6.2 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+      80* |       0 |      10 |       17 |      1 |     5 |    +3.4% |   -0.204 |       -5.9 |       -6.2 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+      84* |       0 |      10 |       17 |      1 |     5 |    +3.4% |   -0.204 |       -5.9 |       -6.2 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+      89* |       0 |      10 |       17 |      1 |     6 |    +3.4% |   -0.203 |       -5.9 |       -6.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+      90* |       0 |      10 |       17 |      1 |     6 |    +3.4% |   -0.203 |       -5.9 |       -6.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+      93* |       0 |      10 |       17 |      1 |     6 |    +3.4% |   -0.203 |       -5.9 |       -6.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+      97* |       0 |      10 |       17 |      1 |     6 |    +3.4% |   -0.203 |       -5.9 |       -6.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     100* |       0 |      10 |       19 |      1 |     6 |    +3.6% |   -0.203 |       -5.9 |       -6.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     101* |       0 |      10 |       17 |      1 |     6 |    +3.4% |   -0.203 |       -5.9 |       -6.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     105* |       0 |      10 |       17 |      1 |     6 |    +3.4% |   -0.203 |       -5.9 |       -6.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     109* |       0 |      10 |       17 |      1 |     6 |    +3.4% |   -0.203 |       -5.9 |       -6.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     110* |       0 |      10 |       17 |      1 |     6 |    +3.4% |   -0.203 |       -5.9 |       -6.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     113* |       0 |      10 |       17 |      1 |     6 |    +3.4% |   -0.203 |       -5.9 |       -6.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     117* |       0 |      10 |       17 |      1 |     6 |    +3.4% |   -0.203 |       -5.9 |       -6.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     120* |       0 |      12 |       17 |      1 |     6 |    +3.4% |   -0.210 |       -6.1 |       -5.8 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     130* |       0 |      19 |       18 |      1 |     8 |    +4.0% |   -0.210 |       -6.1 |       -5.6 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     140* |       0 |      20 |       21 |      1 |    15 |    +4.4% |   -0.210 |       -6.1 |       -5.8 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     140* |       0 |      10 |       17 |      1 |     6 |    +3.4% |   -0.203 |       -5.9 |       -6.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     150* |       0 |      18 |       17 |      1 |     7 |    +3.9% |   -0.219 |       -6.4 |       -5.8 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     160* |       0 |      20 |       21 |      1 |    11 |    +4.5% |   -0.219 |       -6.4 |       -6.8 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     161* |       0 |      10 |       17 |      1 |     6 |    +3.4% |   -0.203 |       -5.9 |       -6.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     170* |       0 |      17 |       17 |      1 |     7 |    +3.8% |   -0.219 |       -6.3 |       -6.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     176* |       0 |      10 |       17 |      1 |     6 |    +3.4% |   -0.203 |       -5.9 |       -6.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     180* |       0 |      13 |       17 |      1 |     6 |    +3.3% |   -0.210 |       -6.1 |       -5.9 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     190* |       0 |      20 |       19 |      1 |     7 |    +4.4% |   -0.219 |       -6.3 |       -6.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     197* |       0 |      10 |       17 |      1 |     6 |    +3.4% |   -0.203 |       -5.9 |       -6.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     200* |       0 |      12 |       17 |      1 |     6 |    +3.3% |   -0.210 |       -6.1 |       -5.9 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     210* |       0 |      18 |       21 |      1 |     7 |    +4.3% |   -0.219 |       -6.3 |       -6.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     220* |       0 |      22 |       26 |      1 |     8 |    +5.6% |   -0.219 |       -6.3 |       -6.2 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     222* |       0 |      10 |       17 |      1 |     6 |    +3.4% |   -0.203 |       -5.9 |       -6.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     230* |       0 |      16 |       18 |      1 |     6 |    +3.8% |   -0.210 |       -6.1 |       -5.6 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     240* |       0 |      23 |       19 |      1 |     8 |    +4.6% |   -0.219 |       -6.4 |       -5.9 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     249* |       0 |      10 |       17 |      1 |     6 |    +3.4% |   -0.203 |       -5.9 |       -6.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     250* |       0 |      10 |       17 |      1 |     6 |    +3.4% |   -0.203 |       -5.9 |       -6.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     260* |       0 |      19 |       18 |      1 |     6 |    +4.4% |   -0.219 |       -6.3 |       -5.8 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     270* |       0 |      22 |       25 |      1 |     7 |    +5.4% |   -0.219 |       -6.3 |       -5.8 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     279* |       0 |      10 |       17 |      1 |     6 |    +3.4% |   -0.203 |       -5.9 |       -6.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     280* |       0 |      10 |       17 |      1 |     6 |    +3.4% |   -0.203 |       -5.9 |       -6.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     290* |       0 |      15 |       20 |      2 |     7 |    +4.2% |   -0.214 |       -6.0 |       -5.6 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     295* |       0 |      12 |       17 |      1 |     6 |    +3.4% |   -0.203 |       -5.9 |       -5.5 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     300* |       0 |      14 |       19 |      1 |     6 |    +3.8% |   -0.204 |       -5.9 |       -5.5 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     307* |       0 |      12 |       17 |      1 |     6 |    +3.4% |   -0.203 |       -5.9 |       -5.5 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     310* |       0 |      14 |       17 |      1 |     6 |    +3.6% |   -0.204 |       -5.9 |       -5.5 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     320* |       0 |      18 |       21 |      2 |     7 |    +4.6% |   -0.204 |       -5.9 |       -6.2 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     320* |       0 |      12 |       17 |      1 |     6 |    +3.4% |   -0.203 |       -5.9 |       -5.5 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     330* |       0 |      16 |       21 |      2 |     6 |    +4.5% |   -0.203 |       -5.9 |       -6.2 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     333* |       0 |      12 |       17 |      1 |     6 |    +3.4% |   -0.203 |       -5.9 |       -5.5 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     340* |       0 |      14 |       20 |      2 |     6 |    +4.2% |   -0.204 |       -5.9 |       -5.6 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     345* |       0 |      12 |       17 |      1 |     6 |    +3.4% |   -0.203 |       -5.9 |       -5.5 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     350* |       0 |      14 |       19 |      1 |     6 |    +3.8% |   -0.204 |       -5.9 |       -5.5 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     358* |       0 |      12 |       17 |      1 |     6 |    +3.4% |   -0.203 |       -5.9 |       -5.5 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     360* |       0 |      13 |       17 |      1 |     6 |    +3.6% |   -0.203 |       -5.9 |       -5.5 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     370* |       0 |      18 |       21 |      2 |     6 |    +4.6% |   -0.204 |       -5.9 |       -6.2 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     371* |       0 |      12 |       17 |      1 |     6 |    +3.4% |   -0.203 |       -5.9 |       -5.5 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     380* |       0 |      16 |       20 |      2 |     6 |    +4.4% |   -0.214 |       -6.2 |       -5.6 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     384* |       0 |      12 |       17 |      1 |     6 |    +3.4% |   -0.203 |       -5.9 |       -5.5 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     390* |       0 |      14 |       20 |      1 |     6 |    +4.0% |   -0.204 |       -5.9 |       -5.6 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     396* |       0 |      12 |       17 |      1 |     6 |    +3.4% |   -0.203 |       -5.9 |       -5.5 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     400* |       0 |      13 |       19 |      1 |     6 |    +3.8% |   -0.203 |       -5.9 |       -5.3 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     410* |       0 |      18 |       20 |      1 |    10 |    +4.4% |   -0.203 |       -5.9 |       -5.3 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     415* |       0 |      19 |       22 |      1 |    12 |    +5.4% |   -0.203 |       -5.9 |       -5.3 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     420* |       0 |      22 |       24 |      1 |    12 |    +5.7% |   -0.203 |       -5.9 |       -5.2 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     423* |       0 |      22 |       24 |      1 |    13 |    +5.7% |   -0.203 |       -5.9 |       -5.2 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     429* |       0 |      26 |       24 |      1 |    14 |    +6.0% |   -0.203 |       -5.9 |       -5.2 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     430* |       0 |      26 |       24 |      1 |    14 |    +6.0% |   -0.203 |       -5.9 |       -5.2 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     435* |       0 |      30 |       25 |      1 |    14 |    +6.3% |   -0.203 |       -5.9 |       -5.2 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     440* |       0 |      31 |       28 |      1 |    14 |    +6.7% |   -0.203 |       -5.9 |       -5.2 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     450* |       0 |      34 |       31 |      1 |    18 |    +7.3% |   -0.203 |       -5.8 |       -5.2 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     458* |       0 |      34 |       32 |      1 |    18 |    +7.4% |   -0.203 |       -5.8 |       -5.2 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     460* |       0 |      35 |       32 |      1 |    18 |    +7.4% |   -0.203 |       -5.8 |       -5.2 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     470* |       0 |      42 |       34 |      1 |    19 |    +8.2% |   -0.203 |       -5.8 |       -5.6 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     473* |       0 |      41 |       32 |      1 |    19 |    +7.9% |   -0.203 |       -5.8 |       -5.3 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     480* |       0 |      46 |       32 |      1 |    20 |    +8.2% |   -0.203 |       -5.8 |       -5.2 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     480* |       0 |      46 |       32 |      1 |    20 |    +8.2% |   -0.203 |       -5.8 |       -5.2 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     487* |       0 |      49 |       32 |      1 |    20 |    +8.5% |   -0.203 |       -5.8 |       -5.2 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     490* |       0 |      50 |       33 |      1 |    20 |    +8.6% |   -0.203 |       -5.8 |       -5.2 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     493* |       0 |      50 |       32 |      1 |    20 |    +8.5% |   -0.203 |       -5.8 |       -5.2 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     500* |       0 |      53 |       34 |      1 |    21 |    +9.0% |   -0.203 |       -5.8 |       -5.5 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     501* |       0 |      51 |       32 |      1 |    20 |    +8.6% |   -0.203 |       -5.8 |       -5.2 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     506* |       0 |      53 |       32 |      1 |    20 |    +8.8% |   -0.203 |       -5.8 |       -5.2 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     510* |       0 |      55 |       32 |      1 |    21 |    +8.9% |   -0.203 |       -5.8 |       -5.2 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     518* |       0 |      56 |       32 |      1 |    23 |    +8.8% |   -0.203 |       -5.8 |       -5.2 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     520* |       0 |      57 |       32 |      1 |    23 |    +8.8% |   -0.199 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     530* |       0 |      61 |       37 |      2 |    24 |   +10.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     531* |       0 |      61 |       35 |      1 |    24 |    +9.6% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     536* |       0 |      61 |       35 |      1 |    24 |    +9.6% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     540* |       0 |      61 |       37 |      2 |    24 |   +10.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     541* |       0 |      61 |       35 |      1 |    24 |    +9.6% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     546* |       0 |      61 |       35 |      1 |    24 |    +9.6% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     550* |       0 |      61 |       37 |      2 |    24 |   +10.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     551* |       0 |      61 |       35 |      1 |    24 |    +9.6% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     556* |       0 |      61 |       35 |      1 |    24 |    +9.6% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     560* |       0 |      61 |       37 |      2 |    24 |   +10.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     561* |       0 |      61 |       35 |      1 |    24 |    +9.6% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     566* |       0 |      61 |       35 |      1 |    24 |    +9.6% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     570* |       0 |      62 |       36 |      2 |    24 |    +9.9% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     574* |       0 |      61 |       35 |      1 |    24 |    +9.6% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     580* |       0 |      63 |       37 |      2 |    24 |   +10.4% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     581* |       0 |      61 |       35 |      1 |    24 |    +9.6% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     588* |       0 |      61 |       35 |      1 |    24 |    +9.6% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     590* |       0 |      61 |       35 |      2 |    24 |    +9.9% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     595* |       0 |      61 |       35 |      1 |    24 |    +9.6% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     600* |       0 |      63 |       36 |      2 |    24 |   +10.2% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     602* |       0 |      61 |       35 |      1 |    24 |    +9.6% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     609* |       0 |      61 |       35 |      1 |    24 |    +9.6% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     610* |       0 |      61 |       35 |      1 |    24 |    +9.6% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     616* |       0 |      61 |       35 |      1 |    24 |    +9.6% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     620* |       0 |      62 |       36 |      2 |    24 |    +9.9% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     623* |       0 |      61 |       35 |      1 |    24 |    +9.6% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     630* |       0 |      64 |       38 |      1 |    24 |   +10.1% |   -0.198 |       -5.6 |       -5.2 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     630* |       0 |      62 |       35 |      1 |    24 |    +9.7% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     636* |       0 |      62 |       35 |      1 |    24 |    +9.7% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     640* |       0 |      65 |       35 |      1 |    24 |    +9.9% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     650* |       0 |      73 |       38 |      2 |    24 |   +11.8% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     660* |       0 |      81 |       40 |      2 |    24 |   +13.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     660* |       0 |      68 |       35 |      2 |    24 |   +10.9% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     669* |       0 |      70 |       35 |      2 |    24 |   +11.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     670* |       0 |      70 |       35 |      2 |    24 |   +11.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     680* |       0 |      78 |       39 |      2 |    24 |   +12.3% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     687* |       0 |      71 |       35 |      2 |    24 |   +11.2% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     690* |       0 |      72 |       38 |      2 |    24 |   +11.7% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     700* |       0 |      81 |       39 |      2 |    24 |   +12.8% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     704* |       0 |      72 |       35 |      2 |    24 |   +11.3% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     710* |       0 |      76 |       38 |      2 |    24 |   +12.0% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     720* |       0 |      84 |       40 |      2 |    24 |   +13.3% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     721* |       0 |      73 |       35 |      2 |    24 |   +11.4% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     730* |       0 |      79 |       39 |      2 |    24 |   +12.5% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     739* |       0 |      74 |       35 |      2 |    24 |   +11.5% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     740* |       0 |      74 |       35 |      2 |    24 |   +11.5% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     750* |       0 |      82 |       39 |      2 |    24 |   +12.7% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     756* |       0 |      74 |       35 |      2 |    24 |   +11.5% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     760* |       0 |      75 |       36 |      2 |    25 |   +11.6% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     763* |       0 |      74 |       35 |      2 |    24 |   +11.5% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     770* |       0 |      78 |       36 |      2 |    25 |   +12.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     776* |       0 |      77 |       35 |      2 |    24 |   +11.9% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     780* |       0 |      79 |       35 |      2 |    25 |   +12.0% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     782* |       0 |      79 |       35 |      2 |    24 |   +12.0% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     790* |       0 |      85 |       36 |      2 |    24 |   +12.6% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     793* |       0 |      81 |       35 |      2 |    24 |   +12.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     800* |       0 |      85 |       37 |      2 |    24 |   +12.7% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     803* |       0 |      82 |       35 |      2 |    24 |   +12.2% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     810* |       0 |      86 |       37 |      2 |    24 |   +12.8% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     812* |       0 |      82 |       35 |      2 |    24 |   +12.2% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     820* |       0 |      87 |       37 |      2 |    24 |   +12.9% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     821* |       0 |      82 |       35 |      2 |    24 |   +12.2% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     830* |       0 |      88 |       37 |      2 |    24 |   +13.2% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     830* |       0 |      82 |       35 |      2 |    24 |   +12.2% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     840* |       0 |      87 |       38 |      2 |    25 |   +13.0% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     841* |       0 |      82 |       35 |      2 |    24 |   +12.2% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     850* |       0 |      85 |       40 |      2 |    24 |   +14.2% |   -0.198 |       -5.6 |       -5.2 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     860* |       0 |      91 |       44 |      2 |    24 |   +15.1% |   -0.198 |       -5.6 |       -5.2 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     865* |       0 |      83 |       35 |      2 |    24 |   +12.2% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     870* |       0 |      86 |       36 |      2 |    24 |   +12.6% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     874* |       0 |      83 |       35 |      2 |    24 |   +12.2% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     880* |       0 |      87 |       36 |      2 |    24 |   +12.6% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     890* |       0 |      94 |       40 |      2 |    24 |   +14.0% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     898* |       0 |      89 |       38 |      2 |    24 |   +13.3% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     900* |       0 |      90 |       38 |      2 |    24 |   +13.3% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     903* |       0 |      90 |       38 |      2 |    24 |   +13.3% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     910* |       0 |      94 |       39 |      3 |    24 |   +14.0% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     917* |       0 |      92 |       38 |      3 |    24 |   +13.8% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     920* |       0 |      93 |       39 |      3 |    24 |   +14.0% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     929* |       0 |      93 |       38 |      3 |    24 |   +13.9% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     930* |       0 |      93 |       38 |      3 |    24 |   +13.9% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     937* |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     937* |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     938+ |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     939+ |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     940+ |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     940+ |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     941+ |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     942+ |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     943+ |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     944+ |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     945+ |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     946+ |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     947+ |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     948+ |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     949+ |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     950+ |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     950+ |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     951+ |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     952+ |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     953+ |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     954+ |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     955+ |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     956+ |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     957+ |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     958+ |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     959+ |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     960+ |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     960+ |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     961+ |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     962+ |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     963+ |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     964+ |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     965+ |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     966+ |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     967+ |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     968+ |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     969+ |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     970+ |       0 |      97 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     971+ |       0 |      98 |       38 |      3 |    25 |   +14.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     974+ |       0 |     100 |       38 |      3 |    25 |   +14.3% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     975+ |       0 |     100 |       38 |      3 |    25 |   +14.3% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     976+ |       0 |     100 |       38 |      3 |    25 |   +14.3% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     977+ |       0 |     100 |       38 |      3 |    25 |   +14.3% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     978+ |       0 |     100 |       38 |      3 |    25 |   +14.3% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     979+ |       0 |     100 |       38 |      3 |    25 |   +14.3% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     980+ |       0 |     100 |       38 |      3 |    25 |   +14.3% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     980+ |       0 |     100 |       38 |      3 |    25 |   +14.3% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     982+ |       0 |     100 |       38 |      3 |    26 |   +14.3% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     983+ |       0 |     100 |       38 |      3 |    26 |   +14.3% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     984+ |       0 |     100 |       38 |      3 |    26 |   +14.3% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     985+ |       0 |     100 |       38 |      3 |    26 |   +14.3% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     988+ |       0 |     102 |       38 |      3 |    26 |   +14.4% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     989+ |       0 |     102 |       38 |      3 |    26 |   +14.4% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     990+ |       0 |     102 |       38 |      3 |    26 |   +14.4% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     990+ |       0 |     102 |       38 |      3 |    26 |   +14.4% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     991+ |       0 |     102 |       38 |      3 |    26 |   +14.4% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     992+ |       0 |     102 |       38 |      3 |    26 |   +14.4% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     993+ |       0 |     102 |       38 |      3 |    26 |   +14.4% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     994+ |       0 |     102 |       38 |      3 |    26 |   +14.4% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     995+ |       0 |     102 |       38 |      3 |    26 |   +14.4% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     996+ |       0 |     102 |       38 |      3 |    26 |   +14.4% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     997+ |       0 |     102 |       38 |      3 |    26 |   +14.4% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     998+ |       0 |     102 |       38 |      3 |    26 |   +14.4% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+     999+ |       0 |     102 |       38 |      3 |    26 |   +14.4% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+    1000+ |       0 |     102 |       38 |      3 |    26 |   +14.4% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+    1000+ |       0 |     102 |       38 |      3 |    26 |   +14.4% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+    1001+ |       0 |     102 |       38 |      3 |    26 |   +14.4% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+    1002+ |       0 |     102 |       38 |      3 |    26 |   +14.4% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+    1003+ |       0 |     102 |       38 |      3 |    26 |   +14.4% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+    1004+ |       0 |     102 |       38 |      3 |    26 |   +14.4% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+    1005+ |       0 |     102 |       38 |      3 |    26 |   +14.4% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+    1006+ |       0 |     102 |       38 |      3 |    26 |   +14.4% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+    1010+ |       0 |     105 |       38 |      3 |    26 |   +14.7% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+    1011+ |       0 |     106 |       38 |      3 |    26 |   +14.8% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+    1012+ |       0 |     106 |       38 |      3 |    26 |   +14.8% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+    1013+ |       0 |     106 |       38 |      3 |    26 |   +14.8% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+    1015+ |       0 |     107 |       38 |      3 |    26 |   +15.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+    1016+ |       0 |     107 |       38 |      3 |    26 |   +15.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+    1017+ |       0 |     107 |       38 |      3 |    26 |   +15.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+    1019+ |       0 |     108 |       38 |      3 |    26 |   +15.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+    1020+ |       0 |     108 |       38 |      3 |    26 |   +15.1% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+    1025+ |       0 |     113 |       38 |      3 |    26 |   +15.7% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+    1026+ |       0 |     113 |       38 |      3 |    26 |   +15.7% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+    1027+ |       0 |     113 |       38 |      3 |    26 |   +15.7% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+    1028+ |       0 |     113 |       38 |      3 |    26 |   +15.7% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+    1029+ |       0 |     113 |       38 |      3 |    26 |   +15.7% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+    1030+ |       0 |     113 |       38 |      3 |    26 |   +15.7% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+    1030+ |       0 |     113 |       38 |      3 |    26 |   +15.7% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+    1031+ |       0 |     113 |       38 |      3 |    26 |   +15.7% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+    1032+ |       0 |     113 |       38 |      3 |    26 |   +15.7% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+    1034+ |       0 |     114 |       38 |      3 |    26 |   +15.6% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+    1035+ |       0 |     114 |       38 |      3 |    26 |   +15.6% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+    1037+ |       0 |     115 |       38 |      3 |    26 |   +15.7% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+    1038+ |       0 |     115 |       38 |      3 |    26 |   +15.7% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+    1039+ |       0 |     115 |       38 |      3 |    26 |   +15.7% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+    1040+ |       0 |     115 |       38 |      3 |    26 |   +15.7% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+    1040+ |       0 |     115 |       38 |      3 |    26 |   +15.7% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+    1041+ |       0 |     115 |       38 |      3 |    26 |   +15.7% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+    final |       0 |     115 |       38 |      3 |    26 |   +15.7% |   -0.198 |       -5.6 |       -5.1 |     85 | dpath.b_reg.out\[5\]$_DFFE_PP_/DE
+------------------------------------------------------------------------------------------------------------------------------
+[INFO RSZ-0040] Inserted 38 buffers.
+[INFO RSZ-0051] Resized 115 instances: 115 up, 0 up match, 0 down, 0 VT
+[INFO RSZ-0043] Swapped pins on 26 instances.
+[INFO RSZ-0049] Cloned 3 instances.
+[WARNING RSZ-0062] Unable to repair all setup violations.
+[INFO RSZ-0505] Runtime: 1.84s
+[INFO RSZ-0033] No hold violations found.
+[INFO RSZ-0506] Runtime: 0.00s
+Repair timing output passed lec test
+detailed_placement
+[INFO DPL-0006] Core area: 7646.75 um^2
+[INFO DPL-0007] Movable instances area: 6363.23 um^2
+[INFO DPL-0008] Fixed instances area within core: 134.27 um^2
+[INFO DPL-0009] Utilization: 85.0%
+[INFO DPL-0005] Diamond search max displacement: +/- 500 sites horizontally, +/- 100 rows vertically.
+[INFO DPL-1102] Legalizing using negotiation legalizer.
+[INFO DPL-1103] Negotiation base search window: +/-20 sites horizontally, +/-5 rows vertically 
+	Automatic search window extension enabled.
+	Search window extendable up to the max displacement cap of +/-500 sites, +/-100 rows near walls.
+[INFO DPL-1104] NegotiationLegalizer DRC penalty: 5.
+[INFO DPL-0392] Negotiation cell height distribution (1 unique row-count(s)):
+[INFO DPL-0393]   height 1 row(s): 677 cells
+          |      Total |  Illegal |  Illegal
+Iteration | Violations |    Cells |    Sites
+---------------------------------------------
+        0 |        452 |        84 |       368
+        1 |        294 |        42 |       252
+        2 |        204 |        26 |       178
+        3 |        138 |        24 |       114
+        4 |        134 |        16 |       118
+        5 |         78 |        12 |        66
+        6 |         36 |         4 |        32
+        7 |         62 |         4 |        58
+        8 |         60 |         8 |        52
+        9 |         88 |         8 |        80
+       10 |         51 |         5 |        46
+       20 |         12 |         2 |        10
+       27 |          0 |         0 |         0
+Negotiation phase 1 converged at iteration 27.
+[INFO DPL-0500] Runtime: 0.03s
+Placement Analysis
+---------------------------------
+total displacement       1910.0 u
+average displacement        2.8 u
+max displacement           44.3 u
+original HPWL            9402.4 u
+legalized HPWL          11830.4 u
+delta HPWL                   26 %
+
+estimate_parasitics -placement
+Report metrics stage 4, cts final...
+
+==========================================================================
+cts final report_design_area
+--------------------------------------------------------------------------
+Design area 6497 um^2 85% utilization.
+write_db ./results/sky130hs/gcd/slot2/4_1_cts.odb
+write_sdc -no_timestamp ./results/sky130hs/gcd/slot2/4_cts.sdc
+Log                       Ext     Elapsed/s Peak Memory/MB sha1sum result [0:20)
+4_1_cts                   .odb            4            186 a61f3437bc8b01d67503
+cp ./results/sky130hs/gcd/slot2/4_1_cts.odb ./results/sky130hs/gcd/slot2/4_cts.odb
+make: Leaving directory '/root/OpenROAD-flow-scripts/flow'
+
+STDERR:
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+Elapsed time: 0:04.20[h:]min:sec. CPU time: user 4.03 sys 0.12 (98%). Peak memory: 190920KB.
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)

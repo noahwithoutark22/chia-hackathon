@@ -1,0 +1,89 @@
+{
+  "_comment": "Closed whitelist of ORFS/OpenROAD config.mk knobs the LLM agent is allowed to tune for RTL-to-GDS closure. -- REDUCED set (12 knobs, one clear lever per closure mechanism) for testing whether fewer options improves model reliability.",
+  "CLOCK_PERIOD": {
+    "type": "float",
+    "target": "sdc",
+    "description": "Target clock period. NOT a config.mk key -- ORFS has no such variable; this patches the `clk_period` (or literal create_clock -period) value directly in a working copy of the design's constraint.sdc. Units follow whatever this design's baseline SDC already uses (commonly ns for sky130hd/nangate45, ps for asap7/gf180) -- check get_tunables' current value before changing it, don't assume a unit. Lowering it tightens timing (harder to close setup, may force more area/power to compensate); raising it relaxes timing (easier to close, but the goal is the fastest clock that still closes cleanly). min/max are set per-design at startup, roughly 0.3x-3x this design's original period, so an unreasonable value is rejected rather than silently breaking STA. Set to null via set_tunables to revert to this design's original clock target."
+  },
+  "DIE_AREA_SCALE": {
+    "type": "float",
+    "target": "die_area",
+    "description": "Uniform scale factor applied to this design's DIE_AREA and CORE_AREA rectangles together -- 1.0 is this design's own baseline size (e.g. 0.8 = 20% smaller die and core, same margin proportionally). Only available when this design's baseline already uses ORFS's explicit die/core-area floorplan method -- if this key is absent from get_tunables, the design uses CORE_UTILIZATION instead, which is already this design's equivalent lever (do not expect this key to appear on every design). A last-resort, most-direct area lever: shrink it only after repair flags, margins, and (for utilization-based designs) CORE_UTILIZATION/PLACE_DENSITY are already exhausted -- an aggressively small die will crash placement/routing outright rather than degrade gracefully. Set to null via set_tunables to revert to this design's original die/core area.",
+    "min": 0.5,
+    "max": 1.5
+  },
+  "ENABLE_PLACE_REPAIR_TIMING": {
+    "type": "enum",
+    "values": [
+      "0",
+      "1"
+    ],
+    "description": "Run timing repair during placement using placement-stage parasitics (1 = enable). Fixes setup violations earlier, before CTS/route, instead of leaving all repair to later stages."
+  },
+  "OPT_POST_GRT_WNS": {
+    "type": "enum",
+    "values": [
+      "0",
+      "1"
+    ],
+    "description": "Run a timing repair pass targeting worst negative slack after global routing (1 = enable, this is the flow default). Turning this off tends to make setup violations worse, not better."
+  },
+  "SKIP_LAST_GASP": {
+    "type": "enum",
+    "values": [
+      "0",
+      "1"
+    ],
+    "description": "Skip the flow's final aggressive timing-repair pass (1 = skip, 0 = allow it to run). Leave at 0 -- this last-resort pass is often what actually closes a marginal setup violation."
+  },
+  "SETUP_SLACK_MARGIN": {
+    "type": "float",
+    "unit": "ns",
+    "min": 0,
+    "max": 2,
+    "description": "Extra margin (ns) added to the setup timing target during repair passes -- raise this to make the flow repair past 0 slack for more headroom against a stubborn setup violation."
+  },
+  "HOLD_SLACK_MARGIN": {
+    "type": "float",
+    "unit": "ns",
+    "min": 0,
+    "max": 1,
+    "description": "Extra margin (ns) added to the hold timing target during repair passes. Only raise this if hold slack is the actual problem -- it does nothing for setup violations."
+  },
+  "CORE_UTILIZATION": {
+    "type": "float",
+    "unit": "percent",
+    "min": 5,
+    "max": 90,
+    "description": "Target core utilization percent used by the floorplan stage."
+  },
+  "PLACE_DENSITY": {
+    "type": "float",
+    "min": 0.1,
+    "max": 0.99,
+    "description": "Global placement target density (0-1). Higher packs cells tighter but can hurt routability/timing."
+  },
+  "CELL_PAD_IN_SITES_GLOBAL_PLACEMENT": {
+    "type": "int",
+    "min": 0,
+    "max": 10,
+    "description": "Extra empty sites padded around each cell during global placement, in site widths. Raising this gives the router more room and can resolve routing-congestion-driven DRC/timing issues, at the cost of density/area."
+  },
+  "DETAILED_ROUTE_END_ITERATION": {
+    "type": "int",
+    "min": 1,
+    "max": 256,
+    "description": "Maximum detailed-routing iterations. Raise this if DRC violations are the problem and routing is timing out before it can resolve them; has no effect on setup/hold timing."
+  },
+  "MAX_ROUTING_LAYER": {
+    "type": "enum",
+    "values": [
+      "met1",
+      "met2",
+      "met3",
+      "met4",
+      "met5"
+    ],
+    "description": "Highest metal layer the router is allowed to use (sky130hd default: met5). Lowering this restricts routing resources and generally makes congestion/DRC worse, not better -- raise it, don't lower it, if DRC violations persist."
+  }
+}

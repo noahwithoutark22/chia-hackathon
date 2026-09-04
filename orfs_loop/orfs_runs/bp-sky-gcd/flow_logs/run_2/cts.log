@@ -1,0 +1,290 @@
+make: Entering directory '/root/OpenROAD-flow-scripts/flow'
+/root/OpenROAD-flow-scripts/flow/scripts/flow.sh 4_1_cts cts
+Running cts.tcl, stage 4_1_cts
+read_liberty /root/OpenROAD-flow-scripts/flow/platforms/sky130hs/lib/sky130_fd_sc_hs__tt_025C_1v80.lib
+read_db ./results/sky130hs/gcd/slot0/3_place.odb
+read_sdc ./results/sky130hs/gcd/slot0/3_place.sdc
+source /root/OpenROAD-flow-scripts/flow/platforms/sky130hs/setRC.tcl
+clock_tree_synthesis -sink_clustering_enable -repair_clock_nets
+[INFO CTS-0050] Root buffer is sky130_fd_sc_hs__clkbuf_8.
+[INFO CTS-0051] Sink buffer is sky130_fd_sc_hs__clkbuf_16.
+[INFO CTS-0052] The following clock buffers will be used for CTS:
+                    sky130_fd_sc_hs__clkbuf_8
+                    sky130_fd_sc_hs__clkbuf_16
+[INFO CTS-0049] Characterization buffer is sky130_fd_sc_hs__clkbuf_16.
+[INFO CTS-0007] Net "clk" found for clock "core_clock".
+[INFO CTS-0010]  Clock net "clk" has 35 sinks.
+[INFO CTS-0008] TritonCTS found 1 clock nets.
+[INFO CTS-0097] Characterization used 2 buffer(s) types.
+[INFO CTS-0201] 0 blockages from hard placement blockages and placed macros will be used.
+[INFO CTS-0027] Generating H-Tree topology for net clk.
+[INFO CTS-0028]  Total number of sinks: 35.
+[INFO CTS-0090]  Sinks will be clustered based on buffer max cap.
+[INFO CTS-0030]  Number of static layers: 0.
+[INFO CTS-0020]  Wire segment unit: 16650  dbu (16 um).
+[INFO CTS-0023]  Original sink region: [(4155, 4695), (47775, 88545)].
+[INFO CTS-0024]  Normalized sink region: [(0.24955, 0.281982), (2.86937, 5.31802)].
+[INFO CTS-0025]     Width:  2.6198.
+[INFO CTS-0026]     Height: 5.0360.
+ Level 1
+    Direction: Vertical
+    Sinks per sub-region: 18
+    Sub-region size: 2.6198 X 2.5180
+[INFO CTS-0034]     Segment length (rounded): 1.
+ Level 2
+    Direction: Horizontal
+    Sinks per sub-region: 9
+    Sub-region size: 1.3099 X 2.5180
+[INFO CTS-0034]     Segment length (rounded): 1.
+[INFO CTS-0038]  Stop criterion found. Sink region hpwl is smaller than max wirelength (1742.811 um) and max number of sinks is 15.
+[INFO CTS-0035]  Number of sinks covered: 35.
+[INFO CTS-0018]     Created 5 clock buffers.
+[INFO CTS-0012]     Minimum number of buffers in the clock path: 2.
+[INFO CTS-0013]     Maximum number of buffers in the clock path: 2.
+[INFO CTS-0015]     Created 5 clock nets.
+[INFO CTS-0016]     Fanout distribution for the current clock = 7:1, 9:2, 10:1..
+[INFO CTS-0017]     Max level of the clock tree: 2.
+[INFO CTS-0098] Clock net "clk"
+[INFO CTS-0099]  Sinks 38
+[INFO CTS-0100]  Leaf buffers 0
+[INFO CTS-0101]  Average sink wire length 110.22 um
+[INFO CTS-0102]  Path depth 2 - 2
+[INFO CTS-0207]  Dummy loads inserted 3
+[INFO CTS-0500] Runtime: 0.98s
+estimate_parasitics -placement
+detailed_placement
+[INFO DPL-0006] Core area: 7646.75 um^2
+[INFO DPL-0007] Movable instances area: 5650.34 um^2
+[INFO DPL-0008] Fixed instances area within core: 134.27 um^2
+[INFO DPL-0009] Utilization: 75.6%
+[INFO DPL-0005] Diamond search max displacement: +/- 500 sites horizontally, +/- 100 rows vertically.
+[INFO DPL-1102] Legalizing using negotiation legalizer.
+[INFO DPL-1103] Negotiation base search window: +/-20 sites horizontally, +/-5 rows vertically 
+	Automatic search window extension enabled.
+	Search window extendable up to the max displacement cap of +/-500 sites, +/-100 rows near walls.
+[INFO DPL-1104] NegotiationLegalizer DRC penalty: 5.
+[INFO DPL-0392] Negotiation cell height distribution (1 unique row-count(s)):
+[INFO DPL-0393]   height 1 row(s): 644 cells
+          |      Total |  Illegal |  Illegal
+Iteration | Violations |    Cells |    Sites
+---------------------------------------------
+        0 |         47 |         7 |        40
+        1 |         34 |         6 |        28
+        2 |         12 |         4 |         8
+        3 |          0 |         0 |         0
+Negotiation phase 1 converged at iteration 3.
+[INFO DPL-0500] Runtime: 0.00s
+Placement Analysis
+---------------------------------
+total displacement        534.9 u
+average displacement        0.8 u
+max displacement           16.7 u
+original HPWL            9110.6 u
+legalized HPWL           9446.1 u
+delta HPWL                    4 %
+
+estimate_parasitics -placement
+repair_timing -setup_margin 0 -hold_margin 0 -repair_tns 100 -match_cell_footprint -verbose
+[INFO RSZ-0100] Repair move sequence: UnbufferMove SizeUpMove SwapPinsMove BufferMove CloneMove SplitLoadMove 
+[INFO RSZ-0094] Found 40 endpoints with setup violations.
+[INFO RSZ-0099] Repairing 40 out of 40 (100.00%) violating endpoints...
+   Iter   | Removed | Resized | Inserted | Cloned |  Pin  |   Area   |    WNS   |   StTNS    |   EnTNS    |  Viol  |  Worst  
+          | Buffers |  Gates  | Buffers  |  Gates | Swaps |          |          |            |            | Endpts | St/EnPt 
+------------------------------------------------------------------------------------------------------------------------------
+       0* |       0 |       0 |        0 |      0 |     0 |    +0.0% |   -0.237 |       -6.5 |       -5.3 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+      10* |       0 |       2 |        4 |      0 |     3 |    +0.7% |   -0.237 |       -6.5 |       -5.4 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+      20* |       0 |       3 |        8 |      0 |     8 |    +1.2% |   -0.230 |       -6.5 |       -5.5 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+      30* |       0 |       4 |       12 |      0 |    13 |    +1.7% |   -0.241 |       -6.6 |       -5.5 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+      32* |       0 |       1 |        3 |      0 |     2 |    +0.4% |   -0.228 |       -6.4 |       -5.0 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+      40* |       0 |       3 |        6 |      0 |     4 |    +1.0% |   -0.221 |       -6.4 |       -5.1 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+      42* |       0 |       3 |        8 |      0 |     4 |    +1.2% |   -0.219 |       -6.4 |       -5.0 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+      43* |       0 |       3 |        8 |      0 |     4 |    +1.2% |   -0.219 |       -6.4 |       -5.0 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+      44* |       0 |       3 |        8 |      0 |     4 |    +1.2% |   -0.219 |       -6.4 |       -5.0 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+      45* |       0 |       3 |        8 |      0 |     4 |    +1.2% |   -0.219 |       -6.4 |       -5.0 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+      46* |       0 |       3 |        8 |      0 |     4 |    +1.2% |   -0.219 |       -6.4 |       -5.0 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+      47* |       0 |       3 |        8 |      0 |     4 |    +1.2% |   -0.219 |       -6.4 |       -5.0 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+      48* |       0 |       3 |        8 |      0 |     4 |    +1.2% |   -0.219 |       -6.4 |       -5.0 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+      50* |       0 |       3 |        8 |      0 |     5 |    +1.2% |   -0.218 |       -6.4 |       -5.0 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+      50* |       0 |       3 |        8 |      0 |     5 |    +1.2% |   -0.218 |       -6.4 |       -5.0 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+      51* |       0 |       3 |        8 |      0 |     5 |    +1.2% |   -0.218 |       -6.4 |       -5.0 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+      52* |       0 |       3 |        8 |      0 |     5 |    +1.2% |   -0.218 |       -6.4 |       -5.0 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+      53* |       0 |       3 |        8 |      0 |     5 |    +1.2% |   -0.218 |       -6.4 |       -5.0 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+      54* |       0 |       3 |        8 |      0 |     5 |    +1.2% |   -0.218 |       -6.4 |       -5.0 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+      55* |       0 |       3 |        8 |      0 |     5 |    +1.2% |   -0.218 |       -6.4 |       -5.0 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+      56* |       0 |       3 |        8 |      0 |     5 |    +1.2% |   -0.218 |       -6.4 |       -5.0 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+      57* |       0 |       3 |        8 |      0 |     5 |    +1.2% |   -0.218 |       -6.4 |       -5.0 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+      60* |       0 |       3 |        9 |      0 |     6 |    +1.3% |   -0.218 |       -6.3 |       -4.8 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+      68* |       1 |       5 |       11 |      0 |     7 |    +1.4% |   -0.216 |       -6.3 |       -5.7 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+      70* |       1 |       5 |       11 |      0 |     8 |    +1.4% |   -0.216 |       -6.3 |       -5.7 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+      72* |       1 |       5 |       11 |      0 |     8 |    +1.4% |   -0.216 |       -6.3 |       -5.7 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+      76* |       1 |       5 |       11 |      0 |     8 |    +1.4% |   -0.216 |       -6.3 |       -5.7 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+      80* |       1 |       5 |       12 |      0 |    10 |    +1.5% |   -0.216 |       -6.3 |       -5.8 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+      80* |       1 |       5 |       11 |      0 |     9 |    +1.4% |   -0.216 |       -6.3 |       -5.7 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+      84* |       1 |       5 |       11 |      0 |     9 |    +1.4% |   -0.216 |       -6.3 |       -5.7 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+      88* |       1 |       5 |       11 |      0 |    11 |    +1.4% |   -0.216 |       -6.3 |       -5.7 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+      90* |       1 |       5 |       11 |      0 |    12 |    +1.4% |   -0.216 |       -6.3 |       -5.7 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+      92* |       1 |       5 |       11 |      0 |    11 |    +1.4% |   -0.216 |       -6.3 |       -5.7 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     100* |       1 |       8 |       13 |      1 |    12 |    +2.2% |   -0.216 |       -6.3 |       -6.3 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     101* |       1 |       5 |       11 |      0 |    11 |    +1.4% |   -0.216 |       -6.3 |       -5.7 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     107* |       1 |       5 |       11 |      0 |    11 |    +1.4% |   -0.216 |       -6.3 |       -5.7 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     110* |       1 |       5 |       12 |      1 |    11 |    +1.7% |   -0.216 |       -6.3 |       -5.8 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     116* |       1 |       5 |       11 |      0 |    11 |    +1.4% |   -0.216 |       -6.3 |       -5.7 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     120* |       1 |       5 |       13 |      1 |    11 |    +1.9% |   -0.216 |       -6.3 |       -6.2 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     122* |       1 |       5 |       11 |      0 |    11 |    +1.4% |   -0.216 |       -6.3 |       -5.7 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     128* |       1 |       5 |       11 |      0 |    12 |    +1.4% |   -0.216 |       -6.3 |       -5.7 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     130* |       1 |       5 |       11 |      0 |    13 |    +1.4% |   -0.216 |       -6.3 |       -5.7 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     140* |       1 |      10 |       13 |      0 |    16 |    +1.9% |   -0.216 |       -6.3 |       -5.8 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     144* |       1 |       8 |       12 |      0 |    14 |    +1.7% |   -0.216 |       -6.3 |       -5.7 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     150* |       1 |      10 |       14 |      1 |    14 |    +2.3% |   -0.216 |       -6.3 |       -6.2 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     153* |       1 |       8 |       12 |      0 |    14 |    +1.7% |   -0.216 |       -6.3 |       -5.7 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     160* |       1 |      11 |       14 |      1 |    14 |    +2.5% |   -0.216 |       -6.3 |       -6.3 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     162* |       1 |       8 |       12 |      0 |    14 |    +1.7% |   -0.216 |       -6.3 |       -5.7 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     170* |       1 |      11 |       12 |      0 |    18 |    +1.9% |   -0.216 |       -6.3 |       -5.6 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     180* |       3 |      14 |       14 |      0 |    21 |    +2.1% |   -0.219 |       -6.3 |       -5.6 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     180* |       2 |      11 |       12 |      0 |    20 |    +1.5% |   -0.216 |       -6.3 |       -5.6 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     189* |       2 |      11 |       12 |      0 |    20 |    +1.5% |   -0.216 |       -6.3 |       -5.6 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     190* |       2 |      11 |       12 |      0 |    20 |    +1.5% |   -0.216 |       -6.3 |       -5.6 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     200* |       2 |      19 |       12 |      0 |    22 |    +2.2% |   -0.216 |       -6.3 |       -5.7 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     201* |       3 |      19 |       12 |      0 |    22 |    +2.1% |   -0.216 |       -6.3 |       -5.6 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     210* |       3 |      23 |       14 |      1 |    23 |    +3.0% |   -0.216 |       -6.3 |       -6.2 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     210* |       3 |      19 |       12 |      0 |    22 |    +2.1% |   -0.216 |       -6.3 |       -5.6 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     212* |       3 |      20 |       12 |      0 |    22 |    +2.2% |   -0.216 |       -6.3 |       -5.6 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     220* |       4 |      22 |       14 |      0 |    24 |    +2.3% |   -0.216 |       -6.3 |       -5.6 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     223* |       4 |      22 |       12 |      0 |    23 |    +2.1% |   -0.216 |       -6.3 |       -5.5 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     224* |       4 |      22 |       12 |      0 |    23 |    +2.1% |   -0.216 |       -6.3 |       -5.5 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     228* |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     229* |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     229* |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     40 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     230+ |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     230+ |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     231+ |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     232+ |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     233+ |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     234+ |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     235+ |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     236+ |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     237+ |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     238+ |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     239+ |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     240+ |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     240+ |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     241+ |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     242+ |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     243+ |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     244+ |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     245+ |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     246+ |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     247+ |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     248+ |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     249+ |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     250+ |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     250+ |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     251+ |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     252+ |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     253+ |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     254+ |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     255+ |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     256+ |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     257+ |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     258+ |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     259+ |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     260+ |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     260+ |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     261+ |       4 |      25 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     263+ |       4 |      26 |       12 |      0 |    23 |    +2.3% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     265+ |       4 |      27 |       12 |      0 |    23 |    +2.4% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+     266+ |       4 |      27 |       12 |      0 |    23 |    +2.4% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+    final |       4 |      27 |       12 |      0 |    23 |    +2.4% |   -0.216 |       -6.3 |       -5.5 |     35 | dpath.b_reg.out\[2\]$_DFFE_PP_/DE
+------------------------------------------------------------------------------------------------------------------------------
+[INFO RSZ-0059] Removed 4 buffers.
+[INFO RSZ-0040] Inserted 12 buffers.
+[INFO RSZ-0051] Resized 27 instances: 27 up, 0 up match, 0 down, 0 VT
+[INFO RSZ-0043] Swapped pins on 23 instances.
+[WARNING RSZ-0062] Unable to repair all setup violations.
+[INFO RSZ-0505] Runtime: 0.51s
+[INFO RSZ-0033] No hold violations found.
+[INFO RSZ-0506] Runtime: 0.00s
+Repair timing output passed lec test
+detailed_placement
+[INFO DPL-0006] Core area: 7646.75 um^2
+[INFO DPL-0007] Movable instances area: 5789.40 um^2
+[INFO DPL-0008] Fixed instances area within core: 134.27 um^2
+[INFO DPL-0009] Utilization: 77.5%
+[INFO DPL-0005] Diamond search max displacement: +/- 500 sites horizontally, +/- 100 rows vertically.
+[INFO DPL-1102] Legalizing using negotiation legalizer.
+[INFO DPL-1103] Negotiation base search window: +/-20 sites horizontally, +/-5 rows vertically 
+	Automatic search window extension enabled.
+	Search window extendable up to the max displacement cap of +/-500 sites, +/-100 rows near walls.
+[INFO DPL-1104] NegotiationLegalizer DRC penalty: 5.
+[INFO DPL-0392] Negotiation cell height distribution (1 unique row-count(s)):
+[INFO DPL-0393]   height 1 row(s): 652 cells
+          |      Total |  Illegal |  Illegal
+Iteration | Violations |    Cells |    Sites
+---------------------------------------------
+        0 |         38 |        10 |        28
+        1 |         16 |         2 |        14
+        2 |          0 |         0 |         0
+Negotiation phase 1 converged at iteration 2.
+[INFO DPL-0500] Runtime: 0.00s
+Placement Analysis
+---------------------------------
+total displacement        195.9 u
+average displacement        0.3 u
+max displacement           19.6 u
+original HPWL            9497.7 u
+legalized HPWL           9742.8 u
+delta HPWL                    3 %
+
+estimate_parasitics -placement
+Report metrics stage 4, cts final...
+
+==========================================================================
+cts final report_design_area
+--------------------------------------------------------------------------
+Design area 5924 um^2 77% utilization.
+write_db ./results/sky130hs/gcd/slot0/4_1_cts.odb
+write_sdc -no_timestamp ./results/sky130hs/gcd/slot0/4_cts.sdc
+Log                       Ext     Elapsed/s Peak Memory/MB sha1sum result [0:20)
+4_1_cts                   .odb            2            186 75b5d3ff3e1ffc7612f0
+cp ./results/sky130hs/gcd/slot0/4_1_cts.odb ./results/sky130hs/gcd/slot0/4_cts.odb
+make: Leaving directory '/root/OpenROAD-flow-scripts/flow'
+
+STDERR:
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+Elapsed time: 0:02.85[h:]min:sec. CPU time: user 2.72 sys 0.12 (99%). Peak memory: 190552KB.
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)

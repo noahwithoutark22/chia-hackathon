@@ -1,0 +1,333 @@
+make: Entering directory '/root/OpenROAD-flow-scripts/flow'
+/root/OpenROAD-flow-scripts/flow/scripts/flow.sh 2_1_floorplan floorplan
+Running floorplan.tcl, stage 2_1_floorplan
+read_liberty /root/OpenROAD-flow-scripts/flow/platforms/sky130hs/lib/sky130_fd_sc_hs__tt_025C_1v80.lib
+read_db ./results/sky130hs/gcd/slot2/1_synth.odb
+read_sdc ./results/sky130hs/gcd/slot2/1_synth.sdc
+source /root/OpenROAD-flow-scripts/flow/platforms/sky130hs/setRC.tcl
+
+==========================================================================
+Floorplan check_setup
+--------------------------------------------------------------------------
+number instances in verilog is 385
+[INFO IFP-0107] Defining die area using utilization: 50.00% and aspect ratio: 1.
+[WARNING IFP-0028] Core area lower left (1.000, 1.000) snapped to (1.440, 3.330).
+[INFO IFP-0001] Added 26 rows of 184 site unit.
+[INFO IFP-0100] Die BBox:  (  0.000  0.000 ) ( 91.235 91.235 ) um
+[INFO IFP-0101] Core BBox: (  1.440  3.330 ) ( 89.760 89.910 ) um
+[INFO IFP-0102] Core area:                         7646.746 um^2
+[INFO IFP-0103] Total instances area:              3981.614 um^2
+[INFO IFP-0104] Effective utilization:                0.521
+[INFO IFP-0105] Number of instances:                    385
+source /root/OpenROAD-flow-scripts/flow/platforms/sky130hs/make_tracks.tcl
+source /root/OpenROAD-flow-scripts/flow/platforms/sky130hs/fastroute.tcl
+Repair tie lo fanout...
+Repair tie hi fanout...
+repair_timing -setup_margin 1 -hold_margin 0 -repair_tns 100 -match_cell_footprint -setup -skip_last_gasp -sequence unbuffer,sizeup,swap,vt_swap -verbose
+[WARNING EST-0027] no estimated parasitics. Using wire load models.
+[INFO RSZ-0100] Repair move sequence: UnbufferMove SizeUpMove SwapPinsMove 
+[INFO RSZ-0094] Found 85 endpoints with setup violations.
+[INFO RSZ-0099] Repairing 85 out of 85 (100.00%) violating endpoints...
+   Iter   | Removed | Resized | Inserted | Cloned |  Pin  |   Area   |    WNS   |   StTNS    |   EnTNS    |  Viol  |  Worst  
+          | Buffers |  Gates  | Buffers  |  Gates | Swaps |          |          |            |            | Endpts | St/EnPt 
+------------------------------------------------------------------------------------------------------------------------------
+       0* |       0 |       0 |        0 |      0 |     0 |    +0.0% |   -0.347 |       -9.8 |       -5.5 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      10* |       0 |       5 |        0 |      0 |     4 |    +1.1% |   -0.184 |       -4.9 |       -3.3 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      14* |       0 |       5 |        0 |      0 |     1 |    +1.1% |   -0.171 |       -4.4 |       -3.0 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      16* |       0 |       5 |        0 |      0 |     1 |    +1.1% |   -0.171 |       -4.4 |       -3.0 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      18* |       0 |       5 |        0 |      0 |     1 |    +1.1% |   -0.171 |       -4.4 |       -3.0 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      20* |       0 |       6 |        0 |      0 |     1 |    +1.2% |   -0.180 |       -4.4 |       -3.2 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      20* |       0 |       5 |        0 |      0 |     1 |    +1.1% |   -0.171 |       -4.4 |       -3.0 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      22* |       0 |       5 |        0 |      0 |     1 |    +1.1% |   -0.171 |       -4.4 |       -3.0 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      24* |       0 |       5 |        0 |      0 |     1 |    +1.1% |   -0.171 |       -4.4 |       -3.0 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      26* |       0 |       5 |        0 |      0 |     1 |    +1.1% |   -0.171 |       -4.4 |       -3.0 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      28* |       0 |       5 |        0 |      0 |     1 |    +1.1% |   -0.171 |       -4.4 |       -3.0 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      30* |       0 |       6 |        0 |      0 |     1 |    +1.2% |   -0.180 |       -4.4 |       -3.2 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      30* |       0 |       5 |        0 |      0 |     1 |    +1.1% |   -0.171 |       -4.4 |       -3.0 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      32* |       0 |       5 |        0 |      0 |     1 |    +1.1% |   -0.171 |       -4.4 |       -3.0 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      34* |       0 |       5 |        0 |      0 |     1 |    +1.1% |   -0.171 |       -4.4 |       -3.0 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      36* |       0 |       5 |        0 |      0 |     1 |    +1.1% |   -0.171 |       -4.4 |       -3.0 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      38* |       0 |       5 |        0 |      0 |     1 |    +1.1% |   -0.171 |       -4.4 |       -3.0 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      40* |       0 |       6 |        0 |      0 |     1 |    +1.2% |   -0.180 |       -4.4 |       -3.2 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      40* |       0 |       5 |        0 |      0 |     1 |    +1.1% |   -0.171 |       -4.4 |       -3.0 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      42* |       0 |       5 |        0 |      0 |     1 |    +1.1% |   -0.171 |       -4.4 |       -3.0 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      44* |       0 |       5 |        0 |      0 |     1 |    +1.1% |   -0.171 |       -4.4 |       -3.0 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      50* |       0 |      10 |        0 |      0 |     1 |    +1.8% |   -0.171 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      55* |       0 |      13 |        0 |      0 |     1 |    +2.2% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      57* |       0 |      13 |        0 |      0 |     1 |    +2.2% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      59* |       0 |      13 |        0 |      0 |     1 |    +2.2% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      60* |       0 |      13 |        0 |      0 |     1 |    +2.2% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      61* |       0 |      13 |        0 |      0 |     1 |    +2.2% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      63* |       0 |      13 |        0 |      0 |     1 |    +2.2% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      65* |       0 |      13 |        0 |      0 |     1 |    +2.2% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      67* |       0 |      13 |        0 |      0 |     1 |    +2.2% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      69* |       0 |      13 |        0 |      0 |     1 |    +2.2% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      70* |       0 |      13 |        0 |      0 |     1 |    +2.2% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      71* |       0 |      13 |        0 |      0 |     1 |    +2.2% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      73* |       0 |      13 |        0 |      0 |     1 |    +2.2% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      75* |       0 |      13 |        0 |      0 |     1 |    +2.2% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      77* |       0 |      13 |        0 |      0 |     1 |    +2.2% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      79* |       0 |      13 |        0 |      0 |     1 |    +2.2% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      80* |       0 |      13 |        0 |      0 |     1 |    +2.2% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      81* |       0 |      13 |        0 |      0 |     1 |    +2.2% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      83* |       0 |      13 |        0 |      0 |     1 |    +2.2% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      85* |       0 |      13 |        0 |      0 |     1 |    +2.2% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      88* |       0 |      13 |        0 |      0 |     1 |    +2.2% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      90* |       0 |      14 |        0 |      0 |     1 |    +2.3% |   -0.179 |       -4.4 |       -2.9 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      91* |       0 |      13 |        0 |      0 |     1 |    +2.2% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      94* |       0 |      13 |        0 |      0 |     1 |    +2.2% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+      97* |       0 |      13 |        0 |      0 |     1 |    +2.2% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     100* |       0 |      14 |        0 |      0 |     2 |    +2.3% |   -0.179 |       -4.4 |       -2.9 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     100* |       0 |      13 |        0 |      0 |     1 |    +2.2% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     103* |       0 |      13 |        0 |      0 |     1 |    +2.2% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     106* |       0 |      13 |        0 |      0 |     1 |    +2.2% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     109* |       0 |      13 |        0 |      0 |     1 |    +2.2% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     110* |       0 |      13 |        0 |      0 |     1 |    +2.2% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     112* |       0 |      13 |        0 |      0 |     1 |    +2.2% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     115* |       0 |      13 |        0 |      0 |     1 |    +2.2% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     120* |       0 |      15 |        0 |      0 |     3 |    +2.3% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     126* |       0 |      15 |        0 |      0 |     3 |    +2.3% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     130* |       0 |      16 |        0 |      0 |     5 |    +2.5% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     131* |       0 |      15 |        0 |      0 |     4 |    +2.3% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     135* |       0 |      16 |        0 |      0 |     6 |    +2.5% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     138* |       0 |      16 |        0 |      0 |     8 |    +2.5% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     140* |       0 |      16 |        0 |      0 |     9 |    +2.5% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     141* |       0 |      16 |        0 |      0 |    10 |    +2.5% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     144* |       0 |      16 |        0 |      0 |    12 |    +2.5% |   -0.170 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     150* |       0 |      18 |        0 |      0 |    15 |    +2.8% |   -0.170 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     160* |       0 |      24 |        0 |      0 |    19 |    +3.3% |   -0.187 |       -4.3 |       -3.0 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     168* |       0 |      22 |        0 |      0 |    16 |    +3.0% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     170* |       0 |      23 |        0 |      0 |    16 |    +3.1% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     180* |       0 |      27 |        0 |      0 |    22 |    +3.4% |   -0.169 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     180* |       0 |      26 |        0 |      0 |    16 |    +3.3% |   -0.169 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     187* |       0 |      26 |        0 |      0 |    16 |    +3.3% |   -0.169 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     190* |       0 |      28 |        0 |      0 |    16 |    +3.4% |   -0.169 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     199* |       0 |      26 |        0 |      0 |    16 |    +3.3% |   -0.169 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     200* |       0 |      26 |        0 |      0 |    16 |    +3.3% |   -0.169 |       -4.4 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     210* |       0 |      32 |        0 |      0 |    20 |    +3.9% |   -0.175 |       -4.4 |       -2.8 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     210* |       0 |      27 |        0 |      0 |    17 |    +3.4% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     218* |       0 |      27 |        0 |      0 |    17 |    +3.4% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     220* |       0 |      27 |        0 |      0 |    18 |    +3.4% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     220* |       0 |      27 |        0 |      0 |    17 |    +3.4% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     223* |       0 |      27 |        0 |      0 |    17 |    +3.4% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     227* |       0 |      27 |        0 |      0 |    17 |    +3.4% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     230* |       0 |      28 |        0 |      0 |    18 |    +3.6% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     237* |       0 |      28 |        0 |      0 |    18 |    +3.6% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     240* |       0 |      30 |        0 |      0 |    18 |    +3.8% |   -0.187 |       -4.4 |       -3.0 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     242* |       0 |      28 |        0 |      0 |    18 |    +3.6% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     244* |       0 |      28 |        0 |      0 |    18 |    +3.6% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     250* |       0 |      33 |        0 |      0 |    18 |    +4.5% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     251* |       0 |      33 |        0 |      0 |    19 |    +4.5% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     254* |       0 |      34 |        0 |      0 |    20 |    +4.5% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     257* |       0 |      35 |        0 |      0 |    21 |    +4.6% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     260* |       0 |      36 |        0 |      0 |    22 |    +4.7% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     260* |       0 |      36 |        0 |      0 |    22 |    +4.7% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     263* |       0 |      37 |        0 |      0 |    23 |    +4.8% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     266* |       0 |      38 |        0 |      0 |    24 |    +4.9% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     268* |       0 |      38 |        0 |      0 |    25 |    +4.9% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     270* |       0 |      38 |        0 |      0 |    26 |    +4.9% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     270* |       0 |      38 |        0 |      0 |    26 |    +4.9% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     272* |       0 |      38 |        0 |      0 |    27 |    +4.9% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     274* |       0 |      38 |        0 |      0 |    28 |    +4.9% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     276* |       0 |      38 |        0 |      0 |    29 |    +4.9% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     280* |       0 |      41 |        0 |      0 |    29 |    +5.2% |   -0.185 |       -4.4 |       -3.0 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     282* |       0 |      38 |        0 |      0 |    29 |    +4.9% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     283* |       0 |      38 |        0 |      0 |    29 |    +4.9% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     284* |       0 |      38 |        0 |      0 |    29 |    +4.9% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     285* |       0 |      38 |        0 |      0 |    29 |    +4.9% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     286* |       0 |      38 |        0 |      0 |    29 |    +4.9% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     287* |       0 |      38 |        0 |      0 |    29 |    +4.9% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     290* |       0 |      39 |        0 |      0 |    30 |    +5.0% |   -0.181 |       -4.4 |       -2.9 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     290* |       0 |      38 |        0 |      0 |    29 |    +4.9% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     293* |       0 |      38 |        0 |      0 |    31 |    +4.9% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     299* |       0 |      38 |        0 |      0 |    31 |    +4.9% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     300* |       0 |      38 |        0 |      0 |    31 |    +4.9% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     300* |       0 |      38 |        0 |      0 |    31 |    +4.9% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     304* |       0 |      38 |        0 |      0 |    31 |    +4.9% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     308* |       0 |      38 |        0 |      0 |    31 |    +4.9% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     310* |       0 |      38 |        0 |      0 |    32 |    +4.9% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     310* |       0 |      38 |        0 |      0 |    32 |    +4.9% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     311* |       0 |      38 |        0 |      0 |    32 |    +4.9% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+     311* |       0 |      38 |        0 |      0 |    32 |    +4.9% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+    final |       0 |      38 |        0 |      0 |    32 |    +4.9% |   -0.169 |       -4.3 |       -2.7 |     85 | dpath.b_reg.out\[0\]$_DFFE_PP_/DE
+------------------------------------------------------------------------------------------------------------------------------
+[INFO RSZ-0051] Resized 38 instances: 38 up, 0 up match, 0 down, 0 VT
+[INFO RSZ-0043] Swapped pins on 32 instances.
+[WARNING RSZ-0062] Unable to repair all setup violations.
+[INFO RSZ-0505] Runtime: 0.39s
+Default units for flow
+ time 1ns
+ capacitance 1pF
+ resistance 1kohm
+ voltage 1v
+ current 1mA
+ power 1nW
+ distance 1um
+   Layer   | Unit Resistance | Unit Capacitance 
+           |       (kohm/um) |          (pF/um)
+------------------------------------------------
+       li1 |        6.82e-02 |         1.50e-04
+      met1 |        1.21e-03 |         1.72e-04
+      met2 |        1.22e-03 |         1.36e-04
+      met3 |        1.66e-04 |         2.15e-04
+      met4 |        1.68e-04 |         1.48e-04
+      met5 |        1.84e-05 |         1.54e-04
+------------------------------------------------
+
+   Layer   | Via Resistance 
+           |         (kohm) 
+----------------------------
+      mcon |       9.25e-03 
+       via |       4.50e-03 
+      via2 |       3.37e-03 
+      via3 |       3.77e-04 
+      via4 |       5.80e-06 
+----------------------------
+Report metrics stage 2, floorplan final...
+
+==========================================================================
+floorplan final report_design_area
+--------------------------------------------------------------------------
+Design area 4175 um^2 55% utilization.
+write_db ./results/sky130hs/gcd/slot2/2_1_floorplan.odb
+write_sdc -no_timestamp ./results/sky130hs/gcd/slot2/2_1_floorplan.sdc
+Log                       Ext     Elapsed/s Peak Memory/MB sha1sum result [0:20)
+2_1_floorplan             .odb            1            164 f58604cdfc24aa9f9822
+2_1_floorplan             .sdc                             15c4a3f0f3443523b7a2
+/root/OpenROAD-flow-scripts/flow/scripts/flow.sh 2_2_floorplan_macro macro_place
+Running macro_place.tcl, stage 2_2_floorplan_macro
+read_liberty /root/OpenROAD-flow-scripts/flow/platforms/sky130hs/lib/sky130_fd_sc_hs__tt_025C_1v80.lib
+read_db ./results/sky130hs/gcd/slot2/2_1_floorplan.odb
+read_sdc ./results/sky130hs/gcd/slot2/2_1_floorplan.sdc
+source /root/OpenROAD-flow-scripts/flow/platforms/sky130hs/setRC.tcl
+No macros found: Skipping macro_placement
+Design area 4175 um^2 55% utilization.
+write_db ./results/sky130hs/gcd/slot2/2_2_floorplan_macro.odb
+Log                       Ext     Elapsed/s Peak Memory/MB sha1sum result [0:20)
+2_2_floorplan_macro       .odb            0            143 f58604cdfc24aa9f9822
+/root/OpenROAD-flow-scripts/flow/scripts/flow.sh 2_3_floorplan_tapcell tapcell
+Running tapcell.tcl, stage 2_3_floorplan_tapcell
+read_liberty /root/OpenROAD-flow-scripts/flow/platforms/sky130hs/lib/sky130_fd_sc_hs__tt_025C_1v80.lib
+read_db ./results/sky130hs/gcd/slot2/2_2_floorplan_macro.odb
+read_sdc ./results/sky130hs/gcd/slot2/2_1_floorplan.sdc
+source /root/OpenROAD-flow-scripts/flow/platforms/sky130hs/setRC.tcl
+[INFO TAP-0005] Inserted 84 tapcells.
+Design area 4309 um^2 56% utilization.
+write_db ./results/sky130hs/gcd/slot2/2_3_floorplan_tapcell.odb
+Log                       Ext     Elapsed/s Peak Memory/MB sha1sum result [0:20)
+2_3_floorplan_tapcell     .odb            0            142 4688205e232dcd73bdae
+/root/OpenROAD-flow-scripts/flow/scripts/flow.sh 2_4_floorplan_pdn pdn
+Running pdn.tcl, stage 2_4_floorplan_pdn
+read_liberty /root/OpenROAD-flow-scripts/flow/platforms/sky130hs/lib/sky130_fd_sc_hs__tt_025C_1v80.lib
+read_db ./results/sky130hs/gcd/slot2/2_3_floorplan_tapcell.odb
+read_sdc ./results/sky130hs/gcd/slot2/2_1_floorplan.sdc
+source /root/OpenROAD-flow-scripts/flow/platforms/sky130hs/setRC.tcl
+[WARNING PDN-1051] No instances found for grid (CORE_macro_grid_1).
+[WARNING PDN-1051] No instances found for grid (CORE_macro_grid_2).
+[INFO PDN-0001] Inserting grid: grid
+[INFO PDN-0500] Runtime: 0.00s
+Design area 4309 um^2 56% utilization.
+write_db ./results/sky130hs/gcd/slot2/2_4_floorplan_pdn.odb
+Log                       Ext     Elapsed/s Peak Memory/MB sha1sum result [0:20)
+2_4_floorplan_pdn         .odb            0            146 17ea20f4cbb6f6ed8aaf
+cp ./results/sky130hs/gcd/slot2/2_4_floorplan_pdn.odb ./results/sky130hs/gcd/slot2/2_floorplan.odb
+cp ./results/sky130hs/gcd/slot2/2_1_floorplan.sdc ./results/sky130hs/gcd/slot2/2_floorplan.sdc
+make: Leaving directory '/root/OpenROAD-flow-scripts/flow'
+
+STDERR:
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+Elapsed time: 0:01.14[h:]min:sec. CPU time: user 1.04 sys 0.08 (98%). Peak memory: 167956KB.
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+Elapsed time: 0:00.78[h:]min:sec. CPU time: user 0.71 sys 0.05 (97%). Peak memory: 147088KB.
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+Elapsed time: 0:00.79[h:]min:sec. CPU time: user 0.72 sys 0.04 (96%). Peak memory: 146296KB.
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+Elapsed time: 0:00.73[h:]min:sec. CPU time: user 0.68 sys 0.04 (99%). Peak memory: 149620KB.
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
