@@ -9,6 +9,7 @@ import shutil
 import threading
 import time
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Optional
 
 import ray
@@ -356,10 +357,25 @@ def _prompt_with_backoff(llm, prompt_text, on_trace):
     over MCP, and every one of those calls blew past opencode's ~60s client
     timeout (`MCP error -32001`), causing retries that started a second flow
     on top of the first.
+
+    chia's own OpenCodeLLM.prompt() docs say RateLimitError/AuthenticationError/
+    BillingError/InvalidRequestError "propagate immediately" rather than being
+    retried internally -- by design, chia leaves handling those to the caller.
+    Left unhandled here, any of them (observed live: InvalidRequestError,
+    "Requests ending with a model turn are not supported", on a batch-decision
+    call) crashes get() and takes the whole driver down over what a fresh
+    `opencode run` invocation next attempt might not even reproduce. Folded
+    into the same retry-with-backoff loop as an ordinary failed turn rather
+    than treated as fatal, since a retry starts an entirely new opencode
+    session and this class of error looks exactly like the kind of transient
+    session-state hiccup the existing backoff message already describes.
     """
     result = None
     for attempt in range(1, LLM_TRANSIENT_RETRIES + 1):
-        result = get(llm.prompt.chia_remote(llm, prompt_text, tools=[]))
+        try:
+            result = get(llm.prompt.chia_remote(llm, prompt_text, tools=[]))
+        except Exception as exc:
+            result = SimpleNamespace(success=False, result=f"LLM call raised: {exc}")
         if result.success or attempt == LLM_TRANSIENT_RETRIES:
             return result
         wait = LLM_BACKOFF_SECONDS * attempt
@@ -1325,10 +1341,32 @@ def run_closure_loop(
         if batch_size > 1:
             prompt_text = _build_proposal_prompt(iteration, [])
             t0 = time.time()
+            futures = [llm.prompt.chia_remote(llm, prompt_text, tools=[])
+                       for _ in range(batch_size)]
             with _Heartbeat(f"Batch decisions ({batch_size} concurrent LLM calls, "
                             f"iteration {iteration})"):
-                replies = get([llm.prompt.chia_remote(llm, prompt_text, tools=[])
-                               for _ in range(batch_size)])
+                try:
+                    replies = get(futures)
+                except Exception as exc:
+                    # Same fix as _run_flow_batch's WORKER_DIED handling below,
+                    # applied here: get() on a list re-raises the first failure
+                    # it finds regardless of the other N-1 futures, which are
+                    # often succeeding normally (observed live: InvalidRequestError,
+                    # "Requests ending with a model turn are not supported", from
+                    # one concurrent call on the single hello_opencode container
+                    # -- crashed the whole driver mid-run rather than costing just
+                    # that one slot). Re-fetch each future on its own instead; an
+                    # already-failed one re-raises immediately (Ray caches it, no
+                    # re-run), an already-succeeded one returns just as fast.
+                    print(f"  (warning: a batch LLM call failed: {exc} -- "
+                          "salvaging the round's other replies instead of losing all of them)")
+                    replies = []
+                    for fut in futures:
+                        try:
+                            replies.append(get(fut))
+                        except Exception as fut_exc:
+                            replies.append(SimpleNamespace(
+                                success=False, result=f"LLM call raised: {fut_exc}"))
             print(f"  {batch_size} concurrent LLM decisions finished in {time.time()-t0:.1f}s")
             for cli in replies:
                 proposal, _gave_up = _parse_proposal_reply(cli, iteration, len(candidates))
@@ -1649,9 +1687,17 @@ def run_closure_loop(
             # has ever closed across the whole run, that is a real failure;
             # if an earlier iteration DID close, its result is still the
             # final answer -- this iteration just couldn't improve on it.
+            #
+            # final_status was left at whatever this iteration's abort path set
+            # it to ("agent_gave_up") in BOTH cases -- it needs correcting back
+            # to "closed" here when an earlier iteration's result is the real
+            # final answer, or run_signoff's `final_status == "closed"` gate
+            # (and the reported top-level status) wrongly call a run that
+            # closed cleanly a give-up, and skip signoff on a real result.
             if last_closed is None:
                 final_status = "no_closure"
-            break
+            else:
+                final_status = "closed"
             break
 
     # ------------------------------------------------------------- wrap up
