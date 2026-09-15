@@ -1,0 +1,50 @@
+version: '1.0'
+verdict: generation_bug
+root_cause:
+  category: coverage
+  summary: The generated TB's coverage.py write() calls the non-existent .sample()
+    method on the CoverPoint/CoverCross objects returned by coverage_db[...]. In the
+    installed cocotb-coverage 1.2.0 these objects expose no .sample() method, so 10
+    of 11 tests crash with AttributeError on the first monitor transaction before
+    assertions and the scoreboard can complete. The library sampling mechanism is
+    to call the decorator-wrapped functions, which the file already defines.
+  evidence: 'All 11 tests report runtime_error (returncode 2, clean_exit=false). 10
+    of 11 crash in AxiHandshakeCoverage.write at coverage.py:130 with AttributeError:
+    ''CoverPoint'' object has no attribute ''sample'' (invoked from monitor.py:84
+    via the pyuvm analysis port); RandomStimulusTest instead stops at assertions.py:116
+    with the s_ready_only_when_can_accept violation (the intended detection of the
+    deliberately-broken RTL). Verified by source inspection of cocotb-coverage 1.2.0
+    and a standalone reproduction; _handshake_cross(...) and _payload_bins(...) sample
+    successfully. simulation_result.json reports compatibility_findings: [].'
+changes:
+- file: coverage.py
+  action: modify
+  reason: coverage.py write() calls coverage_db['handshake_cg.input_transfer_bin'].sample(...),
+    coverage_db['handshake_cg.output_transfer_bin'].sample(...), and coverage_db['payload_cg.payload_value_bin'].sample(...),
+    but cocotb-coverage 1.2.0 CoverPoint/CoverCross expose no .sample() method, crashing
+    every test on the first cycle in shared generated infrastructure.
+  instructions:
+  - Delete the two .sample() calls at lines 130-133 (coverage_db['handshake_cg.input_transfer_bin'].sample(input_transfer)
+    and coverage_db['handshake_cg.output_transfer_bin'].sample(output_transfer)).
+    The existing _handshake_cross(input_transfer, output_transfer) call at line 138
+    already samples both handshake coverpoints and the cross through the decorator
+    chain.
+  - Replace the coverage_db['payload_cg.payload_value_bin'].sample(s_data) block (lines
+    141-144) with _payload_bins(s_data), keeping the 'if input_transfer:' guard.
+validation:
+  tests:
+  - SmokeAfterResetTest
+  - StallHoldTest
+  - SimultaneousTransferTest
+  - SequentialLoadsTest
+  - NoInputWhenStalledTest
+  - ResetDuringTransferTest
+  - BackToBackFullRateTest
+  - AllZeroPayloadTest
+  - AllOnePayloadTest
+  - ProducerHoldsForeverTest
+  - RandomStimulusTest
+  requirements:
+  - build succeeds
+  - no UVM_ERROR or UVM_FATAL
+  - no reference-model mismatch

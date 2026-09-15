@@ -1,9 +1,9 @@
 """
-Reusable CHIA/OpenCode LLM client.
+Reusable CHIA/OpenCode LLM client with configurable providers.
 
-This module deliberately does not depend on Anthropic or any other
-provider SDK. It uses the same OpenCodeLLM configuration and execution
-pattern used by the existing CHIA pipeline.
+The default is Google Gemini through OpenCode. The OpenCode model ID
+remains configurable through LLM_MODEL so existing OpenCode/OpenRouter
+models can still be selected without changing pipeline code.
 
 The public interface is intentionally small so both verification-plan
 generation and UVM-generation can use the same client.
@@ -43,10 +43,10 @@ def _load_model_name() -> str:
 
         return cfg.get("llm", {}).get(
             "default_model",
-            "opencode/big-pickle",
+            "google/gemini-2.5-flash",
         )
     except Exception:
-        return "opencode/big-pickle"
+        return "google/gemini-2.5-flash"
 
 
 def _load_int_env(name: str, default: int) -> int:
@@ -134,7 +134,9 @@ def _extract_json(text: str) -> str:
 
 class LLMClient:
     """
-    Thin reusable interface over CHIA's OpenCodeLLM.
+    Thin reusable interface over CHIA's OpenCodeLLM. The selected model
+    may be Google Gemini, OpenRouter, OpenCode, or another provider supported
+    by the installed OpenCode version.
 
     The rest of the pipeline should not need to know whether the model
     is OpenCode, Claude, GPT, etc. The backend configuration lives here.

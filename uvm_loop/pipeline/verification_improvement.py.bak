@@ -1,0 +1,353 @@
+"""Metric-driven, RTL-blind improvement loop for generated cocotb+pyuvm TBs.
+
+The simulator may see RTL.  The improvement LLM never does: it operates on a
+sanitized workspace containing only the specification, reference model,
+verification plan, current TB, and a structured weakness report.
+"""
+from __future__ import annotations
+
+import json
+import re
+import shutil
+from pathlib import Path
+from typing import Any
+import yaml
+
+
+PROTECTED = {"specification", "reference_model", "verification_plan"}
+ALLOWED_TB_SUFFIXES = {".py", ".yaml", ".yml", ".md", ".json", ".toml", ".ini", ".txt", ".sh"}
+
+
+def _read(path: Path) -> str:
+    return path.read_text(errors="replace") if path.exists() else ""
+
+
+def _all_logs(result: dict[str, Any]) -> str:
+    chunks = []
+    for t in (result.get("tests") or {}).values():
+        chunks.append(str(t.get("log", "")))
+    build = result.get("build") or {}
+    chunks.append(str(build.get("log", "")))
+    return "\n".join(chunks)
+
+
+def parse_coverage(result: dict[str, Any], tb_dir: Path | None = None) -> dict[str, Any]:
+    """Extract best-effort cocotb-coverage percentages from simulator logs.
+
+    Coverage is optional: if a generated TB does not print a percentage, the
+    metric is reported as unavailable rather than fabricated.
+    """
+    text = _all_logs(result)
+    values = []
+    for m in re.finditer(r"(?i)(?:coverage|cover(?:age)?\s*percentage|cover_percentage)[^\n%]{0,100}(\d+(?:\.\d+)?)\s*%", text):
+        try:
+            v = float(m.group(1))
+            if 0 <= v <= 100:
+                values.append(v)
+        except ValueError:
+            pass
+    # Also accept the common "name: 87.5%" report form when the line contains
+    # a coverage-related token anywhere.
+    for line in text.splitlines():
+        if "%" not in line or "cover" not in line.lower():
+            continue
+        for m in re.finditer(r"(\d+(?:\.\d+)?)\s*%", line):
+            v = float(m.group(1))
+            if 0 <= v <= 100:
+                values.append(v)
+    # Prefer an exported cocotb-coverage YAML/XML artifact when the TB writes one.
+    if tb_dir and tb_dir.exists():
+        for artifact in list(tb_dir.rglob("*.yml")) + list(tb_dir.rglob("*.yaml")):
+            if artifact.name == "generation_manifest.yaml":
+                continue
+            raw = _read(artifact)
+            if "coverage" not in raw.lower() and "cover_percentage" not in raw.lower():
+                continue
+            for m in re.finditer(r"(?:cover(?:age)?(?:_percentage)?|percentage)[^\n:]{0,80}[:=]\s*(\d+(?:\.\d+)?)", raw, re.I):
+                v = float(m.group(1))
+                if 0 <= v <= 100:
+                    values.append(v)
+    if not values:
+        return {"available": False, "percentage": None}
+    return {"available": True, "percentage": max(values)}
+
+
+def _scenario_tokens(plan: dict[str, Any]) -> list[str]:
+    out = []
+    for s in plan.get("directed_test_scenarios", []) or []:
+        if isinstance(s, dict):
+            name = str(s.get("name", s.get("id", "")))
+            if name:
+                out.append(name)
+    return out
+
+
+def _normalise(s: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "", s.lower())
+
+
+def analyze_verification_state(
+    plan_path: str | Path,
+    tb_dir: str | Path,
+    result_path: str | Path,
+    iteration: int,
+    previous_report: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Create a deterministic weakness report from plan, TB and results."""
+    plan = yaml.safe_load(Path(plan_path).read_text()) or {}
+    result = json.loads(Path(result_path).read_text())
+    root = Path(tb_dir)
+    py_files = sorted(root.glob("*.py"))
+    source = "\n".join(_read(p) for p in py_files)
+    manifest = {}
+    mp = root / "generation_manifest.yaml"
+    if mp.exists():
+        manifest = yaml.safe_load(mp.read_text()) or {}
+
+    tests = result.get("tests") or {}
+    passed = sum(1 for x in tests.values() if x.get("status") == "pass" and x.get("clean_exit"))
+    total = len(tests)
+    failed = total - passed
+    cov = parse_coverage(result, root)
+
+    assertions = len(re.findall(r"assert\s+", source))
+    checker_coroutines = len(re.findall(r"async\s+def\s+_check_", source))
+    test_classes = len(re.findall(r"class\s+\w*Test\s*\(", source))
+    sequences = len(re.findall(r"class\s+\w*Sequence\s*\(", source))
+
+    weaknesses: list[dict[str, Any]] = []
+    if failed:
+        weaknesses.append({
+            "id": "W-TEST-HEALTH",
+            "category": "test_health",
+            "severity": "high",
+            "description": f"{failed} of {total} runnable tests did not complete successfully.",
+            "evidence": {"passed": passed, "total": total},
+        })
+    if checker_coroutines == 0 and assertions == 0:
+        weaknesses.append({
+            "id": "W-ASSERTIONS",
+            "category": "checking",
+            "severity": "high",
+            "description": "No explicit Python assertion/checker evidence was found in the generated TB.",
+        })
+
+    scenarios = _scenario_tokens(plan)
+    test_names = [str(x) for x in manifest.get("test_classes", [])]
+    norm_tests = {_normalise(x) for x in test_names}
+    unmatched = [s for s in scenarios if _normalise(s) and not any(_normalise(s) in t or t in _normalise(s) for t in norm_tests)]
+    if unmatched:
+        weaknesses.append({
+            "id": "W-SCENARIO-COVERAGE",
+            "category": "stimulus",
+            "severity": "medium",
+            "description": "Plan scenarios do not have an obvious corresponding generated test entry.",
+            "scenarios": unmatched,
+        })
+
+    coverage_plan = plan.get("functional_coverage") or {}
+    planned_groups = coverage_plan.get("covergroups", []) if isinstance(coverage_plan, dict) else []
+    planned_points = 0
+    planned_crosses = 0
+    for g in planned_groups or []:
+        if isinstance(g, dict):
+            planned_points += len(g.get("bins", []) or [])
+            planned_crosses += len(g.get("crosses", []) or [])
+    coverage_defs = len(re.findall(r"\bCoverPoint\s*\(", source))
+    cross_defs = len(re.findall(r"\bCoverCross\s*\(", source))
+    if planned_points and coverage_defs < planned_points:
+        weaknesses.append({
+            "id": "W-COVERAGE-DEFS",
+            "category": "coverage",
+            "severity": "medium",
+            "description": "Generated coverage implementation has fewer CoverPoint definitions than the plan's coverage entries.",
+            "evidence": {"planned": planned_points, "generated": coverage_defs},
+        })
+    if planned_crosses and cross_defs < planned_crosses:
+        weaknesses.append({
+            "id": "W-CROSS-DEFS",
+            "category": "coverage",
+            "severity": "medium",
+            "description": "Generated coverage implementation has fewer CoverCross definitions than the plan.",
+            "evidence": {"planned": planned_crosses, "generated": cross_defs},
+        })
+
+    if not cov["available"]:
+        weaknesses.append({
+            "id": "W-COVERAGE-METRIC",
+            "category": "measurement",
+            "severity": "medium",
+            "description": "No machine-readable functional coverage percentage was observed in simulation output.",
+            "action": "Add deterministic coverage export/reporting to the TB without weakening existing checks.",
+        })
+
+    test_health = 100.0 * passed / total if total else 0.0
+    if cov["available"]:
+        coverage_quality = float(cov["percentage"])
+    elif planned_points:
+        coverage_quality = min(100.0, 100.0 * coverage_defs / planned_points)
+    else:
+        coverage_quality = 0.0
+
+    planned_assertions = len(plan.get("useful_assertions", []) or [])
+    if planned_assertions:
+        assertion_quality = min(100.0, 100.0 * checker_coroutines / planned_assertions)
+    else:
+        assertion_quality = 100.0 if checker_coroutines else 0.0
+
+    scenario_quality = 100.0
+    if scenarios:
+        scenario_quality = 100.0 * (len(scenarios) - len(unmatched)) / len(scenarios)
+
+    # Objective score used only for candidate acceptance. It deliberately
+    # rewards execution health most heavily and uses structural proxies when
+    # a generated TB does not expose a runtime coverage database.
+    quality_score = round(
+        0.35 * test_health
+        + 0.30 * coverage_quality
+        + 0.20 * assertion_quality
+        + 0.15 * scenario_quality,
+        2,
+    )
+
+    # Strip implementation-identifying paths from the feedback artifact. The
+    # LLM should see verification evidence, not the RTL location or command.
+    safe_result = {
+        "status": result.get("status"),
+        "tests": {
+            name: {
+                "status": data.get("status"),
+                "clean_exit": data.get("clean_exit"),
+                "timed_out": data.get("timed_out"),
+                "counts": data.get("counts", {}),
+                "log": str(data.get("log", ""))[-6000:],
+            }
+            for name, data in tests.items()
+        },
+    }
+
+    report = {
+        "schema_version": "1.0",
+        "iteration": iteration,
+        "quality_score": quality_score,
+        "metrics": {
+            "tests_total": total,
+            "tests_passed": passed,
+            "tests_failed": failed,
+            "functional_coverage": cov,
+            "planned_coverage_points": planned_points,
+            "generated_coverage_points": coverage_defs,
+            "planned_coverage_crosses": planned_crosses,
+            "generated_coverage_crosses": cross_defs,
+            "python_assertions": assertions,
+            "checker_coroutines": checker_coroutines,
+            "test_classes": test_classes,
+            "sequences": sequences,
+            "planned_assertions": planned_assertions,
+            "test_health_score": round(test_health, 2),
+            "coverage_quality_score": round(coverage_quality, 2),
+            "assertion_quality_score": round(assertion_quality, 2),
+            "scenario_quality_score": round(scenario_quality, 2),
+        },
+        "weaknesses": weaknesses,
+        "authoritative_inputs": ["specification", "reference_model", "verification_plan"],
+        "rtl_exposed_to_llm": False,
+        "simulation_evidence": safe_result,
+    }
+    if previous_report:
+        report["comparison"] = {
+            "previous_quality_score": previous_report.get("quality_score"),
+            "delta": round(quality_score - float(previous_report.get("quality_score", quality_score)), 2),
+        }
+    return report
+
+
+def prepare_sanitized_workspace(
+    workspace: str | Path,
+    spec_path: str | Path,
+    ref_model_path: str | Path,
+    plan_path: str | Path,
+    tb_dir: str | Path,
+    weakness_report: dict[str, Any],
+) -> Path:
+    """Create the only filesystem tree exposed to the improvement agent."""
+    root = Path(workspace).resolve()
+    if root.exists():
+        shutil.rmtree(root)
+    (root / "tb").mkdir(parents=True)
+    shutil.copy2(spec_path, root / "specification.md")
+    shutil.copy2(ref_model_path, root / "reference_model.py")
+    shutil.copy2(plan_path, root / "verification_plan.yaml")
+    src_tb = Path(tb_dir)
+    for p in src_tb.rglob("*"):
+        if not p.is_file() or p.name in {"libchia_ref_model.so"}:
+            continue
+        rel = p.relative_to(src_tb)
+        # Never copy generated build trees, compiled objects, or caches.
+        if any(part in {".chia_sim", "__pycache__", ".git"} for part in rel.parts):
+            continue
+        dest = root / "tb" / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(p, dest)
+    (root / "weakness_report.yaml").write_text(yaml.safe_dump(weakness_report, sort_keys=False))
+    return root
+
+
+def collect_tb_changes(sanitized_tb: Path, real_tb: Path) -> list[str]:
+    """Apply only TB changes from the sanitized workspace; return changed files."""
+    changed = []
+    src_files = {p.relative_to(sanitized_tb) for p in sanitized_tb.rglob("*") if p.is_file() and not p.is_symlink()}
+    dst_files = {p.relative_to(real_tb) for p in real_tb.rglob("*") if p.is_file() and not p.is_symlink()}
+    for rel in sorted(src_files | dst_files):
+        if rel.parts[0] in {".chia_sim", "__pycache__", ".git"}:
+            continue
+        if rel.suffix.lower() not in ALLOWED_TB_SUFFIXES:
+            continue
+        src = sanitized_tb / rel
+        dst = real_tb / rel
+        if src.exists():
+            before = dst.read_bytes() if dst.exists() else None
+            after = src.read_bytes()
+            if before != after:
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src, dst)
+                changed.append(str(rel))
+        elif dst.exists():
+            dst.unlink()
+            changed.append(str(rel))
+    return changed
+
+
+def build_improvement_prompt(workspace: str | Path) -> str:
+    root = Path(workspace)
+    return f"""
+You are an autonomous verification-environment improvement engineer.
+
+Your filesystem is intentionally sanitized. You may access ONLY:
+- {root}/specification.md
+- {root}/reference_model.py
+- {root}/verification_plan.yaml
+- {root}/weakness_report.yaml
+- {root}/tb/
+
+The RTL implementation is NOT available and must remain unknown. Do not try
+path traversal, do not search parent directories, and do not request RTL.
+The specification and reference model are authoritative for functionality.
+The weakness report is authoritative evidence about the current environment.
+
+TASK:
+Improve the EXISTING TB in {root}/tb by addressing the highest-value reported
+weaknesses. Prefer small, targeted edits over regeneration. Preserve working
+tests, checks, coverage and public test names. Do not weaken checks to improve
+metrics. Do not modify the specification, reference model, or plan.
+
+The resulting TB must remain cocotb + pyuvm and must be runnable by the existing
+simulation manifest. If a weakness is not actionable from the supplied evidence,
+do not invent a DUT behavior to address it.
+
+After editing, inspect the changed files for Python syntax, imports, pyuvm phase
+correctness, race conditions, and consistency with the contract. Do not edit
+outside {root}/tb.
+
+Return a concise summary only. The actual deliverable is the modified files.
+""".strip()

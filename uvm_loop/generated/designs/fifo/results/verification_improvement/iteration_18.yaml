@@ -1,0 +1,235 @@
+schema_version: '1.0'
+iteration: 18
+quality_score: 79.57
+metrics:
+  tests_total: 13
+  tests_passed: 12
+  tests_failed: 1
+  functional_coverage:
+    available: true
+    percentage: 87.5
+  planned_coverage_points: 7
+  generated_coverage_points: 7
+  planned_coverage_crosses: 5
+  generated_coverage_crosses: 5
+  python_assertions: 19
+  checker_coroutines: 1
+  test_classes: 13
+  sequences: 0
+  planned_assertions: 7
+  test_health_score: 92.31
+  coverage_quality_score: 87.5
+  assertion_quality_score: 100.0
+  scenario_quality_score: 0.0
+  scenario_coverage:
+    planned: 10
+    generated: 10
+    executed: 0
+    score: 0.0
+    planned_ids:
+    - TC001
+    - TC002
+    - TC003
+    - TC004
+    - TC005
+    - TC006
+    - TC007
+    - TC008
+    - TC009
+    - TC010
+    generated_ids:
+    - TC001
+    - TC002
+    - TC003
+    - TC004
+    - TC005
+    - TC006
+    - TC007
+    - TC008
+    - TC009
+    - TC010
+    executed_ids: []
+  parameter_coverage:
+    available: false
+    score: 100.0
+    planned: {}
+    observed: {}
+  tb_quality_score: 79.57
+weaknesses:
+- id: W-RANDOMIZED-TEST-CRASH
+  severity: critical
+  category: test_infrastructure
+  title: FifoRandomizedTest crashes before completing any seed iteration
+  affected_tests:
+  - FifoRandomizedTest
+  evidence:
+  - 'simulation_result.json FifoRandomizedTest: status=runtime_error, returncode=2,
+    clean_exit=false, timed_out=false, watchdog_expired=false'
+  - "simulation_result.json FifoRandomizedTest counts: uvm_errors=0, scoreboard_mismatches=0,\
+    \ assertion_failures=0 \u2014 all zero because the crash occurs before UVM-level\
+    \ statistics are populated"
+  - simulation_result.json overall status is functional_failure, driven entirely by
+    the FifoRandomizedTest runtime_error
+  - "The FifoRandomizedTest log shows normal initialization (UVM_TESTNAME resolved,\
+    \ parameters logged) followed by a truncated py.warnings WARNING at 0.00ns, then\
+    \ no further log output \u2014 the crash occurs very early, before any randomized\
+    \ traffic or reset injection is exercised"
+  likely_cause: 'Inference: the crash is a Python-level exception (returncode 2 on
+    Verilator/cocotb, not returncode 1 which would indicate a test assertion failure).
+    The randomized test is the only test that runs 10 seed iterations of FifoRandomizedSeq
+    (240 cycles each with periodic and mid-test reset injections). The truncated py.warnings
+    WARNING at 0.00ns suggests a compatibility or import issue that manifests only
+    in the randomized test''s execution path. The crash prevents any randomized traffic
+    from being checked.'
+  investigation_targets:
+  - "tb/test.py (FifoRandomizedTest._run_scenario \u2014 the multi-seed iteration\
+    \ loop)"
+  - "tb/sequences.py (FifoRandomizedSeq.body \u2014 the reset injection and random\
+    \ drive loop)"
+  - "tb/driver.py (FifoDriver.run_phase \u2014 the get_next_item/item_done loop across\
+    \ seed boundaries)"
+  - The full cocotb simulation log (truncated in simulation_result.json; the WARNING
+    content and any subsequent traceback are needed)
+  recommended_action: Retrieve the full untruncated cocotb log for FifoRandomizedTest
+    to identify the exact Python exception and traceback. Common causes include pyuvm
+    API incompatibilities during multi-seed sequencer restarts, cocotb event-loop
+    conflicts between sequence reset injections and the driver coroutine, or coverage_db
+    accumulation errors across iterations.
+  confidence: high
+- id: W-NO-RANDOMIZED-COVERAGE
+  severity: high
+  category: coverage_gap
+  title: No randomized functional coverage data collected or exported
+  affected_tests:
+  - FifoRandomizedTest
+  evidence:
+  - FifoRandomizedTest crashed (W-RANDOMIZED-TEST-CRASH) before report_phase, so FifoCoverage.report_phase
+    never executed and no per-test YAML/XML coverage files were exported for the randomized
+    test
+  - "The cross-test coverage merge (coverage.py _merge_per_test_coverage) therefore\
+    \ cannot include the randomized test's contribution \u2014 the most statistically\
+    \ comprehensive coverage data is missing"
+  - All 12 passing tests are short directed/corner/back-to-back scenarios; their aggregate
+    coverage hits all reachable op_against_flags bins and occupancy levels, but this
+    is per-test-max merging, not true concurrent coverage under random traffic
+  likely_cause: Direct consequence of W-RANDOMIZED-TEST-CRASH. The coverage report_phase
+    (which exports files and runs the merge) is a UVM phase that only executes after
+    the test body completes successfully. Since the test crashes mid-execution, report_phase
+    never runs.
+  investigation_targets:
+  - "tb/coverage.py (FifoCoverage.report_phase \u2014 never invoked for the crashed\
+    \ test)"
+  - "tb/test.py (FifoRandomizedTest._run_scenario \u2014 the crash point)"
+  recommended_action: Fix the randomized test crash (W-RANDOMIZED-TEST-CRASH) so that
+    report_phase executes and coverage data is exported. Additionally, consider whether
+    the cocotb-coverage coverage_db singleton accumulates state across seed iterations
+    in a way that could cause issues.
+  confidence: high
+- id: W-RANDOMIZED-STIMULUS-UNVERIFIED
+  severity: high
+  category: incomplete_verification
+  title: Constrained-random traffic with periodic and mid-test reset injections was
+    never exercised
+  affected_tests:
+  - FifoRandomizedTest
+  evidence:
+  - FifoRandomizedTest log shows the test started but crashed before any drive_item
+    calls or reset injections could be logged (no cycle-by-cycle debug output appears
+    in the truncated log)
+  - "The verification_plan.yaml randomized_testing_strategy specifies 240 cycles per\
+    \ seed with periodic resets (every 60 cycles, duration 2-3) and one random mid-test\
+    \ reset (duration 1-4) \u2014 none of this was executed"
+  - "The pass_criteria for randomized testing requires zero scoreboard mismatches\
+    \ across all randomized runs including reset injections \u2014 this criterion\
+    \ was never satisfied because the runs never happened"
+  likely_cause: 'Inference: the randomized test infrastructure (multi-seed loop, sequence
+    restart, or reset injection logic) has a bug that causes a crash. The directed
+    tests each run a single sequence and complete successfully, so the crash is specific
+    to the randomized test''s execution pattern.'
+  investigation_targets:
+  - "tb/sequences.py (FifoRandomizedSeq._inject_reset \u2014 the reset injection primitive)"
+  - "tb/sequences.py (FifoRandomizedSeq.body \u2014 the main random traffic loop with\
+    \ reset scheduling)"
+  - "tb/test.py (FifoRandomizedTest \u2014 the multi-seed iteration with ClockCycles\
+    \ drain between seeds)"
+  recommended_action: After fixing the crash, verify that all 10 seed iterations complete
+    with zero scoreboard mismatches. Consider reducing RANDOM_SEED_COUNT to 1 for
+    initial debugging, then scale back to 10.
+  confidence: high
+- id: W-ASSERTION-CRASH-UNDIAGNOSTIC
+  severity: medium
+  category: observability
+  title: Simulation framework does not propagate cocotb assertion-checker failures
+    to the test counts
+  affected_tests:
+  - FifoRandomizedTest
+  evidence:
+  - simulation_result.json FifoRandomizedTest counts show assertion_failures=0 despite
+    the test crashing with runtime_error
+  - The always-on assertion checkers (assertions.py) are started with cocotb.start_soon
+    before the UVM test; an AssertionError from any checker would propagate to the
+    cocotb framework as a test failure (returncode 1), not as a UVM count
+  - The returncode=2 (Python exception, not assertion failure) suggests the crash
+    is infrastructure-level, but without the full log we cannot definitively rule
+    out an assertion-checker crash that manifests as returncode 2 on this cocotb/simulator
+    combination
+  likely_cause: 'Inference: the cocotb test framework''s exit-code mapping may conflate
+    different failure modes under returncode 2. The assertion_failures=0 count is
+    a UVM-level counter that only tracks failures detected within the UVM test/report
+    phases, not cocotb-level AssertionError from start_soon tasks.'
+  investigation_targets:
+  - "tb/assertions.py (all checker coroutines \u2014 whether any could raise during\
+    \ the randomized test's execution)"
+  - The full cocotb log (to distinguish between an infrastructure crash and an assertion
+    checker failure)
+  recommended_action: Add explicit logging at the start of each assertion checker's
+    loop iteration (at debug level) so that the last processed cycle is visible in
+    the log even after a crash. This aids post-mortem diagnosis.
+  confidence: medium
+- id: W-IDLE-WALL-LIMITS-THROUGHPUT-STRESS
+  severity: low
+  category: stimulus_gap
+  title: Driver inserts an idle cycle between every consecutive stimulus item, preventing
+    back-to-back non-idle operation testing
+  affected_tests:
+  - FifoBackToBackTest
+  - FifoRandomizedTest
+  evidence:
+  - 'driver.py FifoDriver.run_phase: after item_done(), _drive_idle() is called before
+    looping back to get_next_item(). The driver aligns to the next FallingEdge before
+    driving the next item, guaranteeing at least one idle cycle (wr_en=0, rd_en=0)
+    between consecutive non-idle cycles'
+  - FifoBackToBackSeq sends consecutive _drive_item calls, but the driver's idle wall
+    means the DUT never sees two consecutive rising edges with non-idle inputs
+  - For a synchronous FIFO with combinational full/empty flags, consecutive non-idle
+    cycles produce the same state transitions as idle-separated cycles (each cycle's
+    behavior depends only on pre-edge state and current inputs), so this is a semantic
+    gap only for a specific RTL implementation pattern, not for general FIFO correctness
+  likely_cause: Design choice in driver.py to insert an idle no-op between items.
+    The CONTRACT.md section 9.3 documents this as a deliberate 'wall' that is a declared
+    no-op for FIFO semantics.
+  investigation_targets:
+  - "tb/driver.py (FifoDriver.run_phase \u2014 the idle cycle insertion after item_done)"
+  recommended_action: For FIFO verification this is acceptable since each cycle's
+    behavior is state-dependent, not history-dependent. If later testing with non-standard
+    FIFO implementations (e.g., show-ahead mode) is needed, modify the driver to support
+    consecutive non-idle cycles.
+  confidence: medium
+authoritative_inputs:
+- specification
+- reference_model
+- verification_plan
+rtl_exposed_to_llm: false
+comparison:
+  previous_quality_score: 81.88
+  delta: -2.31
+analysis_summary:
+  overall_status: verification_weakness
+  tests_total: 13
+  tests_passed: 12
+  tests_failed: 1
+changed_files:
+- test.py
+analysis_report_path: /home/auralab/nwark/chia_sept7_for_multi_rtl_with_multi_llm/for_multiple_rtl_updation_generalized/generated/designs/fifo/llm_verification_analysis_workspace/weakness_report.yaml
+decision_path: /home/auralab/nwark/chia_sept7_for_multi_rtl_with_multi_llm/for_multiple_rtl_updation_generalized/generated/designs/fifo/results/verification_improvement/decisions/iteration_18.yaml
+accepted: false

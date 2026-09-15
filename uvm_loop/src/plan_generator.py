@@ -87,16 +87,25 @@ def main():
     parser.add_argument("--rtl", required=True)
     parser.add_argument("--spec", required=True)
     parser.add_argument("--ref-model", required=True)
-    parser.add_argument("--out", default="generated_plans/verification_plan.yaml")
+    parser.add_argument("--out", default=None, help="Output plan path; defaults to <out-parent>/<benchmark>/plans/verification_plan.yaml when --benchmark is set")
+    parser.add_argument("--benchmark", default=None, help="Benchmark name used for isolated generated output")
+    parser.add_argument("--out-parent", default="generated/designs", help="Parent for isolated benchmark output")
     args = parser.parse_args()
 
     plan = generate_plan(args.rtl, args.spec, args.ref_model)
 
-    os.makedirs(os.path.dirname(args.out), exist_ok=True)
-    with open(args.out, "w") as f:
+    if args.out:
+        output = args.out
+    elif args.benchmark:
+        output = os.path.join(args.out_parent, args.benchmark, "plans", "verification_plan.yaml")
+    else:
+        raise SystemExit("Specify --out or use --benchmark")
+
+    os.makedirs(os.path.dirname(output), exist_ok=True)
+    with open(output, "w") as f:
         yaml.safe_dump(plan.model_dump(), f, sort_keys=False)
 
-    print(f"Wrote {args.out}")
+    print(f"Wrote {output}")
 
 
 if __name__ == "__main__":

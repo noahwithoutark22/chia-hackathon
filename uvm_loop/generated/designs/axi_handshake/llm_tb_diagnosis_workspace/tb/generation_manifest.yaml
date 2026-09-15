@@ -1,0 +1,60 @@
+# Generation Manifest — axi_handshake cocotb+pyuvm testbench
+# This file is the authoritative mapping between the verification plan
+# and the generated verification environment.
+
+top_module: axi_handshake
+top_file: benchmarks/axi_handshake/axi_handshake.sv
+
+# HDL source files passed directly to the simulator.
+# Only the existing DUT RTL is listed — no generated SystemVerilog.
+compile_files:
+  - benchmarks/axi_handshake/axi_handshake.sv
+
+# pyuvm test class names selectable via UVM_TESTNAME env var.
+test_classes:
+  - SmokeAfterResetTest
+  - StallHoldTest
+  - SimultaneousTransferTest
+  - SequentialLoadsTest
+  - NoInputWhenStalledTest
+  - ResetDuringTransferTest
+  - BackToBackFullRateTest
+  - AllZeroPayloadTest
+  - AllOnePayloadTest
+  - ProducerHoldsForeverTest
+  - RandomStimulusTest
+
+# Top-level Python cocotb test module (without .py extension).
+python_test_module: test_top
+
+# Authoritative mapping: verification_plan scenario ID → sequence + test class.
+scenarios:
+  - id: smoke_after_reset
+    name: Smoke test after reset
+    sequence: SmokeAfterResetSequence
+    test: SmokeAfterResetTest
+
+  - id: stall_hold
+    name: Output stall must hold m_valid and m_data
+    sequence: StallHoldSequence
+    test: StallHoldTest
+
+  - id: simultaneous_transfer
+    name: Simultaneous input accept and output consume
+    sequence: SimultaneousTransferSequence
+    test: SimultaneousTransferTest
+
+  - id: sequential_loads
+    name: Sequential loads with consumption between
+    sequence: SequentialLoadsSequence
+    test: SequentialLoadsTest
+
+  - id: no_input_when_stalled
+    name: s_ready deasserted during output stall
+    sequence: NoInputWhenStalledSequence
+    test: NoInputWhenStalledTest
+
+  - id: reset_during_transfer
+    name: Reset mid-transfer clears buffer
+    sequence: ResetDuringTransferSequence
+    test: ResetDuringTransferTest

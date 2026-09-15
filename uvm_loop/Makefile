@@ -1,46 +1,44 @@
+BENCHMARK ?= adder
+DESIGN_CONFIG ?= pipeline/designs/$(BENCHMARK).yaml
+BENCHMARK_ROOT ?= generated/designs/$(BENCHMARK)
+TB_DIR := $(BENCHMARK_ROOT)/tb
+EXAMPLE_RTL ?= $(shell python3 -c "import yaml; c=yaml.safe_load(open('$(DESIGN_CONFIG)')); print(c['rtl'])")
 TOP ?= adder_tb_top
-GEN_TB_DIR := generated_tb
-EXAMPLE_RTL := examples/adder/adder.sv
-BUILD_DIR := build
+BUILD_DIR ?= $(BENCHMARK_ROOT)/build-smoke
 
 .PHONY: pipeline sim clean build-sim-image sim-generated
 
 pipeline:
-	./scripts/run_pipeline.sh
+	python3 -m pipeline.run14 --design-config $(DESIGN_CONFIG)
 
 # Quick structural smoke-test with plain Verilator.
-# This target is intentionally separate from the full UVM worker flow.
 sim:
 	mkdir -p $(BUILD_DIR)
 	verilator --binary -j 0 \
-		-I$(GEN_TB_DIR) \
+		-I$(TB_DIR) \
 		--top-module $(TOP) \
 		$(EXAMPLE_RTL) \
-		$(GEN_TB_DIR)/*.sv \
+		$(TB_DIR)/*.sv \
 		-Mdir $(BUILD_DIR) \
 		--Wno-fatal
 	./$(BUILD_DIR)/V$(TOP)
 
 clean:
-	rm -rf $(BUILD_DIR) generated_plans generated_tb generated/results
-	mkdir -p generated_plans generated_tb generated/results
+	rm -rf generated/designs
+	mkdir -p generated/designs
 
 # Build the Ray/CHIA-based simulation worker image.
 build-sim-image:
 	docker build -f workers/sim/chia.Dockerfile -t chia-sim-worker:chia-local .
 
-# Run the standalone UVM/Verilator simulation worker.
-#
-# IMPORTANT:
-# chia-sim-worker:chia-local already has run.py as its ENTRYPOINT,
-# so docker run must receive only run.py's command-line arguments.
+# Run the standalone simulation worker for one benchmark.
 sim-generated:
-	mkdir -p generated/results
+	mkdir -p $(BENCHMARK_ROOT)/results
 	docker run --rm \
 		-v "$(PWD):/workspace" \
 		chia-sim-worker:chia-local \
-		--rtl /workspace/examples/adder/adder.sv \
-		--tb /workspace/generated_tb \
-		--output /workspace/generated/results/simulation_result.json \
+		--rtl /workspace/$(shell python3 -c "import yaml; c=yaml.safe_load(open('$(DESIGN_CONFIG)')); print(c['rtl'])") \
+		--tb /workspace/$(TB_DIR) \
+		--output /workspace/$(BENCHMARK_ROOT)/results/manual_simulation_result.json \
 		--test-timeout 60 \
 		--build-timeout 1800

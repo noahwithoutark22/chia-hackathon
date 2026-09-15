@@ -1,0 +1,24 @@
+schema_version: '1.0'
+action: repair
+root_cause: 'RTL sets dout to all-ones (''1) during async reset instead of all-zeros
+  (''0), violating the spec (''clears dout''), verification plan (reset_value.dout:
+  0), and reference model (reset() returns dout=0). The frozen TB assertion check_reset_clean_state
+  asserts dout==0 whenever rst_n==0, which fires during every test''s reset phase,
+  crashing all 13 tests with a Python AssertionError before UVM infrastructure can
+  report.'
+evidence:
+- 'RTL line 25: dout <= ''1 sets dout to 0xFF on reset, but spec line 17 says ''clears
+  dout'' (to 0)'
+- 'Verification plan reset_value section: dout: 0; reference_model.py reset(): returns
+  {''queue'': deque(), ''dout'': 0}'
+- 'TB assertions.py line 188: assert dout == 0 fires when rst_n==0 and dout is 0xFF,
+  crashing the cocotb test'
+- All 13 tests show status=runtime_error, returncode=2, clean_exit=false, scoreboard_mismatches=0
+  — consistent with a pre-UVM assertion crash in every test's reset phase
+confidence: high
+changes:
+- file: rtl.sv
+  action: modify
+  instructions:
+  - Change line 25 from 'dout   <= '1;' to 'dout   <= '0;' so that async reset clears
+    dout to 0 per spec, verification plan, and reference model

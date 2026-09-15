@@ -14,7 +14,7 @@ def main():
 
     parser.add_argument(
         "--model",
-        default="opencode/nemotron-3.5-lightning-free",
+        default=os.environ.get("LLM_MODEL", "google/gemini-2.5-flash"),
     )
 
     args = parser.parse_args()

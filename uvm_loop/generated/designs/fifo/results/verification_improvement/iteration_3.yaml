@@ -1,0 +1,176 @@
+schema_version: '1.0'
+iteration: 3
+quality_score: 58.8
+metrics:
+  tests_total: 13
+  tests_passed: 3
+  tests_failed: 10
+  functional_coverage:
+    available: true
+    percentage: 87.5
+  planned_coverage_points: 7
+  generated_coverage_points: 7
+  planned_coverage_crosses: 5
+  generated_coverage_crosses: 5
+  python_assertions: 19
+  checker_coroutines: 2
+  test_classes: 13
+  sequences: 0
+  planned_assertions: 7
+  test_health_score: 23.08
+  coverage_quality_score: 87.5
+  assertion_quality_score: 100.0
+  scenario_quality_score: 0.0
+  scenario_coverage:
+    planned: 10
+    generated: 10
+    executed: 0
+    score: 0.0
+    planned_ids:
+    - TC001
+    - TC002
+    - TC003
+    - TC004
+    - TC005
+    - TC006
+    - TC007
+    - TC008
+    - TC009
+    - TC010
+    generated_ids:
+    - TC001
+    - TC002
+    - TC003
+    - TC004
+    - TC005
+    - TC006
+    - TC007
+    - TC008
+    - TC009
+    - TC010
+    executed_ids: []
+  parameter_coverage:
+    available: false
+    score: 100.0
+    planned: {}
+    observed: {}
+  tb_quality_score: 58.8
+weaknesses:
+- id: W-CONSECUTIVE-READONLY-CRASH
+  severity: critical
+  category: testbench_phase_error
+  title: Back-to-back ReadOnly() calls crash 10/13 tests before functional checking
+  affected_tests:
+  - FifoTC001Test
+  - FifoTC003Test
+  - FifoTC005Test
+  - FifoTC006Test
+  - FifoTC007Test
+  - FifoTC008Test
+  - FifoTC009Test
+  - FifoCornerTest
+  - FifoBackToBackTest
+  - FifoRandomizedTest
+  evidence:
+  - 'All 10 failing tests report status runtime_error, returncode 2, with the same
+    traceback ''RuntimeError: Attempted illegal transition: awaiting ReadOnly in ReadOnly
+    phase'' raised from tb/sequences.py line 186 (inside _check_outputs -> await ReadOnly()).'
+  - The crash aborts each scenario in run_phase (TC003 at 160ns, Randomized at 1300ns)
+    before the final scoreboard comparisons and report_phase complete.
+  - 'Fault triggering pattern: sequences issue two _check_outputs()/_check_count()
+    calls back-to-back without any intervening trigger (e.g. TC001 lines 246-247;
+    TC003 296-297; TC005 362-363; TC006 393-394; TC007 418-419; TC008 458-459; TC009
+    497-498; FifoRandomizedSeq _inject_reset 944-945; FullToEmptyTransitionSeq 737-738).'
+  - The 3 passing tests (TC002, TC004, TC010) only escape the bug because every consecutive
+    flag check is separated by an intervening _drive_item/_drain_expect operation
+    that moves the scheduler out of ReadOnly; their passage is incidental to call
+    order, not to deliberate phase handling.
+  likely_cause: _check_outputs() unconditionally performs await ReadOnly() on every
+    invocation, but cocotb disallows awaiting ReadOnly while already in the ReadOnly
+    phase. Sequences call it multiple times per timestep without advancing the scheduler,
+    so most scenarios hard-crash before any data-path verification completes. (inference
+    based on call sites and traceback)
+  investigation_targets:
+  - tb/sequences.py (FifoSeqBase._check_outputs, lines 170-186)
+  - tb/sequences.py directed/corner/randomized bodies that chain _check_outputs +
+    _check_count
+  recommended_action: 'Make output sampling phase-safe: guard the ReadOnly await so
+    it is only taken when the scheduler is not already in the ReadOnly phase (or sample
+    on clock edges without ReadOnly), and separate consecutive flag checks with at
+    least one RisingEdge/cocotb trigger. Alternatively drop the duplicate sequence-level
+    inline checks and rely solely on the scoreboard''s reference-model comparison,
+    which already checks dout/full/empty/count each cycle.'
+  confidence: high
+- id: W-COVERAGE-HOLLOWED-BY-CRASH
+  severity: high
+  category: coverage_effectiveness
+  title: Coverage aggregate reflects only 3 surviving tests; key scenarios contributed
+    nothing
+  affected_tests:
+  - FifoTC003Test
+  - FifoTC005Test
+  - FifoTC006Test
+  - FifoTC007Test
+  - FifoCornerTest
+  - FifoBackToBackTest
+  - FifoRandomizedTest
+  evidence:
+  - 'Aggregate coverage export (fifo_coverage.yml) shows only 57.1% of total bins
+    hit (28/49), with critical bins structurally zero for the crashed scenarios: op_against_flags
+    5/16, write_while_full 2/4, wr_rd_combos 3/4 (simultaneous wr_active+rd_active
+    bin = 0), full_bins 1/2 (is_full=0).'
+  - The simultaneous read+write, write-while-full, full/empty-boundary, wraparound,
+    back-to-back, and randomized scenarios all crashed via W-CONSECUTIVE-READONLY-CRASH
+    before exercising these paths, so their coverage holes are an artifact of the
+    TB crash rather than of the coverage model.
+  likely_cause: Because nearly all data-path scenarios abort at their first flag check,
+    no cover bins from those scenarios are ever sampled; only TC002/TC004/TC010 contribute
+    to the aggregate. (inference)
+  investigation_targets:
+  - tb/coverage.py (bin/group definitions)
+  - tb/sequences.py scenario bodies that crash before reaching these states
+  recommended_action: After fixing the ReadOnly crash, re-run all 13 tests so the
+    simultaneous-operation and full/empty-boundary scenarios actually execute; then
+    reassess whether the 57.1% aggregate is a genuine coverage gap or a consequence
+    of the crash before adding bins.
+  confidence: high
+- id: W-PASS-DEPENDS-ON-TRIGGER-ORDER
+  severity: medium
+  category: test_robustness
+  title: Passing tests pass only because flag checks happen to be separated by drive
+    operations
+  affected_tests:
+  - FifoTC002Test
+  - FifoTC004Test
+  - FifoTC010Test
+  evidence:
+  - 'These tests reach ''TEST PASSED: N items checked, 0 mismatches, ... accepted
+    writes/reads'' (e.g. TC002: 18 items, 3 writes, 3 reads).'
+  - They avoid the ReadOnly-phase crash only because each consecutive _check_outputs
+    call is separated by _drive_item/_drain_expect; changing the cadence of these
+    checks to adjacent calls (as the other 10 tests do) would make them crash identically.
+  likely_cause: No explicit phase guard; pass/fail of these tests is sensitive to
+    whether _check_outputs calls are contiguous in the sequence body. (inference)
+  investigation_targets:
+  - tb/sequences.py WriteReadBasicSeq / ReadUntilEmptySeq / BoundaryRoundtripSeq bodies
+  recommended_action: Harden the shared check primitive so it is independent of call
+    spacing (see W-CONSECUTIVE-READONLY-CRASH), so passing does not rely on incidental
+    trigger ordering between checks.
+  confidence: high
+authoritative_inputs:
+- specification
+- reference_model
+- verification_plan
+rtl_exposed_to_llm: false
+comparison:
+  previous_quality_score: 81.88
+  delta: -23.08
+analysis_summary:
+  overall_status: verification_weakness
+  tests_total: 13
+  tests_passed: 3
+  tests_failed: 10
+changed_files:
+- sequences.py
+analysis_report_path: /home/auralab/nwark/chia_sept7_for_multi_rtl_with_multi_llm/for_multiple_rtl_updation_generalized/generated/designs/fifo/llm_verification_analysis_workspace/weakness_report.yaml
+accepted: false

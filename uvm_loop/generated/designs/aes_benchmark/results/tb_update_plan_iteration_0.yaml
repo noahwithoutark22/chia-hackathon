@@ -1,0 +1,26 @@
+version: '1.0'
+verdict: non_actionable
+root_cause:
+  category: other
+  summary: No generated-TB defect exists. The 12 failing tests are genuine DUT functional
+    mismatches caused by the documented RTL discrepancy DISC-001 (dead-code final-round
+    MixColumns guard if (round == 4'd10), so MixColumns runs in all 10 rounds); the
+    TB detects these mismatches exactly as designed, and no TB change is warranted.
+  evidence: '12 of 13 tests fail with runtime_error (returncode: 2, clean_exit: false)
+    with scoreboard_mismatches > 0 while uvm_errors: 0, uvm_fatals: 0, assertion_failures:
+    0; only AESResetMidTransactionTest passes. The observed DUT output for the NIST
+    KAT, 0xd961a18ca92dd978fb987b3ae7a8d9cd, exactly matches the accepted verification
+    plan''s predicted DISC-001 buggy output. The AssertionError raised at tb/test.py
+    report_phase line 172 (triggered by tb/scoreboard.py line 295) is intended behavior;
+    the scoreboard byte-compares DUT ciphertext against the independently FIPS-197/NIST-verified
+    aes_reference_model.encrypt_block.'
+changes: []
+validation:
+  tests:
+  - AESNistKatTest
+  - AESCornerCaseTest
+  - AESRandomizedTest
+  requirements:
+  - build succeeds
+  - no UVM_ERROR or UVM_FATAL
+  - no reference-model mismatch

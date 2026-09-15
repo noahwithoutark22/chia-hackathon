@@ -1,0 +1,186 @@
+schema_version: '1.0'
+iteration: 21
+quality_score: 81.88
+metrics:
+  tests_total: 13
+  tests_passed: 13
+  tests_failed: 0
+  functional_coverage:
+    available: true
+    percentage: 87.5
+  planned_coverage_points: 7
+  generated_coverage_points: 7
+  planned_coverage_crosses: 5
+  generated_coverage_crosses: 5
+  python_assertions: 21
+  checker_coroutines: 1
+  test_classes: 13
+  sequences: 0
+  planned_assertions: 7
+  test_health_score: 100.0
+  coverage_quality_score: 87.5
+  assertion_quality_score: 100.0
+  scenario_quality_score: 0.0
+  scenario_coverage:
+    planned: 10
+    generated: 10
+    executed: 0
+    score: 0.0
+    planned_ids:
+    - TC001
+    - TC002
+    - TC003
+    - TC004
+    - TC005
+    - TC006
+    - TC007
+    - TC008
+    - TC009
+    - TC010
+    generated_ids:
+    - TC001
+    - TC002
+    - TC003
+    - TC004
+    - TC005
+    - TC006
+    - TC007
+    - TC008
+    - TC009
+    - TC010
+    executed_ids: []
+  parameter_coverage:
+    available: false
+    score: 100.0
+    planned: {}
+    observed: {}
+  tb_quality_score: 81.88
+weaknesses:
+- id: W-DRIVER-IDLE-WALL
+  severity: medium
+  category: stimulus_timing
+  title: Driver idle wall prevents truly consecutive back-to-back operations
+  affected_tests:
+  - FifoBackToBackTest
+  evidence:
+  - 'driver.py line 127: self._drive_idle() is called unconditionally after every
+    item_done(), inserting wr_en=0/rd_en=0 between all consecutive items'
+  - BackToBackSeq Phase 5 (sequences.py lines 905-906) calls _drive_item(1,1,rw1)
+    followed immediately by _drive_item(1,1,rw2) intending consecutive simultaneous
+    RW cycles, but the driver forces an idle cycle between them
+  - FifoRandomizedTest op_against_flags coverage shows wr_idle/rd_idle bin with 209
+    hits out of ~500 cycles (42%), many of which are the forced idle wall cycles rather
+    than genuine idle periods chosen by the stimulus
+  likely_cause: The driver design (CONTRACT section 9.3 idle wall) always deasserts
+    all inputs after each item_done, meaning the DUT never sees two consecutive active
+    operations on adjacent rising edges. This is a declared design choice but limits
+    the temporal stress coverage.
+  investigation_targets:
+  - tb/driver.py run_phase method
+  - tb/sequences.py BackToBackSeq Phase 5
+  recommended_action: Add a driver configuration option (e.g. enable_back_to_back
+    mode) that suppresses the idle wall when enabled, allowing sequences to drive
+    truly consecutive operations. Use this mode at least in the BackToBackSeq to verify
+    zero-gap consecutive simultaneous RW, write-after- write, and read-after-read
+    cycles. This would catch any RTL bug where dout register update timing conflicts
+    with a new operation on the immediately following cycle.
+  confidence: high
+- id: W-RESET-DEASSERT-TIMING
+  severity: medium
+  category: reset_timing
+  title: Asynchronous reset deassert always aligned to falling edge, never stressed
+    near rising edge
+  affected_tests:
+  - FifoTC001Test
+  - FifoTC009Test
+  - FifoRandomizedTest
+  evidence:
+  - sequences.py _release_reset() (line 130) always awaits FallingEdge(self.dut.clk)
+    before setting rst_n=1, guaranteeing the deassert is a full half-period before
+    the next sampling rising edge
+  - All reset injections in FifoRandomizedSeq._inject_reset() and all directed reset
+    sequences use the same _release_reset() method
+  - The verification plan specifies rst_n as an asynchronous active-low reset, but
+    recovery timing (setup/hold on rst_n deassert relative to the clock edge) is never
+    exercised
+  likely_cause: The _release_reset method was designed for clean recovery timing to
+    avoid metastability in simulation, but this means the DUT's async reset recovery
+    path is only tested under ideal timing conditions. A real-world reset deassert
+    could occur at any phase of the clock.
+  investigation_targets:
+  - tb/sequences.py _release_reset method
+  - tb/sequences.py _inject_reset method
+  recommended_action: Add at least one test sequence that deasserts reset at an arbitrary
+    phase relative to the clock (e.g. using Timer with a randomized offset of 1 to
+    clk_half_period-1 ns instead of aligning to FallingEdge) to exercise the async
+    reset recovery path near the rising edge. This tests whether the RTL properly
+    handles rst_n deasserting within the setup/hold window of the clock edge, which
+    is a common source of async reset bugs.
+  confidence: high
+- id: W-COVERAGE-MERGE-BROKEN
+  severity: low
+  category: coverage_infrastructure
+  title: Cross-test coverage aggregation is broken; each test only reports its own
+    coverage
+  affected_tests:
+  - FifoRandomizedTest
+  - FifoCornerTest
+  - FifoBackToBackTest
+  - FifoTC001Test
+  - FifoTC002Test
+  - FifoTC003Test
+  - FifoTC004Test
+  - FifoTC005Test
+  - FifoTC006Test
+  - FifoTC007Test
+  - FifoTC008Test
+  - FifoTC009Test
+  - FifoTC010Test
+  evidence:
+  - 'FifoRandomizedTest log: ''FifoCoverage aggregate merge from 1 per-test file(s)''
+    and reports ''40/49 total bins hit across all tests (81.6%)'' but the aggregate
+    is derived from a single file'
+  - 'FifoCornerTest log: ''FifoCoverage aggregate merge from 1 per-test file(s)''
+    and reports ''41/49 total bins hit across all tests (83.7%)'' but is also from
+    a single file'
+  - FifoRandomizedTest shows boundary_data_concurrent at 3/4 (75%) while FifoCornerTest
+    shows 4/4 (100%); the true cross-test aggregate would be 4/4 but neither test
+    sees the other's data
+  - Every test log contains the warning 'excluded N stale per-test file(s) from previous
+    run(s) (mtime < run start time)', confirming the mtime-based stale filter excludes
+    other tests' files
+  likely_cause: Each test runs as a separate make/process invocation. The coverage
+    merge in report_phase uses an mtime-based stale filter that excludes files written
+    before the current process's start time. Since each test starts after earlier
+    tests finish, all other tests' coverage YAML files are always older and excluded.
+    The RUN_ID mechanism exists but is not set in the current regression invocation.
+  investigation_targets:
+  - tb/coverage.py _merge_per_test_coverage method (lines 458-633)
+  - tb/coverage.py report_phase method (lines 367-456)
+  recommended_action: Either (a) run the full regression as a single process with
+    all sequences executed sequentially so coverage accumulates in one coverage_db,
+    or (b) set the RUN_ID environment variable for the regression and ensure all test
+    processes share the same SIM_BUILD directory so the run-scoped merge finds all
+    per-test YAML files, or (c) post-process the per-test YAML files outside of simulation
+    to produce a true cross-test aggregate. This ensures regression-level coverage
+    metrics are accurate.
+  confidence: high
+authoritative_inputs:
+- specification
+- reference_model
+- verification_plan
+rtl_exposed_to_llm: false
+comparison:
+  previous_quality_score: 81.88
+  delta: 0.0
+analysis_summary:
+  overall_status: pass
+  tests_total: 13
+  tests_passed: 13
+  tests_failed: 0
+accepted: true
+changed_files:
+- assertions.py
+analysis_report_path: /home/auralab/nwark/chia_sept7_for_multi_rtl_with_multi_llm/for_multiple_rtl_updation_generalized/generated/designs/fifo/llm_verification_analysis_workspace/weakness_report.yaml
+decision_path: /home/auralab/nwark/chia_sept7_for_multi_rtl_with_multi_llm/for_multiple_rtl_updation_generalized/generated/designs/fifo/results/verification_improvement/decisions/iteration_21.yaml
+iteration_status: accepted

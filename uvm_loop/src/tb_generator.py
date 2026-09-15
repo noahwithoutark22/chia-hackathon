@@ -106,9 +106,18 @@ def main() -> None:
     parser.add_argument("--rtl", required=True)
     parser.add_argument("--spec", required=True)
     parser.add_argument("--ref-model", required=True)
-    parser.add_argument("--out-dir", default="generated_tb")
+    parser.add_argument("--out-dir", default=None, help="Output TB directory")
+    parser.add_argument("--benchmark", default=None, help="Benchmark name for isolated output")
+    parser.add_argument("--out-parent", default="generated/designs", help="Parent for isolated benchmark output")
 
     args = parser.parse_args()
+
+    if args.out_dir:
+        output_dir = args.out_dir
+    elif args.benchmark:
+        output_dir = str(Path(args.out_parent) / args.benchmark / "tb")
+    else:
+        raise SystemExit("Specify --out-dir or use --benchmark")
 
     generator = TBGenerator()
 
@@ -118,7 +127,7 @@ def main() -> None:
         rtl_path=args.rtl,
         spec_path=args.spec,
         ref_model_path=args.ref_model,
-        out_dir=args.out_dir,
+        out_dir=output_dir,
     )
 
 

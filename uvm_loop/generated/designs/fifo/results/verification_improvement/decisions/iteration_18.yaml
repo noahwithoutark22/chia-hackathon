@@ -1,0 +1,82 @@
+schema_version: '1.0'
+decision:
+  action: improve
+  weakness_id: W-RANDOMIZED-SINGLE-SEED
+  failure_class: limited_stimulus
+  failure_mechanism: ineffective_randomization
+  source: guidance_supported
+  confidence: high
+diagnosis:
+  observed_problem: 'FifoRandomizedSeq resolves its RNG seed from a deterministic
+    hash of the sequence name (line 950: seed = hash(self.get_name()) & 0x7FFFFFFF),
+    so every regression run exercises exactly one stimulus trajectory.  The single
+    seed may miss corner-case patterns that a different seed would explore.
+
+    '
+  consequence: 'Constrained-random coverage is limited to one input trajectory per
+    test run; regression diversity relies entirely on parameter sweeps or external
+    seed management, neither of which is currently exercised.
+
+    '
+candidate_interventions:
+- 'Modify FifoRandomizedTest._run_scenario() in tb/test.py to iterate over N seeds
+  (default 10, controllable via RANDOM_SEED_COUNT env var), starting a fresh FifoRandomizedSeq
+  with seed=i for each iteration.
+
+  '
+- 'Modify FifoRandomizedSeq.body() to accept an iteration count and loop internally
+  over multiple seeds within a single sequence body.
+
+  '
+- 'Defer to the parameter-variation weakness (W-NO-PARAMETER-VARIATION) since parameter
+  sweeps would also diversify random seeds indirectly.
+
+  '
+selected_intervention:
+  type: multi_seed_randomized_test
+  expected_effect:
+  - 'FifoRandomizedTest exercises 10 independent random stimulus trajectories per
+    simulation run instead of 1, increasing the probability of hitting corner-case
+    input patterns.
+
+    '
+  - 'Each seed iteration is self-contained (reset-driven start, scoreboard check,
+    independent RNG state), preserving all existing checks.
+
+    '
+  - 'RANDOM_SEED_COUNT env var (defaulting to 10) allows the regression harness to
+    tune the number of seeds without code changes.
+
+    '
+  - 'No existing checks are weakened; the intervention is additive within the test
+    class only (tb/test.py).
+
+    '
+regression_risks:
+- 'Increased simulation time: 10 seed iterations roughly 10x the runtime of a single
+  randomized run (240 cycles each), but still bounded by the watchdog.
+
+  '
+- 'Scoreboard mismatch in any seed iteration fails the entire test; a single flaky
+  pattern would block the whole run. Mitigated by deterministic seeds for reproducibility.
+
+  '
+- 'Minimal risk to existing checks: each iteration starts fresh on the sequencer with
+  full scoreboard state between seeds.
+
+  '
+validation:
+- 'Verify FifoRandomizedTest passes with the default RANDOM_SEED_COUNT=10 (13/13 tests
+  pass, 0 mismatches).
+
+  '
+- 'Verify the test also passes with RANDOM_SEED_COUNT=1 (backward-compatible single-seed
+  behavior).
+
+  '
+- 'Check the test log shows 10 distinct seed values logged by FifoRandomizedSeq at
+  info level.
+
+  '
+- Confirm functional coverage percentage is at least 87.5% (no regression from the
+  current quality_score).

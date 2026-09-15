@@ -2,15 +2,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-python3 scripts/generate_plan.py \
-  --rtl examples/adder/adder.v \
-  --spec examples/adder/spec.md \
-  --ref-model examples/adder/ref_model.py
+DESIGN_CONFIG="${DESIGN_CONFIG:-pipeline/designs/adder.yaml}"
 
-python3 scripts/generate_tb.py \
-  --plan generated_plans/verification_plan.yaml
+python3 -m pipeline.run14 --design-config "$DESIGN_CONFIG"
 
 echo
-echo "Done. Inspect with:"
-echo "  cat generated_plans/verification_plan.yaml"
-echo "  ls generated_tb/"
+echo "Done. Generated benchmark artifacts are under the benchmark output directory configured in:"
+echo "  $DESIGN_CONFIG"

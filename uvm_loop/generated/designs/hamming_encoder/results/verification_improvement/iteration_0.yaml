@@ -1,0 +1,267 @@
+schema_version: '1.0'
+iteration: 0
+quality_score: 70.42
+metrics:
+  tests_total: 10
+  tests_passed: 10
+  tests_failed: 0
+  functional_coverage:
+    available: true
+    percentage: 41.67
+  planned_coverage_points: 4
+  generated_coverage_points: 4
+  planned_coverage_crosses: 2
+  generated_coverage_crosses: 2
+  python_assertions: 33
+  checker_coroutines: 0
+  test_classes: 10
+  sequences: 1
+  planned_assertions: 5
+  test_health_score: 100.0
+  coverage_quality_score: 41.67
+  assertion_quality_score: 100.0
+  scenario_quality_score: 0.0
+  scenario_coverage:
+    planned: 8
+    generated: 8
+    executed: 0
+    score: 0.0
+    planned_ids:
+    - TC1
+    - TC2
+    - TC3
+    - TC4
+    - TC5
+    - TC6
+    - TC7
+    - TC8
+    generated_ids:
+    - TC1
+    - TC2
+    - TC3
+    - TC4
+    - TC5
+    - TC6
+    - TC7
+    - TC8
+    executed_ids: []
+  parameter_coverage:
+    available: false
+    score: 100.0
+    planned: {}
+    observed: {}
+  tb_quality_score: 70.42
+weaknesses:
+- id: W-ADAPTIVE-SKIP-MASKS-PARAMETER-COVERAGE
+  severity: high
+  category: regression-scope
+  title: All 10 tests ran under a single elaboration (DATA_WIDTH=4, SECDED=0); the
+    plan's SECDED=1 and non-4-width scenarios passed by log-and-skip without exercising
+    the DUT
+  affected_tests:
+  - HammingTC3Test
+  - HammingTC4Test
+  - HammingTC5Test
+  - HammingTC6Test
+  - HammingTC7Test
+  - HammingTC8Test
+  - HammingCornerTest
+  - HammingRandomizedTest
+  evidence:
+  - 'simulation_result.json: every test used the same SIM_BUILD with no -G/parameter
+    overrides and no DATA_WIDTH/SECDED env, so the RTL default elaboration (DATA_WIDTH=4,
+    SECDED=0) was active for the whole regression'
+  - 'HammingTC3Test/TC5Test/TC7Test logs end at <=20ns with ''monitor: observed and
+    published 1 transaction(s)'' and ''HammingScoreboard report: 1 items checked,
+    1 passed'' although their sequences (SpecExampleHamming84SECDEDSeq requires SECDED=1;
+    ExhaustiveSweepHamming128Seq requires DATA_WIDTH=8; ParameterizedWidthConfigurationsSeq
+    requires DATA_WIDTH in {1,11,16}) skipped on the active elaboration'
+  - All per-test coverage files (tb/hamming_encoder_coverage_HammingTC*.xml/yml) show
+    zero hits on secded_on, width_1, width_8, width_11, width_16, secded_parity_zero,
+    secded_parity_one; merged tb/hamming_encoder_coverage.xml reports 41.67% aggregate
+    coverage
+  - The plan's TC4 exhaustive sweep defined 32 combos (16 data words x SECDED 0/1);
+    only the 16 SECDED=0 vectors were ever exercised. TC6/TC8 'both SECDED modes'
+    likewise reduced to the active mode only
+  - Corner-case sequences MinimumDataWidth, ParityBitCountTransition, SECDEDOrderingShift,
+    SECDEDCodewordEvenWeight all log-and-skip under the active elaboration (their
+    SECDED parity/ordering and R=2/R=4/R=5 checks never ran)
+  likely_cause: 'Inference: the generated tests implement an ''adaptive-skip'' design
+    (test.py elaboration_applies + sequences.py _targets): any scenario inapplicable
+    to the active elaboration logs and passes without stimulus, and the runner only
+    elaborated the RTL default configuration, converting most of the planned parameter
+    matrix into silent no-ops that still report pass'
+  investigation_targets:
+  - 'tb/test.py: elaboration_applies() per test class and report_phase() skip path'
+  - 'tb/sequences.py: _targets() log-and-skip guard and per-sequence elaboration guards'
+  - 'tb/test_top.py: DATA_WIDTH/SECDED parameter resolution from env/defaults'
+  - tb/Makefile and the worker command list in simulation_result.json (no per-config
+    elaboration)
+  recommended_action: Elaborate and run the DUT for every (DATA_WIDTH, SECDED) member
+    of the plan matrix (e.g. -G DATA_WIDTH=8, SECDED=1 per run) and make each scenario's
+    test fail or be reported as 'unexercised' when its target elaboration is not active,
+    instead of passing via skip; gate the regression on the plan's per-configuration
+    coverage bins
+  confidence: high
+- id: W-PHANTOM-PRIMED-TRANSACTION
+  severity: medium
+  category: monitor-sampling
+  title: Monitor publishes a phantom transaction for the pre-stimulus primed (data_in=0,
+    code_out=0) pair, so tests that drove nothing still report '1 item checked, 1
+    passed'
+  affected_tests:
+  - HammingTC1Test
+  - HammingTC2Test
+  - HammingTC3Test
+  - HammingTC4Test
+  - HammingTC5Test
+  - HammingTC6Test
+  - HammingTC7Test
+  - HammingTC8Test
+  - HammingCornerTest
+  - HammingRandomizedTest
+  evidence:
+  - 'HammingTC3Test log: 1 transaction observed and 1 scoreboard check passed although
+    SpecExampleHamming84SECDEDSeq skipped (SECDED=0 active, no drive); same 1-item
+    profile in TC5 and TC7'
+  - tb/test_top.py primes dut.data_in.setimmediatevalue(0) at time 0 and the combinational
+    code_out settles to 0, so pins_driven() is True from the first monitor sample
+    with no drive having occurred
+  - 'tb/monitor.py run_phase: the first X/Z-free sample is published because prev_pair
+    is None and pair != prev_pair; the docstring''s claimed lock ''lands on the settle
+    boundary of the first drive'' is not guaranteed when the idle pair is already
+    X/Z-free'
+  - 'tb/hamming_encoder_coverage_HammingTC3Test.yml etc.: exactly one hit each on
+    (zero, secded_off), i.e. coverage of the primed idle pair, not of any driven vector'
+  - 'HammingTC4Test: for the 16-vector sweep the monitor published 16 items; the zero
+    drive''s settled pair (0,0) is identical to the idle primed pair, so it is absorbed
+    into a single (0,0) publication and the zero vector is never independently re-checked
+    by the scoreboard'
+  - HammingTC1Test (reset window then a single drive of 0) and HammingTC2Test (single
+    drive of 0b0101) each drive exactly one vector yet publish 1 and 2 items respectively
+    -- the first-publish rule absorbs the idle (0,0) pair whenever an X/Z-free sample
+    precedes the first settle, making the item count timing-dependent
+  likely_cause: 'Inference: the monitor''s change-pair publishing logic cannot distinguish
+    the idle primed input from a genuine drive; with data_in=0 primed before any sequence
+    runs, the first sample is treated as a settled transaction'
+  investigation_targets:
+  - 'tb/monitor.py: run_phase() lock/first-publish logic'
+  - 'tb/test_top.py: hamming_tb_top() setimmediatevalue priming'
+  - 'tb/dut_helper.py: pins_driven()'
+  recommended_action: 'Suppress the initial primed sample: seed prev_pair with the
+    first X/Z-free sample without publishing, or publish only after the driver has
+    completed its first item (e.g. a ''drives_done'' counter/Q), and have skipped/no-stimulus
+    tests report 0 items rather than 1'
+  confidence: high
+- id: W-COALESCED-PAIR-SCOREBOARD-COUNT
+  severity: medium
+  category: scoreboard-blindspot
+  title: Monitor coalesces back-to-back identical (data_in, code_out) pairs, so the
+    scoreboard and coverage never re-check the duplicate-driven vectors (930 of 1000
+    randomized vectors scored)
+  affected_tests:
+  - HammingRandomizedTest
+  evidence:
+  - 'HammingRandomizedTest log: monitor ''observed and published 930 transaction(s)''
+    and scoreboard ''930 items checked, 930 passed'', while tb/test.py RANDOM_VECTORS=1000
+    and the sequence drives and self-checks num_vectors=1000'
+  - 'tb/monitor.py docstring: ''Two back-to-back transactions that drive the identical
+    data word coalesce into one item'''
+  - 'Boundary-concentrated generation (boundary_prob=0.25: zero/max/single-bit/near-max)
+    makes duplicate data words frequent; tb/hamming_encoder_coverage_HammingRandomizedTest.yml
+    shows zero=97, max_value=98, single_bit_set=242 hits within only 930 samples'
+  likely_cause: 'Inference: publish-on-pair-change is a set semaphore, not an event
+    counter; repeated inputs are deliberately collapsed, so the passive scoreboard/coverage
+    subscribers see fewer items than were driven, contradicting the plan''s claim
+    that the scoreboard re-checks every driven vector'
+  investigation_targets:
+  - 'tb/monitor.py: run_phase() changed-pair publish rule'
+  - 'tb/scoreboard.py: _num_items_checked accounting'
+  - 'tb/sequences.py: HammingRandomizedSequence duplicate generation'
+  recommended_action: Attach a per-drive sequence number/drive counter to monitor
+    items and check the scoreboard's checked count equals the number of completed
+    sequence items; alternatively have the driver emit one item per item_done regardless
+    of pair identity and let the sequence feed duplicate-free expected values
+  confidence: high
+- id: W-COVERAGE-GOALS-NOT-ENFORCED
+  severity: medium
+  category: coverage-gating
+  title: Plan functional-coverage goals are exported but never enforced; tests pass
+    with 0% hit on the SECDED/width bins they were planned to cover
+  affected_tests:
+  - HammingTC3Test
+  - HammingTC5Test
+  - HammingTC7Test
+  - HammingCornerTest
+  evidence:
+  - 'verification_plan.yaml randomized pass_criteria requires ''functional coverage
+    goals in functional_coverage are met'', but no code path raises or fails on unmet
+    coverage: tb/test.py report_phase only checks _num_mismatches and _num_items_checked'
+  - tb/coverage.py report_phase only prints/merges coverage; merged tb/hamming_encoder_coverage.xml
+    shows 41.67% with secded_on=0, width_1/8/11/16=0, secded_parity_zero/one=0 while
+    all 10 tests still report pass
+  - Per-test coverage percentages for passing tests are 22-42% (e.g. HammingTC3Test
+    22.22%, HammingCornerTest varied), with no threshold applied
+  likely_cause: 'Inference: coverage was implemented as instrumentation plus reporting,
+    but the pass criteria were never wired to the coverage database, so the coverage
+    goals are decorative and skipped tests contribute 0 relevant hits yet pass'
+  investigation_targets:
+  - 'tb/coverage.py: report_phase()/coverage_db usage'
+  - 'tb/test.py: report_phase() pass criteria'
+  recommended_action: Evaluate coverage goals in report_phase for applicable elaborations
+    (fail when required bins such as secded_on/secded_parity_* are un-hit, or when
+    the plan's cross bins are unreached), and surface per-configuration coverage alongside
+    test status
+  confidence: high
+- id: W-GEOMETRY-NOT-VALIDATED-AGAINST-ELABORATION
+  severity: low
+  category: configuration-integrity
+  title: HammingConf geometry is derived from env/defaults and never cross-verified
+    against the actual elaborated DUT port widths, so a misconfigured (or rtl_info-default)
+    elaboration would be scored with the wrong geometry
+  affected_tests:
+  - HammingTC1Test
+  - HammingTC2Test
+  - HammingTC3Test
+  - HammingTC4Test
+  - HammingTC5Test
+  - HammingTC6Test
+  - HammingTC7Test
+  - HammingTC8Test
+  - HammingCornerTest
+  - HammingRandomizedTest
+  evidence:
+  - tb/test_top.py builds HammingConf from DATA_WIDTH/SECDED env vars (defaults 4/0)
+    with no probe of the live DUT port widths; the scoreboard's geometry cross-check
+    (tb/scoreboard.py _check_geometry) only compares HammingConf vs HammingParams,
+    both derived from the same env value
+  - verification_plan.yaml DISC-1 documents that rtl_info.json reports wrong parameter
+    defaults (SECDED='1', CODE_WIDTH='1'), so relying on metadata/defaults to agree
+    with the RTL is known-fragile
+  - In this run defaults coincided with the RTL defaults (no -G/overrides in the command
+    lines), so no mismatch occurred, but the environment has no guard that would catch
+    a silent divergence
+  likely_cause: 'Inference: the bench assumes env semantics match the RTL elaboration
+    byte-for-byte; width sampling, item geometry, reference-model calls and coverage
+    thresholds all derive from HammingConf, so a single wrong configuration would
+    misapply every oracle and mask could false-pass or false-fail'
+  investigation_targets:
+  - 'tb/test_top.py: hamming_tb_top() HammingConf.compute() call'
+  - 'tb/scoreboard.py: _check_geometry()'
+  - 'tb/dut_helper.py: HammingDutPins width sampling defaults'
+  recommended_action: Read back the actual elaborated widths (e.g. len(dut.data_in),
+    len(dut.code_out)) and compare with HammingConf, failing fast on divergence; pass
+    DATA_WIDTH/SECDED explicitly to the simulator (-G or via the runner) instead of
+    relying on defaults
+  confidence: medium
+authoritative_inputs:
+- specification
+- reference_model
+- verification_plan
+rtl_exposed_to_llm: false
+analysis_summary:
+  overall_status: verification_weakness
+  tests_total: 10
+  tests_passed: 10
+  tests_failed: 0
+analysis_report_path: /home/auralab/nwark/for_multiple_rtl_updation_generalized/generated/designs/hamming_encoder/llm_verification_analysis_workspace/weakness_report.yaml

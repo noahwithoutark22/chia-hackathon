@@ -1,0 +1,26 @@
+schema_version: '1.0'
+action: repair
+root_cause: The MixColumns-skip guard in the combinational block checks 'round ==
+  4'd10', but the FSM transitions from ROUND_RUN to FINISH when round equals 9. Since
+  round never reaches 10 during ROUND_RUN, the guard is dead code and MixColumns is
+  incorrectly applied in the last iteration (AES round 10), producing wrong ciphertext
+  for all inputs.
+evidence:
+- 'NIST KAT: DUT ciphertext=0xd961a18ca92dd978fb987b3ae7a8d9cd vs expected 0x69c4e0d86a7b0430d8cdb78070b4c55a
+  (all 16 bytes differ)'
+- All 11 functional tests fail with scoreboard mismatches (1894 mismatches in AESRandomizedTest)
+- 'RTL line 190: ''if (round == 4''d10)'' is unreachable because ROUND_RUN exits at
+  line 223 when ''round == 4''d9'''
+- AESResetMidTransactionTest passes (scoreboard_mismatches=1 is expected for a reset-aborted
+  transaction), confirming the FSM/reset logic is correct
+- Reference model encrypt_block() correctly skips MixColumns when rnd==10, matching
+  the AES-128 specification
+confidence: high
+changes:
+- file: rtl.sv
+  action: modify
+  instructions:
+  - On line 190, change the MixColumns-skip guard from 'if (round == 4'd10)' to 'if
+    (round == 4'd9)' so that the last ROUND_RUN iteration (round 9, corresponding
+    to AES round 10) performs SubBytes, ShiftRows, and AddRoundKey only, correctly
+    skipping MixColumns.

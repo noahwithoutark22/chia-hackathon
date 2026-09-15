@@ -1,0 +1,319 @@
+schema_version: '1.0'
+iteration: 8
+quality_score: 81.88
+metrics:
+  tests_total: 13
+  tests_passed: 13
+  tests_failed: 0
+  functional_coverage:
+    available: true
+    percentage: 87.5
+  planned_coverage_points: 7
+  generated_coverage_points: 7
+  planned_coverage_crosses: 5
+  generated_coverage_crosses: 5
+  python_assertions: 17
+  checker_coroutines: 1
+  test_classes: 13
+  sequences: 0
+  planned_assertions: 7
+  test_health_score: 100.0
+  coverage_quality_score: 87.5
+  assertion_quality_score: 100.0
+  scenario_quality_score: 0.0
+  scenario_coverage:
+    planned: 10
+    generated: 10
+    executed: 0
+    score: 0.0
+    planned_ids:
+    - TC001
+    - TC002
+    - TC003
+    - TC004
+    - TC005
+    - TC006
+    - TC007
+    - TC008
+    - TC009
+    - TC010
+    generated_ids:
+    - TC001
+    - TC002
+    - TC003
+    - TC004
+    - TC005
+    - TC006
+    - TC007
+    - TC008
+    - TC009
+    - TC010
+    executed_ids: []
+  parameter_coverage:
+    available: false
+    score: 100.0
+    planned: {}
+    observed: {}
+  tb_quality_score: 81.88
+weaknesses:
+- id: W1
+  severity: medium
+  category: parameter_configuration
+  title: Plan parameter test_values (DATA_WIDTH 4/8/16, DEPTH 2/4/8) were never exercised
+  affected_tests:
+  - FifoTC001Test
+  - FifoTC002Test
+  - FifoTC003Test
+  - FifoTC004Test
+  - FifoTC005Test
+  - FifoTC006Test
+  - FifoTC007Test
+  - FifoTC008Test
+  - FifoTC009Test
+  - FifoTC010Test
+  - FifoCornerTest
+  - FifoBackToBackTest
+  - FifoRandomizedTest
+  description: 'verification_plan.yaml declares parameters DATA_WIDTH (test_values
+    4, 8, 16) and DEPTH (test_values 2, 4, 8) and notes ''The generator instantiates
+    this scenario for each parameter test_value''. The executed regression ran every
+    test with the default elaboration only: all 13 command vectors in simulation_result.json
+    are identical and contain no parameter override (no -GDATA_WIDTH, -GDEPTH, -pvalue,
+    or definition switches). Coverage output confirms the defaults: din extremum 0xFF
+    (=> DATA_WIDTH=8) and mid_level hits matching count==DEPTH/2==2 (=> DEPTH=4).'
+  evidence:
+  - 'verification_plan.yaml lines 6-21: DATA_WIDTH test_values [4,8,16], DEPTH test_values
+    [2,4,8]'
+  - 'verification_plan.yaml line 1359-1360: ''The generator instantiates this scenario
+    for each parameter test_value'' (unfulfilled)'
+  - 'simulation_result.json: all 13 test ''command'' arrays identical; no parameter
+    override; VERILOG_SOURCES=benchmarks/fifo/fifo.sv only'
+  - 'simulation_result.json FifoTC003Test log: ''BIN mid_level : 4'' => count==DEPTH/2
+    evaluates at 2, so DEPTH=4'
+  - 'simulation_result.json FifoTC010Test log / fifo_coverage.yml: data_max = 0xFF
+    => DATA_WIDTH=8'
+  likely_cause: The harness compiled and ran the suite with default parameter values
+    (DATA_WIDTH='8', DEPTH='4') and never iterated the plan's test_values; no parameterized
+    test variant is defined in tb/test.py or the generated manifest.
+  investigation_targets:
+  - Re-run the 13-test matrix for each (DATA_WIDTH, DEPTH) in {4,8,16} x {2,4,8};
+    add +define/-G overrides to the make invocation
+  - Confirm coverage bin expressions (count==DEPTH/2, din==(1<<DATA_WIDTH)-1) re-elaborate
+    correctly per configuration and that extrema scale (TC010 note)
+  - Check sequencer/scoreboard depth plumbing reads DEPTH from ConfigDB rather than
+    a hard-coded 4
+  recommended_action: Add a parameterized test-class sweep (e.g., UVM_TESTNAME variant
+    per config or a subtask loop over (DATA_WIDTH, DEPTH) with compile-time overrides)
+    and include at least DEPTH=2 (shallow-wraparound), DEPTH=8 (deep fill), DATA_WIDTH=4
+    and 16 (narrow/wide data) in the regression; assert that the per-config scoreboard
+    and occupancy bins are driven by the parameterized DEPTH.
+  confidence: high
+- id: W2
+  severity: low
+  category: stimulus_gap
+  title: No directed test asserts asynchronous reset while the FIFO is at full occupancy
+  affected_tests:
+  - FifoTC009Test
+  - FifoCornerTest
+  description: 'The plan''s reset_mid_stream corner case says ''Assert rst_n while
+    writes and reads are in flight'' and the useful-assertion reset_clean_state is
+    checked after reset. The only directed mid-stream reset tests assert reset with
+    at most two entries stored (count==2 of DEPTH==4): TC009 ResetDuringOpSeq writes
+    0x21,0x22 then asserts reset; the corner ResetMidStreamSeq likewise writes 0x21,0x22
+    then resets. A reset asserted while count==DEPTH (stuck-full recovery) is never
+    deterministically applied; the randomized test''s resets are positioned by cycle
+    count, not by occupancy, so reset-at-full is only coincidentally possible and
+    is not covered by any cross.'
+  evidence:
+  - 'tb/sequences.py lines 493-496 (ResetDuringOpSeq): writes 0x21,0x22, then _assert_reset()
+    (count=2)'
+  - 'tb/sequences.py lines 754-756 (ResetMidStreamSeq): writes 0x21,0x22, then _assert_reset()
+    (count=2)'
+  - 'tb/sequences.py lines 958-985 (FifoRandomizedSeq): mid_test reset injected at
+    a random cycle index, not gated on full occupancy'
+  - 'simulation_result.json FifoTC009Test log: ''full_level : 0'' and ''2 accepted
+    writes'' before reset'
+  - coverage tree contains no cross of rst_n with full/count, so reset-at-full hit
+    status is unmeasurable
+  likely_cause: The sequences target the 'mid-stream' wording of the plan with minimal
+    data in flight and do not include a fill-to-DEPTH-then-reset path; no occupancy
+    gating exists in the reset injection logic.
+  investigation_targets:
+  - 'Add a directed sequence: fill to full (count==DEPTH), assert rst_n for 2-3 cycles,
+    check empty=1/full=0/dout=0, release, verify clean post-reset traffic'
+  - Optionally add an rst_n x full coverage cross to measure reset-at-full on the
+    randomized runs
+  recommended_action: Add a ResetAtFullSeq corner sequence (fill DEPTH entries, assert
+    reset, verify clean recovery) and include it in the corner tests; this is the
+    standard stuck-full recovery pattern for FIFOs and is currently unverified.
+  confidence: high
+- id: W3
+  severity: low
+  category: stimulus_limitation
+  title: Driver inserts an idle cycle between every item, so zero-idle (true back-to-back)
+    stimulus is never applied
+  affected_tests:
+  - FifoBackToBackTest
+  - FifoRandomizedTest
+  - FifoTC001Test
+  - FifoTC002Test
+  - FifoTC003Test
+  - FifoTC004Test
+  - FifoTC005Test
+  - FifoTC006Test
+  - FifoTC007Test
+  - FifoTC008Test
+  - FifoTC009Test
+  - FifoTC010Test
+  - FifoCornerTest
+  description: tb/driver.py drives one idle cycle (wr_en=0, rd_en=0) before the run
+    loop and after every item_done() (CONTRACT 9.3 idle 'wall'), so no two consecutive
+    DUT edges ever see back-to-back active items. This is a no-op for single-cycle
+    FIFO semantics and does not affect the 0-mismatch result, but it means the 'back-to-back'
+    test and randomized traffic never actually apply consecutive-cycle operations
+    (e.g., fill DEPTH in DEPTH consecutive edges), and claims of back-to-back and
+    full-rate throughput coverage are overstated.
+  evidence:
+  - 'tb/driver.py line 109: self._drive_idle() before entering the run loop'
+  - 'tb/driver.py lines 121-127: item_done() then self._drive_idle() (idle cycle per
+    CONTRACT 9.3 ''wall'')'
+  - 'tb/CONTRACT.md: idle wall declared between consecutive items (referenced from
+    driver.py docstring lines 100-107)'
+  - 'simulation_result.json FifoBackToBackTest log: wr_active=9 vs wr_idle=38 for
+    a 47-cycle test -> roughly one idle per active item, confirming interleaved idle
+    cycles'
+  likely_cause: The driver intentionally implements the CONTRACT 9.3 idle 'wall' between
+    items; no configurable no-idle mode or burst driver exists.
+  investigation_targets:
+  - Add a burst/no-idle mode to the driver (e.g., FifoConfigNoIdle) or a dedicated
+    back-to-back driver that applies N consecutive items with no idle between them
+  - Assert that FifoBackToBackTest actually issues consecutive-cycle writes/reads
+    so the 'back-to-back' name is truthful
+  recommended_action: Introduce a no-idle drive mode (guarded by a config flag, keeping
+    the CONTRACT-compliant default) and re-run FifoBackToBackTest and the randomized
+    test in zero-idle mode; keep the idle-wall mode as the default to preserve CONTRACT
+    9.3.
+  confidence: high
+- id: W4
+  severity: low
+  category: coverage_metric
+  title: fifo_data_cg samples din/dout unconditionally every cycle, inflating data_zero
+    bins with idle/reset cycles
+  affected_tests:
+  - FifoTC001Test
+  - FifoTC002Test
+  - FifoTC003Test
+  - FifoTC004Test
+  - FifoTC005Test
+  - FifoTC006Test
+  - FifoTC007Test
+  - FifoTC008Test
+  - FifoTC009Test
+  - FifoTC010Test
+  - FifoCornerTest
+  - FifoBackToBackTest
+  - FifoRandomizedTest
+  description: 'The monitor publishes one FifoTransaction per rising edge (including
+    idle and reset cycles), and coverage.py attaches fifo_data_cg.write_data_bins
+    to s[''din''] and read_data_bins to s[''dout''] on every such transaction (no
+    wr_en/rd_en gating). Idle and reset cycles hold din=dout=0, so data_zero/data_zero_out
+    are inflated by bus-idle samples rather than actual zero-valued writes/reads.
+    Direct proof: the reset-only FifoTC001Test (log: ''0 accepted writes, 0 accepted
+    reads'') nevertheless records write_data_bins.data_zero=5 and read_data_bins.data_zero_out=5.
+    The aggregate fifo_coverage.yml shows data_zero=276 vs data_max=24, so the data
+    covergroup''s contribution to the reported coverage% is noise-inflated.'
+  evidence:
+  - 'tb/coverage.py lines 245-255: CoverPoint xf=lambda s: s[''din''] / s[''dout'']
+    with bins [0, max_data]'
+  - 'tb/coverage.py lines 279-289: FifoCoverage samples every monitor transaction
+    (one per rising edge)'
+  - 'tb/fifo_coverage_FifoTC001Test.xml lines 66-73: data_zero=5, data_zero_out=5
+    (test had 0 accepted writes/reads)'
+  - 'simulation_result.json FifoTC001Test log: ''TEST PASSED: 5 items checked, 0 mismatches,
+    ... 0 accepted writes, 0 accepted reads'''
+  - 'tb/fifo_coverage.yml: write_data_bins data_zero=276 vs data_max=24'
+  likely_cause: fifo_data_cg was declared with sample_on posedge on the raw bus values
+    in the plan and implemented as an unconditioned per-cycle sample, so idle/reset
+    cycles dominate the zero bins.
+  investigation_targets:
+  - Gate the data covergroup sample on (wr_en==1) for write_data_bins and (rd_en==1)
+    for read_data_bins (or sample only accepted operations)
+  - Re-evaluate data-coverage percentages after gating; the boundary_data_concurrent
+    cross should then reflect only active bus states
+  recommended_action: Make fifo_data_cg conditionally sample on accepted cycles only
+    (wr/rd active), so data_zero/data_max counts reflect genuinely written/read values;
+    keep the cross defined over the gated points. This is a metric-quality fix, not
+    a functional gap.
+  confidence: high
+- id: W5
+  severity: low
+  category: reporting
+  title: Exported fifo_coverage.yml is last-test-wins, not a suite-aggregate
+  affected_tests:
+  - FifoRandomizedTest
+  description: "FifoCoverage exports every test's data both to a per-test file (fifo_coverage_<Test>.yml)\
+    \ and 'also exported to fifo_coverage.yml / fifo_coverage.xml' (coverage.py export\
+    \ calls). Because each test runs in its own cocotb process and the merge step\
+    \ excludes per-test files whose mtime predates that process's run start ('excluded\
+    \ N stale per-test file(s)'), every test's aggregate merge sees only itself \u2014\
+    \ so the generic fifo_coverage.yml on disk is simply the last test executed. Verified\
+    \ empirically: fifo_coverage.yml is bin-for-bin identical to fifo_coverage_FifoRandomizedTest.yml\
+    \ (the final test in the manifest) and matches none of the other 12 per-test files."
+  evidence:
+  - 'tb/coverage.py logs in every simulation_result.json test entry: ''exported to
+    fifo_coverage_<Test>.yml / .xml'' and ''also exported to fifo_coverage.yml / fifo_coverage.xml'''
+  - 'tb/coverage.py log: ''excluded 12 stale per-test file(s) from previous run(s)
+    (mtime < run start time)'' inside each test''s process'
+  - 'Script diff of bin hits across all tb/fifo_coverage_*.yml: FULL MATCH only for
+    fifo_coverage_FifoRandomizedTest.yml; all other 12 differ'
+  - tb/fifo_coverage.yml occupancy hits (empty=74, one=139, mid=113, near_full=95,
+    full=78) equal the FifoRandomizedTest log values exactly
+  likely_cause: Per-test export overwrites the shared fifo_coverage.yml, and the merge
+    logic's staleness window (mtime vs run start) prevents cross-test accumulation
+    when each test is a separate process; the surviving file therefore reflects only
+    the last test.
+  investigation_targets:
+  - Run a suite-level post-processing merge after all tests complete (stale by whole-run
+    start time, or explicit aggregate stage) instead of per-test overwrite
+  - Inspect whether the intended aggregate merge (lines ~607-625 of coverage.py) ever
+    runs at suite level; current evidence shows it runs per-test with 1 file
+  recommended_action: Move the aggregate merge/export to a single post-regression
+    step (or accumulate state across processes), so fifo_coverage.yml represents the
+    summed suite coverage rather than the last test's data; document the per-test
+    files as the per-test source of truth until then.
+  confidence: high
+authoritative_inputs:
+- specification
+- reference_model
+- verification_plan
+rtl_exposed_to_llm: false
+comparison:
+  previous_quality_score: 81.88
+  delta: 0.0
+analysis_summary:
+  overall_status: verification_weakness
+  verdict_text: 'All 13 simulations pass with zero functional mismatches, but the
+    verification environment has evidence-backed gaps: the plan-mandated parameter
+    matrix was never exercised (only defaults DATA_WIDTH=8 / DEPTH=4 ran), no directed
+    test asserts reset at full occupancy, the driver inserts an idle cycle between
+    every item (so true back-to-back stimulus is never applied), the data covergroup
+    samples din/dout every cycle and inflates the data_zero bins with idle/reset cycles,
+    and the exported fifo_coverage.yml is last-test-wins (it is bin-for-bin identical
+    to the final test''s per-test file) rather than a suite-aggregate.'
+  tests_total: 13
+  tests_passed: 13
+  tests_failed: 0
+  scoreboard_mismatches: 0
+  assertion_failures: 0
+  uvm_errors: 0
+  watchdog_expired: 0
+  functional_correctness: pass
+  evidence_summary: simulation_result.json reports status 'pass' for all 13 tests
+    (FifoTC001Test..FifoTC010Test, FifoCornerTest, FifoBackToBackTest, FifoRandomizedTest),
+    each with clean_exit=true, returncode=0, 0 scoreboard mismatches, 0 assertion
+    failures, 0 UVM errors/fatals. The failures below are verification-environment
+    gaps and reporting artifacts, not DUT defects.
+changed_files: []
+analysis_report_path: /home/auralab/nwark/chia_sept7_for_multi_rtl_with_multi_llm/for_multiple_rtl_updation_generalized/generated/designs/fifo/llm_verification_analysis_workspace/weakness_report.yaml
+accepted: false
+iteration_status: no_change

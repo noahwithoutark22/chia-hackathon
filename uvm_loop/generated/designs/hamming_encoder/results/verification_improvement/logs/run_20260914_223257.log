@@ -1,0 +1,1144 @@
+==============================================================================
+Starting run14
+Time          : 2026-09-14T22:32:57+05:30
+Project       : /home/auralab/nwark/for_multiple_rtl_updation_generalized
+Design config : pipeline/designs/hamming_encoder.yaml
+Design        : hamming_encoder
+Max iterations: 25
+Run log       : /home/auralab/nwark/for_multiple_rtl_updation_generalized/generated/designs/hamming_encoder/results/verification_improvement/logs/run_20260914_223257.log
+==============================================================================
+
+=========================================================
+ CHIA verification run: hamming_encoder
+=========================================================
+  RTL:          benchmarks/hamming_encoder/hamming_encoder.sv
+  Specification:benchmarks/hamming_encoder/spec.md
+  Reference:    benchmarks/hamming_encoder/ref_model.py
+  Generated TB: generated/designs/hamming_encoder/tb
+  Plan:         generated/designs/hamming_encoder/plans/verification_plan.yaml
+2026-09-14 22:32:57,459	INFO worker.py:1810 -- Connecting to existing Ray cluster at address: 172.20.107.229:6379...
+2026-09-14 22:32:57,485	INFO worker.py:2004 -- Connected to Ray cluster. View the dashboard at [1m[32m127.0.0.1:8265 [39m[22m
+/home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/ray/_private/worker.py:2052: FutureWarning: Tip: In future versions of Ray, Ray will no longer override accelerator visible devices env var if num_gpus=0 or num_gpus=None (default). To enable this behavior and turn off this error message, set RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
+  warnings.warn(
+
+✓ Found existing verification plan and rtl_info.json — skipping extraction, generation, and review.
+  Plan:     /home/auralab/nwark/for_multiple_rtl_updation_generalized/generated/designs/hamming_encoder/plans/verification_plan.yaml
+  RTL info: /home/auralab/nwark/for_multiple_rtl_updation_generalized/generated/designs/hamming_encoder/rtl/rtl_info.json
+/home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/pydantic_settings/sources/utils.py:47: IncompleteFieldDefinitionWarning: Field 'lifespan' has an incomplete definition: its annotation contains an unresolved forward reference, so settings sources may fail to correctly resolve its value. Call `model_rebuild()` on the model where the field is defined, once all the referenced types are defined.
+  warnings.warn(
+[36m(_ToolServerActor pid=7529)[0m INFO:     Started server process [7529]
+[36m(_ToolServerActor pid=7529)[0m INFO:     Waiting for application startup.
+[36m(_ToolServerActor pid=7529)[0m INFO:     Application startup complete.
+[36m(_ToolServerActor pid=7529)[0m INFO:     Uvicorn running on http://172.20.107.229:8000 (Press CTRL+C to quit)
+verification_workspace started at 172.20.107.229:8000 on node 1e6675023c7c118ac040d9c22fab34c489adcad25e9799b769f4f387
+OpenCodeLLM is experimental: only exercised by unit tests so far, not validated in production.
+
+[4/4] Generating cocotb+pyuvm environment (staged)...
+
+✓ Skipping UVM sub-stage 'contract': checkpoint found (/home/auralab/nwark/for_multiple_rtl_updation_generalized/generated/designs/hamming_encoder/checkpoints/uvm_contract.done), already completed in a previous run.
+
+✓ Skipping UVM sub-stage 'stimulus': checkpoint found (/home/auralab/nwark/for_multiple_rtl_updation_generalized/generated/designs/hamming_encoder/checkpoints/uvm_stimulus.done), already completed in a previous run.
+
+✓ Skipping UVM sub-stage 'observation': checkpoint found (/home/auralab/nwark/for_multiple_rtl_updation_generalized/generated/designs/hamming_encoder/checkpoints/uvm_observation.done), already completed in a previous run.
+
+✓ Skipping UVM sub-stage 'scoreboard': checkpoint found (/home/auralab/nwark/for_multiple_rtl_updation_generalized/generated/designs/hamming_encoder/checkpoints/uvm_scoreboard.done), already completed in a previous run.
+
+✓ Skipping UVM sub-stage 'coverage_assertions': checkpoint found (/home/auralab/nwark/for_multiple_rtl_updation_generalized/generated/designs/hamming_encoder/checkpoints/uvm_coverage_assertions.done), already completed in a previous run.
+
+✓ Skipping UVM sub-stage 'integration': checkpoint found (/home/auralab/nwark/for_multiple_rtl_updation_generalized/generated/designs/hamming_encoder/checkpoints/uvm_integration.done), already completed in a previous run.
+
+✓ cocotb+pyuvm environment generated directly under /workspace/generated/designs/hamming_encoder/tb.
+✓ Directed scenario IDs validated against the accepted plan.
+[36m(_ToolServerActor pid=7529)[0m INFO:     Shutting down
+[36m(_ToolServerActor pid=7529)[0m INFO:     Waiting for application shutdown.
+[36m(_ToolServerActor pid=7529)[0m INFO:     Application shutdown complete.
+[36m(_ToolServerActor pid=7529)[0m INFO:     Finished server process [7529]
+
+[5/5] Validating generated cocotb+pyuvm environment...
+✓ Generated TB passed deterministic pre-simulation validation.
+
+===== TB SIMULATION ANALYSIS =====
+{
+  "verdict": "generation_bug",
+  "detail": {
+    "status": "functional_failure",
+    "tests": {
+      "HammingTC1Test": {
+        "status": "runtime_error",
+        "category": "runtime_error",
+        "timed_out": false,
+        "watchdog_expired": false,
+        "returncode": 2,
+        "counts": {
+          "uvm_errors": 0,
+          "uvm_fatals": 0,
+          "uvm_warnings": 0,
+          "scoreboard_mismatches": 0,
+          "assertion_failures": 0
+        },
+        "clean_exit": false,
+        "log": "rm -f /workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC1Test.xml\n/usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/2363f1a59612 --top-module tb_hamming_encoder --timing -Wno-fatal --timescale 1ns/1ps --vpi --public-flat-rw --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"  /workspace/benchmarks/hamming_encoder/hamming_encoder.sv /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n%Error: Specified --top-module 'tb_hamming_encoder' was not found in design.\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042 for more assistance.\n%Error: Exiting due to 1 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65: /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/2363f1a59612/Vtop.mk] Error 1\n",
+        "command": [
+          "timeout",
+          "--signal=TERM",
+          "--kill-after=5",
+          "60",
+          "make",
+          "-f",
+          "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/Makefile",
+          "SIM=verilator",
+          "TOPLEVEL_LANG=verilog",
+          "TOPLEVEL=tb_hamming_encoder",
+          "COCOTB_TOPLEVEL=tb_hamming_encoder",
+          "MODULE=test_top",
+          "COCOTB_TEST_MODULES=test_top",
+          "VERILOG_SOURCES=/workspace/benchmarks/hamming_encoder/hamming_encoder.sv",
+          "SIM_BUILD=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/2363f1a59612",
+          "COCOTB_RESULTS_FILE=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC1Test.xml",
+          "COCOTB_HDL_TIMEUNIT=1ns",
+          "COCOTB_HDL_TIMEPRECISION=1ps",
+          "BUILD_ARGS=-j 4"
+        ],
+        "test_name": "HammingTC1Test",
+        "test_module": "test_top",
+        "results_file": "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC1Test.xml",
+        "results_file_exists": false
+      },
+      "HammingTC2Test": {
+        "status": "runtime_error",
+        "category": "runtime_error",
+        "timed_out": false,
+        "watchdog_expired": false,
+        "returncode": 2,
+        "counts": {
+          "uvm_errors": 0,
+          "uvm_fatals": 0,
+          "uvm_warnings": 0,
+          "scoreboard_mismatches": 0,
+          "assertion_failures": 0
+        },
+        "clean_exit": false,
+        "log": "rm -f /workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC2Test.xml\n/usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/2363f1a59612 --top-module tb_hamming_encoder --timing -Wno-fatal --timescale 1ns/1ps --vpi --public-flat-rw --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"  /workspace/benchmarks/hamming_encoder/hamming_encoder.sv /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n%Error: Specified --top-module 'tb_hamming_encoder' was not found in design.\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042 for more assistance.\n%Error: Exiting due to 1 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65: /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/2363f1a59612/Vtop.mk] Error 1\n",
+        "command": [
+          "timeout",
+          "--signal=TERM",
+          "--kill-after=5",
+          "60",
+          "make",
+          "-f",
+          "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/Makefile",
+          "SIM=verilator",
+          "TOPLEVEL_LANG=verilog",
+          "TOPLEVEL=tb_hamming_encoder",
+          "COCOTB_TOPLEVEL=tb_hamming_encoder",
+          "MODULE=test_top",
+          "COCOTB_TEST_MODULES=test_top",
+          "VERILOG_SOURCES=/workspace/benchmarks/hamming_encoder/hamming_encoder.sv",
+          "SIM_BUILD=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/2363f1a59612",
+          "COCOTB_RESULTS_FILE=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC2Test.xml",
+          "COCOTB_HDL_TIMEUNIT=1ns",
+          "COCOTB_HDL_TIMEPRECISION=1ps",
+          "BUILD_ARGS=-j 4"
+        ],
+        "test_name": "HammingTC2Test",
+        "test_module": "test_top",
+        "results_file": "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC2Test.xml",
+        "results_file_exists": false
+      },
+      "HammingTC3Test": {
+        "status": "runtime_error",
+        "category": "runtime_error",
+        "timed_out": false,
+        "watchdog_expired": false,
+        "returncode": 2,
+        "counts": {
+          "uvm_errors": 0,
+          "uvm_fatals": 0,
+          "uvm_warnings": 0,
+          "scoreboard_mismatches": 0,
+          "assertion_failures": 0
+        },
+        "clean_exit": false,
+        "log": "rm -f /workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC3Test.xml\n/usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/2363f1a59612 --top-module tb_hamming_encoder --timing -Wno-fatal --timescale 1ns/1ps --vpi --public-flat-rw --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"  /workspace/benchmarks/hamming_encoder/hamming_encoder.sv /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n%Error: Specified --top-module 'tb_hamming_encoder' was not found in design.\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042 for more assistance.\n%Error: Exiting due to 1 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65: /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/2363f1a59612/Vtop.mk] Error 1\n",
+        "command": [
+          "timeout",
+          "--signal=TERM",
+          "--kill-after=5",
+          "60",
+          "make",
+          "-f",
+          "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/Makefile",
+          "SIM=verilator",
+          "TOPLEVEL_LANG=verilog",
+          "TOPLEVEL=tb_hamming_encoder",
+          "COCOTB_TOPLEVEL=tb_hamming_encoder",
+          "MODULE=test_top",
+          "COCOTB_TEST_MODULES=test_top",
+          "VERILOG_SOURCES=/workspace/benchmarks/hamming_encoder/hamming_encoder.sv",
+          "SIM_BUILD=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/2363f1a59612",
+          "COCOTB_RESULTS_FILE=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC3Test.xml",
+          "COCOTB_HDL_TIMEUNIT=1ns",
+          "COCOTB_HDL_TIMEPRECISION=1ps",
+          "BUILD_ARGS=-j 4"
+        ],
+        "test_name": "HammingTC3Test",
+        "test_module": "test_top",
+        "results_file": "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC3Test.xml",
+        "results_file_exists": false
+      },
+      "HammingTC4Test": {
+        "status": "runtime_error",
+        "category": "runtime_error",
+        "timed_out": false,
+        "watchdog_expired": false,
+        "returncode": 2,
+        "counts": {
+          "uvm_errors": 0,
+          "uvm_fatals": 0,
+          "uvm_warnings": 0,
+          "scoreboard_mismatches": 0,
+          "assertion_failures": 0
+        },
+        "clean_exit": false,
+        "log": "rm -f /workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC4Test.xml\n/usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/2363f1a59612 --top-module tb_hamming_encoder --timing -Wno-fatal --timescale 1ns/1ps --vpi --public-flat-rw --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"  /workspace/benchmarks/hamming_encoder/hamming_encoder.sv /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n%Error: Specified --top-module 'tb_hamming_encoder' was not found in design.\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042 for more assistance.\n%Error: Exiting due to 1 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65: /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/2363f1a59612/Vtop.mk] Error 1\n",
+        "command": [
+          "timeout",
+          "--signal=TERM",
+          "--kill-after=5",
+          "60",
+          "make",
+          "-f",
+          "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/Makefile",
+          "SIM=verilator",
+          "TOPLEVEL_LANG=verilog",
+          "TOPLEVEL=tb_hamming_encoder",
+          "COCOTB_TOPLEVEL=tb_hamming_encoder",
+          "MODULE=test_top",
+          "COCOTB_TEST_MODULES=test_top",
+          "VERILOG_SOURCES=/workspace/benchmarks/hamming_encoder/hamming_encoder.sv",
+          "SIM_BUILD=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/2363f1a59612",
+          "COCOTB_RESULTS_FILE=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC4Test.xml",
+          "COCOTB_HDL_TIMEUNIT=1ns",
+          "COCOTB_HDL_TIMEPRECISION=1ps",
+          "BUILD_ARGS=-j 4"
+        ],
+        "test_name": "HammingTC4Test",
+        "test_module": "test_top",
+        "results_file": "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC4Test.xml",
+        "results_file_exists": false
+      },
+      "HammingTC5Test": {
+        "status": "runtime_error",
+        "category": "runtime_error",
+        "timed_out": false,
+        "watchdog_expired": false,
+        "returncode": 2,
+        "counts": {
+          "uvm_errors": 0,
+          "uvm_fatals": 0,
+          "uvm_warnings": 0,
+          "scoreboard_mismatches": 0,
+          "assertion_failures": 0
+        },
+        "clean_exit": false,
+        "log": "rm -f /workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC5Test.xml\n/usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/2363f1a59612 --top-module tb_hamming_encoder --timing -Wno-fatal --timescale 1ns/1ps --vpi --public-flat-rw --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"  /workspace/benchmarks/hamming_encoder/hamming_encoder.sv /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n%Error: Specified --top-module 'tb_hamming_encoder' was not found in design.\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042 for more assistance.\n%Error: Exiting due to 1 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65: /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/2363f1a59612/Vtop.mk] Error 1\n",
+        "command": [
+          "timeout",
+          "--signal=TERM",
+          "--kill-after=5",
+          "60",
+          "make",
+          "-f",
+          "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/Makefile",
+          "SIM=verilator",
+          "TOPLEVEL_LANG=verilog",
+          "TOPLEVEL=tb_hamming_encoder",
+          "COCOTB_TOPLEVEL=tb_hamming_encoder",
+          "MODULE=test_top",
+          "COCOTB_TEST_MODULES=test_top",
+          "VERILOG_SOURCES=/workspace/benchmarks/hamming_encoder/hamming_encoder.sv",
+          "SIM_BUILD=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/2363f1a59612",
+          "COCOTB_RESULTS_FILE=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC5Test.xml",
+          "COCOTB_HDL_TIMEUNIT=1ns",
+          "COCOTB_HDL_TIMEPRECISION=1ps",
+          "BUILD_ARGS=-j 4"
+        ],
+        "test_name": "HammingTC5Test",
+        "test_module": "test_top",
+        "results_file": "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC5Test.xml",
+        "results_file_exists": false
+      },
+      "HammingTC6Test": {
+        "status": "runtime_error",
+        "category": "runtime_error",
+        "timed_out": false,
+        "watchdog_expired": false,
+        "returncode": 2,
+        "counts": {
+          "uvm_errors": 0,
+          "uvm_fatals": 0,
+          "uvm_warnings": 0,
+          "scoreboard_mismatches": 0,
+          "assertion_failures": 0
+        },
+        "clean_exit": false,
+        "log": "rm -f /workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC6Test.xml\n/usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/2363f1a59612 --top-module tb_hamming_encoder --timing -Wno-fatal --timescale 1ns/1ps --vpi --public-flat-rw --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"  /workspace/benchmarks/hamming_encoder/hamming_encoder.sv /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n%Error: Specified --top-module 'tb_hamming_encoder' was not found in design.\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042 for more assistance.\n%Error: Exiting due to 1 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65: /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/2363f1a59612/Vtop.mk] Error 1\n",
+        "command": [
+          "timeout",
+          "--signal=TERM",
+          "--kill-after=5",
+          "60",
+          "make",
+          "-f",
+          "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/Makefile",
+          "SIM=verilator",
+          "TOPLEVEL_LANG=verilog",
+          "TOPLEVEL=tb_hamming_encoder",
+          "COCOTB_TOPLEVEL=tb_hamming_encoder",
+          "MODULE=test_top",
+          "COCOTB_TEST_MODULES=test_top",
+          "VERILOG_SOURCES=/workspace/benchmarks/hamming_encoder/hamming_encoder.sv",
+          "SIM_BUILD=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/2363f1a59612",
+          "COCOTB_RESULTS_FILE=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC6Test.xml",
+          "COCOTB_HDL_TIMEUNIT=1ns",
+          "COCOTB_HDL_TIMEPRECISION=1ps",
+          "BUILD_ARGS=-j 4"
+        ],
+        "test_name": "HammingTC6Test",
+        "test_module": "test_top",
+        "results_file": "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC6Test.xml",
+        "results_file_exists": false
+      },
+      "HammingTC7Test": {
+        "status": "runtime_error",
+        "category": "runtime_error",
+        "timed_out": false,
+        "watchdog_expired": false,
+        "returncode": 2,
+        "counts": {
+          "uvm_errors": 0,
+          "uvm_fatals": 0,
+          "uvm_warnings": 0,
+          "scoreboard_mismatches": 0,
+          "assertion_failures": 0
+        },
+        "clean_exit": false,
+        "log": "rm -f /workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC7Test.xml\n/usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/2363f1a59612 --top-module tb_hamming_encoder --timing -Wno-fatal --timescale 1ns/1ps --vpi --public-flat-rw --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"  /workspace/benchmarks/hamming_encoder/hamming_encoder.sv /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n%Error: Specified --top-module 'tb_hamming_encoder' was not found in design.\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042 for more assistance.\n%Error: Exiting due to 1 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65: /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/2363f1a59612/Vtop.mk] Error 1\n",
+        "command": [
+          "timeout",
+          "--signal=TERM",
+          "--kill-after=5",
+          "60",
+          "make",
+          "-f",
+          "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/Makefile",
+          "SIM=verilator",
+          "TOPLEVEL_LANG=verilog",
+          "TOPLEVEL=tb_hamming_encoder",
+          "COCOTB_TOPLEVEL=tb_hamming_encoder",
+          "MODULE=test_top",
+          "COCOTB_TEST_MODULES=test_top",
+          "VERILOG_SOURCES=/workspace/benchmarks/hamming_encoder/hamming_encoder.sv",
+          "SIM_BUILD=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/2363f1a59612",
+          "COCOTB_RESULTS_FILE=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC7Test.xml",
+          "COCOTB_HDL_TIMEUNIT=1ns",
+          "COCOTB_HDL_TIMEPRECISION=1ps",
+          "BUILD_ARGS=-j 4"
+        ],
+        "test_name": "HammingTC7Test",
+        "test_module": "test_top",
+        "results_file": "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC7Test.xml",
+        "results_file_exists": false
+      },
+      "HammingTC8Test": {
+        "status": "runtime_error",
+        "category": "runtime_error",
+        "timed_out": false,
+        "watchdog_expired": false,
+        "returncode": 2,
+        "counts": {
+          "uvm_errors": 0,
+          "uvm_fatals": 0,
+          "uvm_warnings": 0,
+          "scoreboard_mismatches": 0,
+          "assertion_failures": 0
+        },
+        "clean_exit": false,
+        "log": "rm -f /workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC8Test.xml\n/usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/2363f1a59612 --top-module tb_hamming_encoder --timing -Wno-fatal --timescale 1ns/1ps --vpi --public-flat-rw --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"  /workspace/benchmarks/hamming_encoder/hamming_encoder.sv /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n%Error: Specified --top-module 'tb_hamming_encoder' was not found in design.\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042 for more assistance.\n%Error: Exiting due to 1 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65: /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/2363f1a59612/Vtop.mk] Error 1\n",
+        "command": [
+          "timeout",
+          "--signal=TERM",
+          "--kill-after=5",
+          "60",
+          "make",
+          "-f",
+          "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/Makefile",
+          "SIM=verilator",
+          "TOPLEVEL_LANG=verilog",
+          "TOPLEVEL=tb_hamming_encoder",
+          "COCOTB_TOPLEVEL=tb_hamming_encoder",
+          "MODULE=test_top",
+          "COCOTB_TEST_MODULES=test_top",
+          "VERILOG_SOURCES=/workspace/benchmarks/hamming_encoder/hamming_encoder.sv",
+          "SIM_BUILD=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/2363f1a59612",
+          "COCOTB_RESULTS_FILE=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC8Test.xml",
+          "COCOTB_HDL_TIMEUNIT=1ns",
+          "COCOTB_HDL_TIMEPRECISION=1ps",
+          "BUILD_ARGS=-j 4"
+        ],
+        "test_name": "HammingTC8Test",
+        "test_module": "test_top",
+        "results_file": "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC8Test.xml",
+        "results_file_exists": false
+      },
+      "HammingCornerTest": {
+        "status": "runtime_error",
+        "category": "runtime_error",
+        "timed_out": false,
+        "watchdog_expired": false,
+        "returncode": 2,
+        "counts": {
+          "uvm_errors": 0,
+          "uvm_fatals": 0,
+          "uvm_warnings": 0,
+          "scoreboard_mismatches": 0,
+          "assertion_failures": 0
+        },
+        "clean_exit": false,
+        "log": "rm -f /workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingCornerTest.xml\n/usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/2363f1a59612 --top-module tb_hamming_encoder --timing -Wno-fatal --timescale 1ns/1ps --vpi --public-flat-rw --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"  /workspace/benchmarks/hamming_encoder/hamming_encoder.sv /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n%Error: Specified --top-module 'tb_hamming_encoder' was not found in design.\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042 for more assistance.\n%Error: Exiting due to 1 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65: /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/2363f1a59612/Vtop.mk] Error 1\n",
+        "command": [
+          "timeout",
+          "--signal=TERM",
+          "--kill-after=5",
+          "60",
+          "make",
+          "-f",
+          "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/Makefile",
+          "SIM=verilator",
+          "TOPLEVEL_LANG=verilog",
+          "TOPLEVEL=tb_hamming_encoder",
+          "COCOTB_TOPLEVEL=tb_hamming_encoder",
+          "MODULE=test_top",
+          "COCOTB_TEST_MODULES=test_top",
+          "VERILOG_SOURCES=/workspace/benchmarks/hamming_encoder/hamming_encoder.sv",
+          "SIM_BUILD=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/2363f1a59612",
+          "COCOTB_RESULTS_FILE=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingCornerTest.xml",
+          "COCOTB_HDL_TIMEUNIT=1ns",
+          "COCOTB_HDL_TIMEPRECISION=1ps",
+          "BUILD_ARGS=-j 4"
+        ],
+        "test_name": "HammingCornerTest",
+        "test_module": "test_top",
+        "results_file": "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingCornerTest.xml",
+        "results_file_exists": false
+      },
+      "HammingRandomizedTest": {
+        "status": "runtime_error",
+        "category": "runtime_error",
+        "timed_out": false,
+        "watchdog_expired": false,
+        "returncode": 2,
+        "counts": {
+          "uvm_errors": 0,
+          "uvm_fatals": 0,
+          "uvm_warnings": 0,
+          "scoreboard_mismatches": 0,
+          "assertion_failures": 0
+        },
+        "clean_exit": false,
+        "log": "rm -f /workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingRandomizedTest.xml\n/usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/2363f1a59612 --top-module tb_hamming_encoder --timing -Wno-fatal --timescale 1ns/1ps --vpi --public-flat-rw --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"  /workspace/benchmarks/hamming_encoder/hamming_encoder.sv /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n%Error: Specified --top-module 'tb_hamming_encoder' was not found in design.\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042 for more assistance.\n%Error: Exiting due to 1 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65: /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/2363f1a59612/Vtop.mk] Error 1\n",
+        "command": [
+          "timeout",
+          "--signal=TERM",
+          "--kill-after=5",
+          "60",
+          "make",
+          "-f",
+          "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/Makefile",
+          "SIM=verilator",
+          "TOPLEVEL_LANG=verilog",
+          "TOPLEVEL=tb_hamming_encoder",
+          "COCOTB_TOPLEVEL=tb_hamming_encoder",
+          "MODULE=test_top",
+          "COCOTB_TEST_MODULES=test_top",
+          "VERILOG_SOURCES=/workspace/benchmarks/hamming_encoder/hamming_encoder.sv",
+          "SIM_BUILD=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/2363f1a59612",
+          "COCOTB_RESULTS_FILE=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingRandomizedTest.xml",
+          "COCOTB_HDL_TIMEUNIT=1ns",
+          "COCOTB_HDL_TIMEPRECISION=1ps",
+          "BUILD_ARGS=-j 4"
+        ],
+        "test_name": "HammingRandomizedTest",
+        "test_module": "test_top",
+        "results_file": "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingRandomizedTest.xml",
+        "results_file_exists": false
+      }
+    }
+  }
+}
+
+[DIAGNOSIS] Starting TB diagnosis (attempt 1)...
+[DIAGNOSIS] Workspace: /home/auralab/nwark/for_multiple_rtl_updation_generalized/generated/designs/hamming_encoder/llm_tb_diagnosis_workspace
+[DIAGNOSIS] Preparing sanitized workspace...
+[DIAGNOSIS] Sanitized inputs prepared; RTL remains excluded.
+[36m(simulate pid=2578)[0m Wrote /workspace/generated/designs/hamming_encoder/results/tb_validation_iteration_0.json
+[36m(_ToolServerActor pid=7590)[0m INFO:     Started server process [7590]
+[36m(_ToolServerActor pid=7590)[0m INFO:     Waiting for application startup.
+[36m(_ToolServerActor pid=7590)[0m INFO:     Application startup complete.
+[36m(_ToolServerActor pid=7590)[0m INFO:     Uvicorn running on http://172.20.107.229:8000 (Press CTRL+C to quit)
+verification_improvement_workspace started at 172.20.107.229:8000 on node 1e6675023c7c118ac040d9c22fab34c489adcad25e9799b769f4f387
+OpenCodeLLM is experimental: only exercised by unit tests so far, not validated in production.
+[DIAGNOSIS] LLM agent created (retries=5).
+[DIAGNOSIS] Building diagnosis prompt...
+[DIAGNOSIS] Submitting prompt (length=7156 chars); waiting for LLM...
+[36m(_ToolServerActor pid=7590)[0m INFO:     172.20.107.229:44416 - "POST /verification_improvement_workspace/mcp HTTP/1.1" 200 OK
+[36m(_ToolServerActor pid=7590)[0m INFO:     172.20.107.229:44416 - "POST /verification_improvement_workspace/mcp HTTP/1.1" 202 Accepted
+[36m(_ToolServerActor pid=7590)[0m INFO:     172.20.107.229:44416 - "GET /verification_improvement_workspace/mcp HTTP/1.1" 200 OK
+[36m(_ToolServerActor pid=7590)[0m INFO:     172.20.107.229:44418 - "POST /verification_improvement_workspace/mcp HTTP/1.1" 200 OK
+[DIAGNOSIS] LLM response received (success=True).
+[DIAGNOSIS] Stopping diagnosis workspace agent...
+[36m(_ToolServerActor pid=7590)[0m INFO:     Shutting down
+[DIAGNOSIS] Diagnosis workspace agent stopped.
+[DIAGNOSIS] Converting LLM response into validated update plan...
+
+⚠ Invalid TB update plan YAML:
+Invalid YAML: while scanning a directive
+  in "<unicode string>", line 1, column 1:
+    %Error: Specified --top-module ' ... 
+    ^
+expected alphabetic or numeric character, but found ':'
+  in "<unicode string>", line 1, column 7:
+    %Error: Specified --top-module 'tb_ham ... 
+          ^
+TB diagnosis YAML repair attempt 1/5...
+[36m(_ToolServerActor pid=7590)[0m INFO:     Waiting for application shutdown.
+[36m(_ToolServerActor pid=7590)[0m INFO:     Application shutdown complete.
+[36m(_ToolServerActor pid=7590)[0m INFO:     Finished server process [7590]
+[DIAGNOSIS] Validating update plan...
+[DIAGNOSIS] Update plan validated.
+
+===== TB UPDATE PLAN =====
+version: '1.0'
+verdict: non_actionable
+root_cause:
+  category: compile
+  summary: 'Verilator fails because --top-module ''tb_hamming_encoder'' is not defined
+    in the compiled sources.  The simulation harness constructs VERILOG_SOURCES starting
+    from the --rtl DUT and appending manifest compile_files, but excludes any file
+    equal to manifest top_file or any file whose text declares the top module.  Since
+    tb_hamming_encoder.sv is both the manifest top_file and the sole definer of module
+    tb_hamming_encoder, it is systematically excluded.  The resulting VERILOG_SOURCES
+    contains only hamming_encoder.sv (the DUT), so Verilator cannot locate the requested
+    top module.  This is a harness limitation: the cocotb wrapper-based toplevel required
+    by a purely combinational DUT (no clock/reset ports) is incompatible with the
+    harness source-filtering heuristic (run.py lines 558-594).  No TB-local file change
+    can resolve it.'
+  evidence: 'All 10 tests fail identically with Verilator returncode 2 and the error
+    ''%Error: Specified --top-module tb_hamming_encoder was not found in design.''  The
+    simulation_result.json manifest lists compile_files as [tb_hamming_encoder.sv,
+    hamming_encoder.sv] and top_file as tb_hamming_encoder.sv, yet every test command
+    shows VERILOG_SOURCES containing only hamming_encoder.sv.  The harness excludes
+    tb_hamming_encoder.sv because (a) it equals manifest top_file and (b) it declares
+    module tb_hamming_encoder (the requested top module).'
+changes: []
+validation:
+  tests:
+  - HammingTC1Test
+  - HammingTC2Test
+  - HammingTC3Test
+  - HammingTC4Test
+  - HammingTC5Test
+  - HammingTC6Test
+  - HammingTC7Test
+  - HammingTC8Test
+  - HammingCornerTest
+  - HammingRandomizedTest
+  requirements:
+  - build succeeds
+  - no UVM_ERROR or UVM_FATAL
+  - no reference-model mismatch
+
+
+===== TB SCORE (NON-ACTIONABLE) =====
+TB quality score: 55.00
+TB metrics: {
+  "tests_total": 10,
+  "tests_passed": 0,
+  "tests_failed": 10,
+  "functional_coverage": {
+    "available": false,
+    "percentage": null
+  },
+  "planned_coverage_points": 4,
+  "generated_coverage_points": 4,
+  "planned_coverage_crosses": 2,
+  "generated_coverage_crosses": 2,
+  "python_assertions": 13,
+  "checker_coroutines": 0,
+  "test_classes": 11,
+  "sequences": 2,
+  "planned_assertions": 5,
+  "test_health_score": 0.0,
+  "coverage_quality_score": 100.0,
+  "assertion_quality_score": 100.0,
+  "scenario_quality_score": 0.0,
+  "scenario_coverage": {
+    "planned": 8,
+    "generated": 8,
+    "executed": 0,
+    "score": 0.0,
+    "planned_ids": [
+      "TC1",
+      "TC2",
+      "TC3",
+      "TC4",
+      "TC5",
+      "TC6",
+      "TC7",
+      "TC8"
+    ],
+    "generated_ids": [
+      "TC1",
+      "TC2",
+      "TC3",
+      "TC4",
+      "TC5",
+      "TC6",
+      "TC7",
+      "TC8"
+    ],
+    "executed_ids": []
+  },
+  "parameter_coverage": {
+    "available": false,
+    "score": 100.0,
+    "planned": {},
+    "observed": {}
+  },
+  "tb_quality_score": 55.0
+}
+TB score report: /home/auralab/nwark/for_multiple_rtl_updation_generalized/generated/designs/hamming_encoder/results/tb_validation_score_iteration_0.yaml
+
+✓ TB diagnosis classified the failure as non_actionable.
+  The current generated TB is accepted as-is.
+  No TB repair, improvement iterations, or plateau detection will be performed.
+  Proceeding directly to RTL verification/repair.
+
+===== RTL VERIFICATION (iteration 1) =====
+  Accepted RTL snapshot: /home/auralab/nwark/for_multiple_rtl_updation_generalized/generated/designs/hamming_encoder/rtl_verification/accepted/hamming_encoder.sv
+  Benchmark RTL (read-only): /home/auralab/nwark/for_multiple_rtl_updation_generalized/benchmarks/hamming_encoder/hamming_encoder.sv
+[36m(simulate pid=2578)[0m Wrote /workspace/generated/designs/hamming_encoder/rtl_verification/results/iteration_01.json
+{
+  "verdict": "generation_bug",
+  "detail": {
+    "status": "functional_failure",
+    "tests": {
+      "HammingTC1Test": {
+        "status": "runtime_error",
+        "category": "runtime_error",
+        "timed_out": false,
+        "watchdog_expired": false,
+        "returncode": 2,
+        "counts": {
+          "uvm_errors": 0,
+          "uvm_fatals": 0,
+          "uvm_warnings": 0,
+          "scoreboard_mismatches": 0,
+          "assertion_failures": 0
+        },
+        "clean_exit": false,
+        "log": "rm -f /workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC1Test.xml\n/usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/8019f221e437 --top-module tb_hamming_encoder --timing -Wno-fatal --timescale 1ns/1ps --vpi --public-flat-rw --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"  /workspace/generated/designs/hamming_encoder/rtl_verification/accepted/hamming_encoder.sv /workspace/benchmarks/hamming_encoder/hamming_encoder.sv /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n%Warning-MODDUP: /workspace/benchmarks/hamming_encoder/hamming_encoder.sv:62:8: Duplicate declaration of module: 'hamming_encoder'\n   62 | module hamming_encoder\n      |        ^~~~~~~~~~~~~~~\n                 /workspace/generated/designs/hamming_encoder/rtl_verification/accepted/hamming_encoder.sv:62:8: ... Location of original declaration\n   62 | module hamming_encoder\n      |        ^~~~~~~~~~~~~~~\n                 ... For warning description see https://verilator.org/warn/MODDUP?v=5.042\n                 ... Use \"/* verilator lint_off MODDUP */\" and lint_on around source to disable this message.\n%Error: Specified --top-module 'tb_hamming_encoder' was not found in design.\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042 for more assistance.\n%Error: Exiting due to 1 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65: /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/8019f221e437/Vtop.mk] Error 1\n",
+        "command": [
+          "timeout",
+          "--signal=TERM",
+          "--kill-after=5",
+          "60",
+          "make",
+          "-f",
+          "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/Makefile",
+          "SIM=verilator",
+          "TOPLEVEL_LANG=verilog",
+          "TOPLEVEL=tb_hamming_encoder",
+          "COCOTB_TOPLEVEL=tb_hamming_encoder",
+          "MODULE=test_top",
+          "COCOTB_TEST_MODULES=test_top",
+          "VERILOG_SOURCES=/workspace/generated/designs/hamming_encoder/rtl_verification/accepted/hamming_encoder.sv /workspace/benchmarks/hamming_encoder/hamming_encoder.sv",
+          "SIM_BUILD=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/8019f221e437",
+          "COCOTB_RESULTS_FILE=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC1Test.xml",
+          "COCOTB_HDL_TIMEUNIT=1ns",
+          "COCOTB_HDL_TIMEPRECISION=1ps",
+          "BUILD_ARGS=-j 4"
+        ],
+        "test_name": "HammingTC1Test",
+        "test_module": "test_top",
+        "results_file": "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC1Test.xml",
+        "results_file_exists": false
+      },
+      "HammingTC2Test": {
+        "status": "runtime_error",
+        "category": "runtime_error",
+        "timed_out": false,
+        "watchdog_expired": false,
+        "returncode": 2,
+        "counts": {
+          "uvm_errors": 0,
+          "uvm_fatals": 0,
+          "uvm_warnings": 0,
+          "scoreboard_mismatches": 0,
+          "assertion_failures": 0
+        },
+        "clean_exit": false,
+        "log": "rm -f /workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC2Test.xml\n/usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/8019f221e437 --top-module tb_hamming_encoder --timing -Wno-fatal --timescale 1ns/1ps --vpi --public-flat-rw --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"  /workspace/generated/designs/hamming_encoder/rtl_verification/accepted/hamming_encoder.sv /workspace/benchmarks/hamming_encoder/hamming_encoder.sv /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n%Warning-MODDUP: /workspace/benchmarks/hamming_encoder/hamming_encoder.sv:62:8: Duplicate declaration of module: 'hamming_encoder'\n   62 | module hamming_encoder\n      |        ^~~~~~~~~~~~~~~\n                 /workspace/generated/designs/hamming_encoder/rtl_verification/accepted/hamming_encoder.sv:62:8: ... Location of original declaration\n   62 | module hamming_encoder\n      |        ^~~~~~~~~~~~~~~\n                 ... For warning description see https://verilator.org/warn/MODDUP?v=5.042\n                 ... Use \"/* verilator lint_off MODDUP */\" and lint_on around source to disable this message.\n%Error: Specified --top-module 'tb_hamming_encoder' was not found in design.\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042 for more assistance.\n%Error: Exiting due to 1 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65: /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/8019f221e437/Vtop.mk] Error 1\n",
+        "command": [
+          "timeout",
+          "--signal=TERM",
+          "--kill-after=5",
+          "60",
+          "make",
+          "-f",
+          "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/Makefile",
+          "SIM=verilator",
+          "TOPLEVEL_LANG=verilog",
+          "TOPLEVEL=tb_hamming_encoder",
+          "COCOTB_TOPLEVEL=tb_hamming_encoder",
+          "MODULE=test_top",
+          "COCOTB_TEST_MODULES=test_top",
+          "VERILOG_SOURCES=/workspace/generated/designs/hamming_encoder/rtl_verification/accepted/hamming_encoder.sv /workspace/benchmarks/hamming_encoder/hamming_encoder.sv",
+          "SIM_BUILD=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/8019f221e437",
+          "COCOTB_RESULTS_FILE=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC2Test.xml",
+          "COCOTB_HDL_TIMEUNIT=1ns",
+          "COCOTB_HDL_TIMEPRECISION=1ps",
+          "BUILD_ARGS=-j 4"
+        ],
+        "test_name": "HammingTC2Test",
+        "test_module": "test_top",
+        "results_file": "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC2Test.xml",
+        "results_file_exists": false
+      },
+      "HammingTC3Test": {
+        "status": "runtime_error",
+        "category": "runtime_error",
+        "timed_out": false,
+        "watchdog_expired": false,
+        "returncode": 2,
+        "counts": {
+          "uvm_errors": 0,
+          "uvm_fatals": 0,
+          "uvm_warnings": 0,
+          "scoreboard_mismatches": 0,
+          "assertion_failures": 0
+        },
+        "clean_exit": false,
+        "log": "rm -f /workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC3Test.xml\n/usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/8019f221e437 --top-module tb_hamming_encoder --timing -Wno-fatal --timescale 1ns/1ps --vpi --public-flat-rw --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"  /workspace/generated/designs/hamming_encoder/rtl_verification/accepted/hamming_encoder.sv /workspace/benchmarks/hamming_encoder/hamming_encoder.sv /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n%Warning-MODDUP: /workspace/benchmarks/hamming_encoder/hamming_encoder.sv:62:8: Duplicate declaration of module: 'hamming_encoder'\n   62 | module hamming_encoder\n      |        ^~~~~~~~~~~~~~~\n                 /workspace/generated/designs/hamming_encoder/rtl_verification/accepted/hamming_encoder.sv:62:8: ... Location of original declaration\n   62 | module hamming_encoder\n      |        ^~~~~~~~~~~~~~~\n                 ... For warning description see https://verilator.org/warn/MODDUP?v=5.042\n                 ... Use \"/* verilator lint_off MODDUP */\" and lint_on around source to disable this message.\n%Error: Specified --top-module 'tb_hamming_encoder' was not found in design.\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042 for more assistance.\n%Error: Exiting due to 1 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65: /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/8019f221e437/Vtop.mk] Error 1\n",
+        "command": [
+          "timeout",
+          "--signal=TERM",
+          "--kill-after=5",
+          "60",
+          "make",
+          "-f",
+          "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/Makefile",
+          "SIM=verilator",
+          "TOPLEVEL_LANG=verilog",
+          "TOPLEVEL=tb_hamming_encoder",
+          "COCOTB_TOPLEVEL=tb_hamming_encoder",
+          "MODULE=test_top",
+          "COCOTB_TEST_MODULES=test_top",
+          "VERILOG_SOURCES=/workspace/generated/designs/hamming_encoder/rtl_verification/accepted/hamming_encoder.sv /workspace/benchmarks/hamming_encoder/hamming_encoder.sv",
+          "SIM_BUILD=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/8019f221e437",
+          "COCOTB_RESULTS_FILE=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC3Test.xml",
+          "COCOTB_HDL_TIMEUNIT=1ns",
+          "COCOTB_HDL_TIMEPRECISION=1ps",
+          "BUILD_ARGS=-j 4"
+        ],
+        "test_name": "HammingTC3Test",
+        "test_module": "test_top",
+        "results_file": "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC3Test.xml",
+        "results_file_exists": false
+      },
+      "HammingTC4Test": {
+        "status": "runtime_error",
+        "category": "runtime_error",
+        "timed_out": false,
+        "watchdog_expired": false,
+        "returncode": 2,
+        "counts": {
+          "uvm_errors": 0,
+          "uvm_fatals": 0,
+          "uvm_warnings": 0,
+          "scoreboard_mismatches": 0,
+          "assertion_failures": 0
+        },
+        "clean_exit": false,
+        "log": "rm -f /workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC4Test.xml\n/usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/8019f221e437 --top-module tb_hamming_encoder --timing -Wno-fatal --timescale 1ns/1ps --vpi --public-flat-rw --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"  /workspace/generated/designs/hamming_encoder/rtl_verification/accepted/hamming_encoder.sv /workspace/benchmarks/hamming_encoder/hamming_encoder.sv /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n%Warning-MODDUP: /workspace/benchmarks/hamming_encoder/hamming_encoder.sv:62:8: Duplicate declaration of module: 'hamming_encoder'\n   62 | module hamming_encoder\n      |        ^~~~~~~~~~~~~~~\n                 /workspace/generated/designs/hamming_encoder/rtl_verification/accepted/hamming_encoder.sv:62:8: ... Location of original declaration\n   62 | module hamming_encoder\n      |        ^~~~~~~~~~~~~~~\n                 ... For warning description see https://verilator.org/warn/MODDUP?v=5.042\n                 ... Use \"/* verilator lint_off MODDUP */\" and lint_on around source to disable this message.\n%Error: Specified --top-module 'tb_hamming_encoder' was not found in design.\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042 for more assistance.\n%Error: Exiting due to 1 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65: /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/8019f221e437/Vtop.mk] Error 1\n",
+        "command": [
+          "timeout",
+          "--signal=TERM",
+          "--kill-after=5",
+          "60",
+          "make",
+          "-f",
+          "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/Makefile",
+          "SIM=verilator",
+          "TOPLEVEL_LANG=verilog",
+          "TOPLEVEL=tb_hamming_encoder",
+          "COCOTB_TOPLEVEL=tb_hamming_encoder",
+          "MODULE=test_top",
+          "COCOTB_TEST_MODULES=test_top",
+          "VERILOG_SOURCES=/workspace/generated/designs/hamming_encoder/rtl_verification/accepted/hamming_encoder.sv /workspace/benchmarks/hamming_encoder/hamming_encoder.sv",
+          "SIM_BUILD=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/8019f221e437",
+          "COCOTB_RESULTS_FILE=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC4Test.xml",
+          "COCOTB_HDL_TIMEUNIT=1ns",
+          "COCOTB_HDL_TIMEPRECISION=1ps",
+          "BUILD_ARGS=-j 4"
+        ],
+        "test_name": "HammingTC4Test",
+        "test_module": "test_top",
+        "results_file": "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC4Test.xml",
+        "results_file_exists": false
+      },
+      "HammingTC5Test": {
+        "status": "runtime_error",
+        "category": "runtime_error",
+        "timed_out": false,
+        "watchdog_expired": false,
+        "returncode": 2,
+        "counts": {
+          "uvm_errors": 0,
+          "uvm_fatals": 0,
+          "uvm_warnings": 0,
+          "scoreboard_mismatches": 0,
+          "assertion_failures": 0
+        },
+        "clean_exit": false,
+        "log": "rm -f /workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC5Test.xml\n/usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/8019f221e437 --top-module tb_hamming_encoder --timing -Wno-fatal --timescale 1ns/1ps --vpi --public-flat-rw --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"  /workspace/generated/designs/hamming_encoder/rtl_verification/accepted/hamming_encoder.sv /workspace/benchmarks/hamming_encoder/hamming_encoder.sv /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n%Warning-MODDUP: /workspace/benchmarks/hamming_encoder/hamming_encoder.sv:62:8: Duplicate declaration of module: 'hamming_encoder'\n   62 | module hamming_encoder\n      |        ^~~~~~~~~~~~~~~\n                 /workspace/generated/designs/hamming_encoder/rtl_verification/accepted/hamming_encoder.sv:62:8: ... Location of original declaration\n   62 | module hamming_encoder\n      |        ^~~~~~~~~~~~~~~\n                 ... For warning description see https://verilator.org/warn/MODDUP?v=5.042\n                 ... Use \"/* verilator lint_off MODDUP */\" and lint_on around source to disable this message.\n%Error: Specified --top-module 'tb_hamming_encoder' was not found in design.\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042 for more assistance.\n%Error: Exiting due to 1 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65: /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/8019f221e437/Vtop.mk] Error 1\n",
+        "command": [
+          "timeout",
+          "--signal=TERM",
+          "--kill-after=5",
+          "60",
+          "make",
+          "-f",
+          "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/Makefile",
+          "SIM=verilator",
+          "TOPLEVEL_LANG=verilog",
+          "TOPLEVEL=tb_hamming_encoder",
+          "COCOTB_TOPLEVEL=tb_hamming_encoder",
+          "MODULE=test_top",
+          "COCOTB_TEST_MODULES=test_top",
+          "VERILOG_SOURCES=/workspace/generated/designs/hamming_encoder/rtl_verification/accepted/hamming_encoder.sv /workspace/benchmarks/hamming_encoder/hamming_encoder.sv",
+          "SIM_BUILD=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/8019f221e437",
+          "COCOTB_RESULTS_FILE=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC5Test.xml",
+          "COCOTB_HDL_TIMEUNIT=1ns",
+          "COCOTB_HDL_TIMEPRECISION=1ps",
+          "BUILD_ARGS=-j 4"
+        ],
+        "test_name": "HammingTC5Test",
+        "test_module": "test_top",
+        "results_file": "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC5Test.xml",
+        "results_file_exists": false
+      },
+      "HammingTC6Test": {
+        "status": "runtime_error",
+        "category": "runtime_error",
+        "timed_out": false,
+        "watchdog_expired": false,
+        "returncode": 2,
+        "counts": {
+          "uvm_errors": 0,
+          "uvm_fatals": 0,
+          "uvm_warnings": 0,
+          "scoreboard_mismatches": 0,
+          "assertion_failures": 0
+        },
+        "clean_exit": false,
+        "log": "rm -f /workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC6Test.xml\n/usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/8019f221e437 --top-module tb_hamming_encoder --timing -Wno-fatal --timescale 1ns/1ps --vpi --public-flat-rw --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"  /workspace/generated/designs/hamming_encoder/rtl_verification/accepted/hamming_encoder.sv /workspace/benchmarks/hamming_encoder/hamming_encoder.sv /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n%Warning-MODDUP: /workspace/benchmarks/hamming_encoder/hamming_encoder.sv:62:8: Duplicate declaration of module: 'hamming_encoder'\n   62 | module hamming_encoder\n      |        ^~~~~~~~~~~~~~~\n                 /workspace/generated/designs/hamming_encoder/rtl_verification/accepted/hamming_encoder.sv:62:8: ... Location of original declaration\n   62 | module hamming_encoder\n      |        ^~~~~~~~~~~~~~~\n                 ... For warning description see https://verilator.org/warn/MODDUP?v=5.042\n                 ... Use \"/* verilator lint_off MODDUP */\" and lint_on around source to disable this message.\n%Error: Specified --top-module 'tb_hamming_encoder' was not found in design.\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042 for more assistance.\n%Error: Exiting due to 1 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65: /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/8019f221e437/Vtop.mk] Error 1\n",
+        "command": [
+          "timeout",
+          "--signal=TERM",
+          "--kill-after=5",
+          "60",
+          "make",
+          "-f",
+          "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/Makefile",
+          "SIM=verilator",
+          "TOPLEVEL_LANG=verilog",
+          "TOPLEVEL=tb_hamming_encoder",
+          "COCOTB_TOPLEVEL=tb_hamming_encoder",
+          "MODULE=test_top",
+          "COCOTB_TEST_MODULES=test_top",
+          "VERILOG_SOURCES=/workspace/generated/designs/hamming_encoder/rtl_verification/accepted/hamming_encoder.sv /workspace/benchmarks/hamming_encoder/hamming_encoder.sv",
+          "SIM_BUILD=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/8019f221e437",
+          "COCOTB_RESULTS_FILE=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC6Test.xml",
+          "COCOTB_HDL_TIMEUNIT=1ns",
+          "COCOTB_HDL_TIMEPRECISION=1ps",
+          "BUILD_ARGS=-j 4"
+        ],
+        "test_name": "HammingTC6Test",
+        "test_module": "test_top",
+        "results_file": "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC6Test.xml",
+        "results_file_exists": false
+      },
+      "HammingTC7Test": {
+        "status": "runtime_error",
+        "category": "runtime_error",
+        "timed_out": false,
+        "watchdog_expired": false,
+        "returncode": 2,
+        "counts": {
+          "uvm_errors": 0,
+          "uvm_fatals": 0,
+          "uvm_warnings": 0,
+          "scoreboard_mismatches": 0,
+          "assertion_failures": 0
+        },
+        "clean_exit": false,
+        "log": "rm -f /workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC7Test.xml\n/usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/8019f221e437 --top-module tb_hamming_encoder --timing -Wno-fatal --timescale 1ns/1ps --vpi --public-flat-rw --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"  /workspace/generated/designs/hamming_encoder/rtl_verification/accepted/hamming_encoder.sv /workspace/benchmarks/hamming_encoder/hamming_encoder.sv /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n%Warning-MODDUP: /workspace/benchmarks/hamming_encoder/hamming_encoder.sv:62:8: Duplicate declaration of module: 'hamming_encoder'\n   62 | module hamming_encoder\n      |        ^~~~~~~~~~~~~~~\n                 /workspace/generated/designs/hamming_encoder/rtl_verification/accepted/hamming_encoder.sv:62:8: ... Location of original declaration\n   62 | module hamming_encoder\n      |        ^~~~~~~~~~~~~~~\n                 ... For warning description see https://verilator.org/warn/MODDUP?v=5.042\n                 ... Use \"/* verilator lint_off MODDUP */\" and lint_on around source to disable this message.\n%Error: Specified --top-module 'tb_hamming_encoder' was not found in design.\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042 for more assistance.\n%Error: Exiting due to 1 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65: /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/8019f221e437/Vtop.mk] Error 1\n",
+        "command": [
+          "timeout",
+          "--signal=TERM",
+          "--kill-after=5",
+          "60",
+          "make",
+          "-f",
+          "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/Makefile",
+          "SIM=verilator",
+          "TOPLEVEL_LANG=verilog",
+          "TOPLEVEL=tb_hamming_encoder",
+          "COCOTB_TOPLEVEL=tb_hamming_encoder",
+          "MODULE=test_top",
+          "COCOTB_TEST_MODULES=test_top",
+          "VERILOG_SOURCES=/workspace/generated/designs/hamming_encoder/rtl_verification/accepted/hamming_encoder.sv /workspace/benchmarks/hamming_encoder/hamming_encoder.sv",
+          "SIM_BUILD=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/8019f221e437",
+          "COCOTB_RESULTS_FILE=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC7Test.xml",
+          "COCOTB_HDL_TIMEUNIT=1ns",
+          "COCOTB_HDL_TIMEPRECISION=1ps",
+          "BUILD_ARGS=-j 4"
+        ],
+        "test_name": "HammingTC7Test",
+        "test_module": "test_top",
+        "results_file": "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC7Test.xml",
+        "results_file_exists": false
+      },
+      "HammingTC8Test": {
+        "status": "runtime_error",
+        "category": "runtime_error",
+        "timed_out": false,
+        "watchdog_expired": false,
+        "returncode": 2,
+        "counts": {
+          "uvm_errors": 0,
+          "uvm_fatals": 0,
+          "uvm_warnings": 0,
+          "scoreboard_mismatches": 0,
+          "assertion_failures": 0
+        },
+        "clean_exit": false,
+        "log": "rm -f /workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC8Test.xml\n/usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/8019f221e437 --top-module tb_hamming_encoder --timing -Wno-fatal --timescale 1ns/1ps --vpi --public-flat-rw --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"  /workspace/generated/designs/hamming_encoder/rtl_verification/accepted/hamming_encoder.sv /workspace/benchmarks/hamming_encoder/hamming_encoder.sv /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n%Warning-MODDUP: /workspace/benchmarks/hamming_encoder/hamming_encoder.sv:62:8: Duplicate declaration of module: 'hamming_encoder'\n   62 | module hamming_encoder\n      |        ^~~~~~~~~~~~~~~\n                 /workspace/generated/designs/hamming_encoder/rtl_verification/accepted/hamming_encoder.sv:62:8: ... Location of original declaration\n   62 | module hamming_encoder\n      |        ^~~~~~~~~~~~~~~\n                 ... For warning description see https://verilator.org/warn/MODDUP?v=5.042\n                 ... Use \"/* verilator lint_off MODDUP */\" and lint_on around source to disable this message.\n%Error: Specified --top-module 'tb_hamming_encoder' was not found in design.\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042 for more assistance.\n%Error: Exiting due to 1 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65: /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/8019f221e437/Vtop.mk] Error 1\n",
+        "command": [
+          "timeout",
+          "--signal=TERM",
+          "--kill-after=5",
+          "60",
+          "make",
+          "-f",
+          "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/Makefile",
+          "SIM=verilator",
+          "TOPLEVEL_LANG=verilog",
+          "TOPLEVEL=tb_hamming_encoder",
+          "COCOTB_TOPLEVEL=tb_hamming_encoder",
+          "MODULE=test_top",
+          "COCOTB_TEST_MODULES=test_top",
+          "VERILOG_SOURCES=/workspace/generated/designs/hamming_encoder/rtl_verification/accepted/hamming_encoder.sv /workspace/benchmarks/hamming_encoder/hamming_encoder.sv",
+          "SIM_BUILD=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/8019f221e437",
+          "COCOTB_RESULTS_FILE=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC8Test.xml",
+          "COCOTB_HDL_TIMEUNIT=1ns",
+          "COCOTB_HDL_TIMEPRECISION=1ps",
+          "BUILD_ARGS=-j 4"
+        ],
+        "test_name": "HammingTC8Test",
+        "test_module": "test_top",
+        "results_file": "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingTC8Test.xml",
+        "results_file_exists": false
+      },
+      "HammingCornerTest": {
+        "status": "runtime_error",
+        "category": "runtime_error",
+        "timed_out": false,
+        "watchdog_expired": false,
+        "returncode": 2,
+        "counts": {
+          "uvm_errors": 0,
+          "uvm_fatals": 0,
+          "uvm_warnings": 0,
+          "scoreboard_mismatches": 0,
+          "assertion_failures": 0
+        },
+        "clean_exit": false,
+        "log": "rm -f /workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingCornerTest.xml\n/usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/8019f221e437 --top-module tb_hamming_encoder --timing -Wno-fatal --timescale 1ns/1ps --vpi --public-flat-rw --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"  /workspace/generated/designs/hamming_encoder/rtl_verification/accepted/hamming_encoder.sv /workspace/benchmarks/hamming_encoder/hamming_encoder.sv /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n%Warning-MODDUP: /workspace/benchmarks/hamming_encoder/hamming_encoder.sv:62:8: Duplicate declaration of module: 'hamming_encoder'\n   62 | module hamming_encoder\n      |        ^~~~~~~~~~~~~~~\n                 /workspace/generated/designs/hamming_encoder/rtl_verification/accepted/hamming_encoder.sv:62:8: ... Location of original declaration\n   62 | module hamming_encoder\n      |        ^~~~~~~~~~~~~~~\n                 ... For warning description see https://verilator.org/warn/MODDUP?v=5.042\n                 ... Use \"/* verilator lint_off MODDUP */\" and lint_on around source to disable this message.\n%Error: Specified --top-module 'tb_hamming_encoder' was not found in design.\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042 for more assistance.\n%Error: Exiting due to 1 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65: /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/8019f221e437/Vtop.mk] Error 1\n",
+        "command": [
+          "timeout",
+          "--signal=TERM",
+          "--kill-after=5",
+          "60",
+          "make",
+          "-f",
+          "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/Makefile",
+          "SIM=verilator",
+          "TOPLEVEL_LANG=verilog",
+          "TOPLEVEL=tb_hamming_encoder",
+          "COCOTB_TOPLEVEL=tb_hamming_encoder",
+          "MODULE=test_top",
+          "COCOTB_TEST_MODULES=test_top",
+          "VERILOG_SOURCES=/workspace/generated/designs/hamming_encoder/rtl_verification/accepted/hamming_encoder.sv /workspace/benchmarks/hamming_encoder/hamming_encoder.sv",
+          "SIM_BUILD=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/8019f221e437",
+          "COCOTB_RESULTS_FILE=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingCornerTest.xml",
+          "COCOTB_HDL_TIMEUNIT=1ns",
+          "COCOTB_HDL_TIMEPRECISION=1ps",
+          "BUILD_ARGS=-j 4"
+        ],
+        "test_name": "HammingCornerTest",
+        "test_module": "test_top",
+        "results_file": "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingCornerTest.xml",
+        "results_file_exists": false
+      },
+      "HammingRandomizedTest": {
+        "status": "runtime_error",
+        "category": "runtime_error",
+        "timed_out": false,
+        "watchdog_expired": false,
+        "returncode": 2,
+        "counts": {
+          "uvm_errors": 0,
+          "uvm_fatals": 0,
+          "uvm_warnings": 0,
+          "scoreboard_mismatches": 0,
+          "assertion_failures": 0
+        },
+        "clean_exit": false,
+        "log": "rm -f /workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingRandomizedTest.xml\n/usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/8019f221e437 --top-module tb_hamming_encoder --timing -Wno-fatal --timescale 1ns/1ps --vpi --public-flat-rw --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"  /workspace/generated/designs/hamming_encoder/rtl_verification/accepted/hamming_encoder.sv /workspace/benchmarks/hamming_encoder/hamming_encoder.sv /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n%Warning-MODDUP: /workspace/benchmarks/hamming_encoder/hamming_encoder.sv:62:8: Duplicate declaration of module: 'hamming_encoder'\n   62 | module hamming_encoder\n      |        ^~~~~~~~~~~~~~~\n                 /workspace/generated/designs/hamming_encoder/rtl_verification/accepted/hamming_encoder.sv:62:8: ... Location of original declaration\n   62 | module hamming_encoder\n      |        ^~~~~~~~~~~~~~~\n                 ... For warning description see https://verilator.org/warn/MODDUP?v=5.042\n                 ... Use \"/* verilator lint_off MODDUP */\" and lint_on around source to disable this message.\n%Error: Specified --top-module 'tb_hamming_encoder' was not found in design.\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042 for more assistance.\n%Error: Exiting due to 1 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65: /workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/8019f221e437/Vtop.mk] Error 1\n",
+        "command": [
+          "timeout",
+          "--signal=TERM",
+          "--kill-after=5",
+          "60",
+          "make",
+          "-f",
+          "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/Makefile",
+          "SIM=verilator",
+          "TOPLEVEL_LANG=verilog",
+          "TOPLEVEL=tb_hamming_encoder",
+          "COCOTB_TOPLEVEL=tb_hamming_encoder",
+          "MODULE=test_top",
+          "COCOTB_TEST_MODULES=test_top",
+          "VERILOG_SOURCES=/workspace/generated/designs/hamming_encoder/rtl_verification/accepted/hamming_encoder.sv /workspace/benchmarks/hamming_encoder/hamming_encoder.sv",
+          "SIM_BUILD=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/build/8019f221e437",
+          "COCOTB_RESULTS_FILE=/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingRandomizedTest.xml",
+          "COCOTB_HDL_TIMEUNIT=1ns",
+          "COCOTB_HDL_TIMEPRECISION=1ps",
+          "BUILD_ARGS=-j 4"
+        ],
+        "test_name": "HammingRandomizedTest",
+        "test_module": "test_top",
+        "results_file": "/workspace/generated/designs/hamming_encoder/tb/.chia_sim/HammingRandomizedTest.xml",
+        "results_file_exists": false
+      }
+    }
+  }
+}
+
+===== RTL BASELINE SCORE (iteration 1) =====
+Accepted RTL score: 55.00
+Accepted RTL metrics: {
+  "tests_total": 10,
+  "tests_passed": 0,
+  "tests_failed": 10,
+  "functional_coverage": {
+    "available": false,
+    "percentage": null
+  },
+  "planned_coverage_points": 4,
+  "generated_coverage_points": 4,
+  "planned_coverage_crosses": 2,
+  "generated_coverage_crosses": 2,
+  "python_assertions": 13,
+  "checker_coroutines": 0,
+  "test_classes": 11,
+  "sequences": 2,
+  "planned_assertions": 5,
+  "test_health_score": 0.0,
+  "coverage_quality_score": 100.0,
+  "assertion_quality_score": 100.0,
+  "scenario_quality_score": 0.0,
+  "scenario_coverage": {
+    "planned": 8,
+    "generated": 8,
+    "executed": 0,
+    "score": 0.0,
+    "planned_ids": [
+      "TC1",
+      "TC2",
+      "TC3",
+      "TC4",
+      "TC5",
+      "TC6",
+      "TC7",
+      "TC8"
+    ],
+    "generated_ids": [
+      "TC1",
+      "TC2",
+      "TC3",
+      "TC4",
+      "TC5",
+      "TC6",
+      "TC7",
+      "TC8"
+    ],
+    "executed_ids": []
+  },
+  "parameter_coverage": {
+    "available": false,
+    "score": 100.0,
+    "planned": {},
+    "observed": {}
+  },
+  "tb_quality_score": 55.0
+}
+Baseline score report: /home/auralab/nwark/for_multiple_rtl_updation_generalized/generated/designs/hamming_encoder/rtl_verification/iterations/iteration_01/baseline_score.yaml
+[36m(_ToolServerActor pid=7650)[0m INFO:     Started server process [7650]
+[36m(_ToolServerActor pid=7650)[0m INFO:     Waiting for application startup.
+[36m(_ToolServerActor pid=7650)[0m INFO:     Application startup complete.
+[36m(_ToolServerActor pid=7650)[0m INFO:     Uvicorn running on http://172.20.107.229:8000 (Press CTRL+C to quit)
+verification_improvement_workspace started at 172.20.107.229:8000 on node 1e6675023c7c118ac040d9c22fab34c489adcad25e9799b769f4f387
+OpenCodeLLM is experimental: only exercised by unit tests so far, not validated in production.
+[36m(_ToolServerActor pid=7650)[0m INFO:     172.20.107.229:34348 - "POST /verification_improvement_workspace/mcp HTTP/1.1" 200 OK
+[36m(_ToolServerActor pid=7650)[0m INFO:     172.20.107.229:34348 - "POST /verification_improvement_workspace/mcp HTTP/1.1" 202 Accepted
+[36m(_ToolServerActor pid=7650)[0m INFO:     172.20.107.229:34348 - "GET /verification_improvement_workspace/mcp HTTP/1.1" 200 OK
+[36m(_ToolServerActor pid=7650)[0m INFO:     172.20.107.229:34364 - "POST /verification_improvement_workspace/mcp HTTP/1.1" 200 OK
+[36m(_ToolServerActor pid=7650)[0m INFO:     Shutting down
+[36m(_ToolServerActor pid=7650)[0m INFO:     Waiting for application shutdown.
+[36m(_ToolServerActor pid=7650)[0m INFO:     Application shutdown complete.
+[36m(_ToolServerActor pid=7650)[0m INFO:     Finished server process [7650]
+
+===== RTL REPAIR DECISION =====
+schema_version: '1.0'
+action: no_repair
+root_cause: No actionable repair identified from the provided information
+evidence:
+- Malformed document contained only an empty changes list with no supporting fields
+confidence: low
+changes: []
+
+
+✓ RTL repair phase complete: no_repair.
+  No RTL modification is warranted by the grounded diagnosis.
+✓ RTL stage is ready for the next pipeline stage (e.g. ORFS).
+✓ Original benchmark RTL was not modified.
+------------------------------------------------------------------------------
+run14 exit status: 0
+Time: 2026-09-14T22:46:18+05:30
+Status: CLEAN EXIT
+Supervisor: stopping.
+------------------------------------------------------------------------------
+

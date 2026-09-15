@@ -1,0 +1,102 @@
+# aes128 cocotb+pyuvm testbench — generation manifest (integration stage).
+#
+# This manifest is the authoritative runtime contract for the generated
+# environment.  The top module, RTL file, compiled sources, python test
+# module, and the exact pyuvm test class names selectable via UVM_TESTNAME
+# are all listed here.  The `scenarios` list maps each directed
+# verification-plan scenario ID (nist_kat .. reset_mid_transaction) to the
+# generated sequence class (tb/sequences.py) and test class (tb/test.py).
+
+top_module: aes128
+top_file: benchmarks/aes_benchmark/aes128.sv
+
+# Only the DUT RTL is passed to the simulator.  There is no generated
+# SystemVerilog source (everything else — environment, stimulus,
+# observation, check, coverage, assertions, tests — is Python).
+compile_files:
+  - benchmarks/aes_benchmark/aes128.sv
+
+# Exact runtime pyuvm uvm_test class names (selectable via UVM_TESTNAME).
+# NOTE (plan DISC-001): the target RTL is intentionally buggy (the
+# final-round MixColumns guard `if (round == 4'd10)` never fires because
+# `round` tops out at 9 during ROUND_RUN).  Every test that completes at
+# least one transaction therefore fails on the reference-model mismatch;
+# that failure is the intended bug detection.  Only AESResetMidTransactionTest
+# (no completed transaction by plan) is expected to pass.
+test_classes:
+  - AESNistKatTest
+  - AESAllZerosTest
+  - AESAllOnesTest
+  - AESAlternatingTest
+  - AESZeroKeyNonzeroPtTest
+  - AESNonzeroKeyZeroPtTest
+  - AESInputChangeWhileBusyTest
+  - AESRepeatedTransactionsTest
+  - AESDonePulseWidthTest
+  - AESResetDuringIdleTest
+  - AESResetMidTransactionTest
+  - AESCornerCaseTest
+  - AESRandomizedTest
+
+# Top-level Python cocotb test module (without .py).
+python_test_module: test_top
+
+# Authoritative mapping between the accepted verification plan
+# (directed_test_scenarios) and the generated directed environment.
+scenarios:
+  - id: nist_kat
+    name: NIST Known-Answer Test
+    sequence: NistKatSeq
+    test: AESNistKatTest
+  - id: all_zeros
+    name: All-Zero Key and Plaintext
+    sequence: AllZerosSeq
+    test: AESAllZerosTest
+  - id: all_ones
+    name: All-One Key and Plaintext
+    sequence: AllOnesSeq
+    test: AESAllOnesTest
+  - id: alternating
+    name: Alternating Bit Patterns
+    sequence: AlternatingSeq
+    test: AESAlternatingTest
+  - id: zero_key_nonzero_pt
+    name: Zero Key, Non-Zero Plaintext
+    sequence: ZeroKeyNonzeroPtSeq
+    test: AESZeroKeyNonzeroPtTest
+  - id: nonzero_key_zero_pt
+    name: Non-Zero Key, Zero Plaintext
+    sequence: NonzeroKeyZeroPtSeq
+    test: AESNonzeroKeyZeroPtTest
+  - id: input_change_while_busy
+    name: Input Changes While Busy
+    sequence: InputChangeWhileBusySeq
+    test: AESInputChangeWhileBusyTest
+  - id: repeated_transactions
+    name: Repeated Sequential Transactions
+    sequence: RepeatedTransactionsSeq
+    test: AESRepeatedTransactionsTest
+  - id: done_pulse_width
+    name: Done Pulse Width Verification
+    sequence: DonePulseWidthSeq
+    test: AESDonePulseWidthTest
+  - id: reset_during_idle
+    name: Reset During Idle
+    sequence: ResetDuringIdleSeq
+    test: AESResetDuringIdleTest
+  - id: reset_mid_transaction
+    name: Reset During Encryption
+    sequence: ResetMidTransactionSeq
+    test: AESResetMidTransactionTest
+
+# Additional verification strategies from the plan (no scenario id).
+corner_cases_test: AESCornerCaseTest
+corner_sequences:
+  - CornerSingleBitKeySeq
+  - CornerFastRetriggerSeq
+  - CornerAllOnesKeyZeroPtSeq
+  - CornerZeroKeyAllOnesPtSeq
+  - CornerStartIgnoredWhenBusySeq
+
+randomized_test: AESRandomizedTest
+randomized_sequence: AESRandomizedSequence

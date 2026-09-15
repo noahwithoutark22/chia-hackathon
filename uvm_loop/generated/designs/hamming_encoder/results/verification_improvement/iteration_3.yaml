@@ -1,0 +1,205 @@
+schema_version: '1.0'
+iteration: 3
+quality_score: 70.42
+metrics:
+  tests_total: 10
+  tests_passed: 10
+  tests_failed: 0
+  functional_coverage:
+    available: true
+    percentage: 41.67
+  planned_coverage_points: 4
+  generated_coverage_points: 4
+  planned_coverage_crosses: 2
+  generated_coverage_crosses: 2
+  python_assertions: 37
+  checker_coroutines: 0
+  test_classes: 10
+  sequences: 1
+  planned_assertions: 5
+  test_health_score: 100.0
+  coverage_quality_score: 41.67
+  assertion_quality_score: 100.0
+  scenario_quality_score: 0.0
+  scenario_coverage:
+    planned: 8
+    generated: 8
+    executed: 0
+    score: 0.0
+    planned_ids:
+    - TC1
+    - TC2
+    - TC3
+    - TC4
+    - TC5
+    - TC6
+    - TC7
+    - TC8
+    generated_ids:
+    - TC1
+    - TC2
+    - TC3
+    - TC4
+    - TC5
+    - TC6
+    - TC7
+    - TC8
+    executed_ids: []
+  parameter_coverage:
+    available: false
+    score: 100.0
+    planned: {}
+    observed: {}
+  tb_quality_score: 70.42
+weaknesses:
+- id: W1-ELABORATION-COVERAGE-GAP
+  severity: high
+  category: elaboration_coverage_gap
+  title: Entire regression ran a single elaboration (DATA_WIDTH=4, SECDED=0); SECDED=1
+    and all alternate DATA_WIDTHs were never exercised
+  affected_tests:
+  - HammingTC3Test
+  - HammingTC4Test
+  - HammingTC5Test
+  - HammingTC6Test
+  - HammingTC7Test
+  - HammingTC8Test
+  - HammingCornerTest
+  - HammingRandomizedTest
+  evidence:
+  - 'Every test that scored items reports the same single configuration in simulation_result.json:
+    HammingTC4Test ''HammingScoreboard config (DATA_WIDTH=4, SECDED=0): 16 checked'',
+    HammingRandomizedTest ''(DATA_WIDTH=4, SECDED=0): 1000 checked'', HammingCornerTest
+    ''(DATA_WIDTH=4, SECDED=0): 13 checked''.'
+  - 'HammingTC3Test / HammingTC5Test / HammingTC7Test logs: ''TEST SKIPPED: uvm_test_top
+    is inapplicable to this elaboration (DATA_WIDTH=4, SECDED=0); passing without
+    stimulus'' with ''monitor: observed and published 0 transaction(s)'' and ''HammingScoreboard
+    report: 0 items checked''.'
+  - The per-test make commands captured in simulation_result.json contain no DATA_WIDTH/SECDED
+    variables, so the Makefile/RTL default elaboration (4,0) was used for all 10 simulations.
+  - 'tb/hamming_encoder_coverage_aggregate.yml: 15/36 bins (41.67%) - secded_on=0,
+    width_1/width_8/width_11/width_16=0, secded_parity_zero/one=0, data_x_secded 5/10
+    (every secded_on cross is 0), width_x_secded 1/10.'
+  - HammingCornerTest's 13 scored items are exactly the un-gated corners (ZeroDataWord
+    1 + AllOnesDataWord 1 + SingleBitDataWalk 4 + HammingWeightSymmetry 7); SECDEDOrderingShiftSeq,
+    SECDEDCodewordEvenWeightSeq, MinimumDataWidthSeq and ParityBitCountTransitionSeq
+    all skipped because plan corner cases for SECDED=1 / DATA_WIDTH 1,5,16 were gated
+    out.
+  - The always-on assertion secded_overall_even_parity (tb/assertions.py) early-returns
+    with 'not applicable (SECDED=0); skipping', so the run contained no independent
+    check of the overall-parity bit or the SECDED bit-order shift described in spec.md
+    section 3.1.
+  likely_cause: 'Inference: the benchmark worker invoked every test under the default
+    RTL elaboration only (no DATA_WIDTH/SECDED environment or -G overrides), and the
+    generated sequences/tests correctly log-and-skip scenarios targeting other elaborations,
+    so the gated plan scenarios contributed zero stimulus while still leaving green
+    ''pass'' entries.'
+  investigation_targets:
+  - tb/test.py (HammingTestBase.elaboration_applies per test class)
+  - tb/sequences.py (elaboration guards and the SECDED/width-gated corner sequences)
+  - tb/Makefile (DATA_WIDTH/SECDED defaults and -G override plumbing)
+  - tb/test_top.py (default-elaboration resolution)
+  - tb/assertions.py (check_secded_overall_even_parity gating)
+  recommended_action: Run the 10-test regression across the plan's (DATA_WIDTH, SECDED)
+    matrix - at minimum (4,0), (4,1), (8,0), (8,1), (1,x), (11,x), (16,x) - so TC3,
+    TC5, TC7, the SECDED corner cases, and the width corner cases actually execute,
+    and record per-configuration executed/checked item counts in the simulation result
+    so the run's configuration coverage is auditable.
+  confidence: high
+- id: W2-SKIPPED-TESTS-PASS
+  severity: high
+  category: skip_semantics_false_pass
+  title: Gated scenario tests pass with zero stimulus ('TEST SKIPPED ... passing without
+    stimulus' bypasses the empty-run guard)
+  affected_tests:
+  - HammingTC3Test
+  - HammingTC5Test
+  - HammingTC7Test
+  evidence:
+  - 'tb/test.py report_phase returns early when ''not type(self).elaboration_applies(conf)'':
+    it logs ''TEST SKIPPED ... passing without stimulus'' and returns before the guard
+    ''if sb._num_items_checked == 0: raise AssertionError''.'
+  - 'Severity of the bypass: the zero-items guard only runs for applicable elaborations,
+    so a test that never drives the DUT can never fail a regression for not exercising
+    anything.'
+  - simulation_result.json records HammingTC3Test, HammingTC5Test and HammingTC7Test
+    as status 'pass' with counts (uvm_errors=0, scoreboard_mismatches=0, assertion_failures=0)
+    while their logs show 'published 0 transaction(s)' and '0 items checked' and no
+    'TEST PASSED' line at all.
+  - 'Net effect: a 10/10 green run gives no signal that 3 of the 8 directed plan scenarios
+    executed zero stimulus (and TC4/TC6/TC8 only ran one of their two planned SECDED
+    modes).'
+  likely_cause: 'Inference: the adaptive-skip design intentionally converts an inapplicable
+    elaboration into a pass so the default-elaboration run stays green, but nothing
+    at the regression level verifies that every planned scenario was actually executed
+    at least once under some elaboration.'
+  investigation_targets:
+  - tb/test.py (HammingTestBase.report_phase, elaboration_applies)
+  - tb/sequences.py (HammingScenarioBase._targets log-and-skip guard)
+  recommended_action: 'Make skips visible and non-green: emit a per-test/per-scenario
+    skip ledger into the simulation result, require every planned scenario (TC1..TC8
+    plus corner cases) to be executed under at least one elaboration for the regression
+    to be reported as pass, and/or fail an individual test when it skips instead of
+    laboring under an implicit pass.'
+  confidence: high
+- id: W3-COVERAGE-CLOSURE-NOT-ENFORCED
+  severity: medium
+  category: coverage_not_enforced
+  title: Functional coverage is surface-only (never a pass criterion); all SECDED/width
+    coverage objectives measured zero yet the run reports 10/10 pass
+  affected_tests:
+  - HammingTC1Test
+  - HammingTC2Test
+  - HammingTC3Test
+  - HammingTC4Test
+  - HammingTC5Test
+  - HammingTC6Test
+  - HammingTC7Test
+  - HammingTC8Test
+  - HammingCornerTest
+  - HammingRandomizedTest
+  evidence:
+  - tb/coverage.py states the plan coverage goals are 'surfaced, not enforced as a
+    pass/fail criterion'.
+  - 'tb/hamming_encoder_coverage_aggregate.yml: aggregate 41.67% (15/36); secded_cov
+    1/2 (secded_on=0), width_cov 1/5 (only width_4), width_x_secded 1/10, data_x_secded
+    5/10, codeword_cov 2/4 (secded_parity_zero/one=0).'
+  - The plan's randomized_testing_strategy pass_criteria explicitly require 'functional
+    coverage goals in functional_coverage are met', and the plan defines width_cov
+    bins 1/4/8/11/16 and both SECDED modes plus their crosses - none of the non-default
+    bins were reachable or enforced in this run.
+  - All ten tests pass with assertion_failures=0 / scoreboard_mismatches=0 even though
+    no run in the regression ever satisfied the SECDED or non-default-width coverage
+    objectives.
+  likely_cause: 'Inference: coverage collection is wired as a reporting-only uvm_subscriber;
+    nothing in report_phase compares collected bin hits against the plan''s coverage
+    goals, so a run in which whole plan configurations are never sampled (secded_on,
+    width 1/8/11/16) cannot fail.'
+  investigation_targets:
+  - tb/coverage.py (HammingCoverage.report_phase, aggregate merge)
+  - tb/scoreboard.py (no coverage-consumption hook)
+  recommended_action: Enforce plan coverage closure as a regression pass criterion
+    (e.g., fail when secded_cov.secded_on, any plan width_cov bin, or the width_x_secded
+    / data_x_secded crosses are zero for the plan's required configurations); this
+    also makes the single-elaboration run of W1 structurally unable to pass, forcing
+    the elaboration matrix.
+  confidence: high
+authoritative_inputs:
+- specification
+- reference_model
+- verification_plan
+rtl_exposed_to_llm: false
+comparison:
+  previous_quality_score: 70.42
+  delta: 0.0
+analysis_summary:
+  overall_status: verification_weakness
+  tests_total: 10
+  tests_passed: 10
+  tests_failed: 0
+accepted: true
+changed_files:
+- coverage.py
+analysis_report_path: /home/auralab/nwark/for_multiple_rtl_updation_generalized/generated/designs/hamming_encoder/llm_verification_analysis_workspace/weakness_report.yaml
+decision_path: /home/auralab/nwark/for_multiple_rtl_updation_generalized/generated/designs/hamming_encoder/results/verification_improvement/decisions/iteration_3.yaml
+iteration_status: accepted

@@ -3,6 +3,8 @@ import json
 import subprocess
 import re
 import time
+import shutil
+import os
 
 import ray
 
@@ -17,6 +19,12 @@ from chia.models.opencode import OpenCodeLLM
 
 from pipeline.functions import extract_rtl, generate_uvm_in_worker, simulate, analyze_results
 from pipeline.tb_feedback import ensure_simulation_manifest, build_diagnosis_prompt, build_repair_prompt
+from pipeline.verification_improvement import (
+    analyze_verification_state,
+    prepare_sanitized_workspace,
+    collect_tb_changes,
+    build_improvement_prompt,
+)
 from src.schema import VerificationPlan
 
 
@@ -55,7 +63,8 @@ CANDIDATE_PLAN = "generated/plans/candidate_verification_plan.yaml"
 
 MAX_REPAIR_ATTEMPTS = 2
 MAX_TB_REPAIR_ATTEMPTS = 3
-SIM_TEST_TIMEOUT = 60
+MAX_IMPROVEMENT_ITERATIONS = int(os.environ.get("MAX_VERIFICATION_IMPROVEMENT_ITERATIONS", "5"))
+SIM_TEST_TIMEOUT = int(os.environ.get("SIM_TEST_TIMEOUT", "60"))
 SIM_BUILD_TIMEOUT = 1800
 
 
@@ -117,6 +126,23 @@ def clear_stage(name):
 # Helper: create OpenCode + Bash
 
 # =========================================================
+
+def create_improvement_agent(work_dir):
+    """Create an LLM agent whose filesystem contains only sanitized inputs."""
+    bash = BashTool(
+        "verification_improvement_workspace",
+        work_dir=work_dir,
+        timeout_seconds=1200,
+        task_options={"resources": {"opencode_tools": 1}},
+    )
+    llm = OpenCodeLLM(
+        model="opencode/big-pickle",
+        work_dir=work_dir,
+        timeout_seconds=1200,
+        retries=1,
+    )
+    return llm, bash
+
 
 def create_agent():
 
@@ -1627,6 +1653,7 @@ def generate_and_validate_uvm(llm, bash, canonical_plan):
             "cocotb+pyuvm environment already passed simulation in a "
             "previous run."
         )
+        run_verification_improvement_loop(llm, bash, canonical_plan)
         return
 
     print("\n[5/5] Validating generated cocotb+pyuvm environment...")
@@ -1661,6 +1688,7 @@ def generate_and_validate_uvm(llm, bash, canonical_plan):
         if final_analysis["verdict"] == "pass":
             print("\n✓ Generated cocotb+pyuvm environment passed simulation.")
             mark_stage_done("tb_validated", detail={"result_path": result_rel})
+            run_verification_improvement_loop(llm, bash, canonical_plan)
             return
 
         if final_analysis["verdict"] == "template_bug":
@@ -1686,14 +1714,34 @@ def generate_and_validate_uvm(llm, bash, canonical_plan):
             f"\nDiagnosing TB failure "
             f"(attempt {tb_attempt + 1})..."
         )
-        diagnosis_prompt = build_diagnosis_prompt(
-            f"/workspace/{result_rel}", RTL, SPEC, REF_MODEL, PLAN
+        diagnosis_workspace = HOST_WORKSPACE / "generated" / "llm_tb_diagnosis_workspace"
+        diagnosis_report = {
+            "source": "tb_validation",
+            "result_path": str(local_result_path),
+            "rtl_exposed_to_llm": False,
+        }
+        prepare_sanitized_workspace(
+            diagnosis_workspace,
+            HOST_WORKSPACE / SPEC,
+            HOST_WORKSPACE / REF_MODEL,
+            HOST_WORKSPACE / PLAN,
+            HOST_WORKSPACE / "generated_tb",
+            diagnosis_report,
         )
-        diagnosis_response = get(
-            llm.prompt.chia_remote(
-                llm, diagnosis_prompt, tools=[bash]
+        shutil.copy2(local_result_path, diagnosis_workspace / "simulation_result.json")
+        diagnosis_llm, diagnosis_bash = create_improvement_agent(str(diagnosis_workspace))
+        try:
+            diagnosis_prompt = build_diagnosis_prompt(
+                f"{diagnosis_workspace}/simulation_result.json",
+                "specification.md", "reference_model.py", "verification_plan.yaml"
             )
-        )
+            diagnosis_response = get(
+                diagnosis_llm.prompt.chia_remote(
+                    diagnosis_llm, diagnosis_prompt, tools=[diagnosis_bash]
+                )
+            )
+        finally:
+            diagnosis_bash.stop()
         if not diagnosis_response.success:
             raise RuntimeError(
                 "TB diagnosis LLM failed:\n"
@@ -1767,18 +1815,45 @@ def generate_and_validate_uvm(llm, bash, canonical_plan):
             f"(attempt {tb_attempt + 1}/"
             f"{MAX_TB_REPAIR_ATTEMPTS})..."
         )
-        repair_response = get(
-            llm.prompt.chia_remote(
-                llm,
-                build_repair_prompt(str(update_plan_path)),
-                tools=[bash],
-            )
+        repair_workspace = HOST_WORKSPACE / "generated" / "llm_tb_repair_workspace"
+        repair_report = {
+            "source": "tb_validation",
+            "result": final_analysis,
+            "repair_plan": update_plan,
+            "rtl_exposed_to_llm": False,
+        }
+        prepare_sanitized_workspace(
+            repair_workspace,
+            HOST_WORKSPACE / SPEC,
+            HOST_WORKSPACE / REF_MODEL,
+            HOST_WORKSPACE / PLAN,
+            tb_dir,
+            repair_report,
         )
+        shutil.copy2(update_plan_path, repair_workspace / "tb_update_plan.yaml")
+        repair_llm, repair_bash = create_improvement_agent(str(repair_workspace))
+        try:
+            repair_response = get(
+                repair_llm.prompt.chia_remote(
+                    repair_llm,
+                    build_repair_prompt(
+                        str(repair_workspace / "tb_update_plan.yaml"),
+                        str(repair_workspace),
+                    ),
+                    tools=[repair_bash],
+                )
+            )
+        finally:
+            repair_bash.stop()
         if not repair_response.success:
             raise RuntimeError(
                 "TB repair LLM failed:\n"
                 f"{repair_response.stderr}"
             )
+
+        changed = collect_tb_changes(repair_workspace / "tb", tb_dir)
+        if not changed:
+            raise RuntimeError("TB repair LLM completed without modifying the generated TB.")
 
         # Ensure the manifest remains usable after a repair.
         ensure_simulation_manifest(str(tb_dir))
@@ -1789,6 +1864,121 @@ def generate_and_validate_uvm(llm, bash, canonical_plan):
         + json.dumps(final_analysis, indent=2)
     )
 
+
+
+# =========================================================
+# Stages 6-9: metric-driven RTL-blind verification improvement
+# =========================================================
+
+def run_verification_improvement_loop(llm_unused, bash_unused, canonical_plan):
+    """Iteratively improve the existing TB using only weakness evidence.
+
+    The simulation worker sees RTL. The improvement LLM receives a sanitized
+    copy containing no RTL, no rtl_info, and no simulator build artifacts.
+    Candidate changes are applied only after the post-change regression is
+    objectively at least as good and has no new test-health regressions.
+    """
+    tb_dir = HOST_WORKSPACE / "generated_tb"
+    plan_path = HOST_WORKSPACE / PLAN
+    improvement_root = HOST_WORKSPACE / "generated" / "llm_improvement_workspace"
+    reports_dir = HOST_WORKSPACE / "generated" / "results" / "verification_improvement"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    snapshots = HOST_WORKSPACE / "generated" / "tb_iterations"
+    snapshots.mkdir(parents=True, exist_ok=True)
+
+    if is_stage_done("verification_improvement_complete"):
+        print("\n✓ Verification-improvement loop already completed.")
+        return
+
+    previous_report = None
+    # First measurement uses the already-validated generated TB.
+    baseline_result_rel = "generated/results/verification_improvement_baseline.json"
+    baseline = get(simulate.chia_remote(
+        RTL, "generated_tb", baseline_result_rel,
+        SIM_TEST_TIMEOUT, SIM_BUILD_TIMEOUT,
+    ))
+    baseline_path = HOST_WORKSPACE / baseline_result_rel
+    report = analyze_verification_state(plan_path, tb_dir, baseline_path, 0, None)
+    (reports_dir / "iteration_0.yaml").write_text(yaml.safe_dump(report, sort_keys=False))
+    previous_report = report
+    print("\n===== VERIFICATION BASELINE =====")
+    print(yaml.safe_dump(report, sort_keys=False))
+
+    for iteration in range(1, MAX_IMPROVEMENT_ITERATIONS + 1):
+        if not report.get("weaknesses"):
+            print("\n✓ No actionable weaknesses remain.")
+            break
+
+        # Snapshot the accepted TB before giving a copy to the LLM.
+        snapshot = snapshots / f"iteration_{iteration-1:02d}"
+        if snapshot.exists():
+            shutil.rmtree(snapshot)
+        shutil.copytree(tb_dir, snapshot, ignore=shutil.ignore_patterns(".chia_sim", "__pycache__", "*.so"))
+
+        prepare_sanitized_workspace(
+            improvement_root,
+            HOST_WORKSPACE / SPEC,
+            HOST_WORKSPACE / REF_MODEL,
+            plan_path,
+            tb_dir,
+            report,
+        )
+        llm, bash = create_improvement_agent(str(improvement_root))
+        try:
+            response = get(llm.prompt.chia_remote(
+                llm,
+                build_improvement_prompt(improvement_root),
+                tools=[bash],
+            ))
+            if not response.success:
+                raise RuntimeError(f"Verification improvement LLM failed:\n{response.stderr}")
+            changed = collect_tb_changes(improvement_root / "tb", tb_dir)
+        finally:
+            bash.stop()
+
+        if not changed:
+            print(f"\n✓ Improvement iteration {iteration}: LLM made no changes; stopping.")
+            break
+
+        ensure_simulation_manifest(str(tb_dir))
+        candidate_result_rel = f"generated/results/verification_improvement_candidate_{iteration}.json"
+        get(simulate.chia_remote(
+            RTL, "generated_tb", candidate_result_rel,
+            SIM_TEST_TIMEOUT, SIM_BUILD_TIMEOUT,
+        ))
+        candidate_path = HOST_WORKSPACE / candidate_result_rel
+        candidate_report = analyze_verification_state(
+            plan_path, tb_dir, candidate_path, iteration, previous_report
+        )
+        candidate_report["changed_files"] = changed
+        (reports_dir / f"iteration_{iteration}.yaml").write_text(
+            yaml.safe_dump(candidate_report, sort_keys=False)
+        )
+
+        old_score = float(previous_report.get("quality_score", 0.0))
+        new_score = float(candidate_report.get("quality_score", 0.0))
+        old_failed = int(previous_report.get("metrics", {}).get("tests_failed", 0))
+        new_failed = int(candidate_report.get("metrics", {}).get("tests_failed", 0))
+        accepted = new_score >= old_score and new_failed <= old_failed
+        candidate_report["accepted"] = accepted
+
+        if accepted:
+            previous_report = candidate_report
+            report = candidate_report
+            print(f"\n✓ Accepted TB improvement iteration {iteration}: {old_score:.2f} -> {new_score:.2f}")
+        else:
+            # Roll back the complete TB, not just files reported by the model.
+            if tb_dir.exists():
+                shutil.rmtree(tb_dir)
+            shutil.copytree(snapshot, tb_dir)
+            print(f"\n✗ Rejected TB improvement iteration {iteration}: {old_score:.2f} -> {new_score:.2f}")
+            break
+
+    mark_stage_done("verification_improvement_complete", detail={
+        "iterations": iteration if 'iteration' in locals() else 0,
+        "final_quality_score": previous_report.get("quality_score") if previous_report else None,
+        "report_dir": str(reports_dir),
+    })
 
 
 # =========================================================

@@ -194,25 +194,28 @@ def format_compatibility_findings(tb_dir: str) -> str:
 
 def build_diagnosis_prompt(
     result_path: str,
-    rtl: str,
     spec: str,
     ref_model: str,
     plan: str,
+    tb_dir: str = "/workspace",
+    update_plan_path: str = "/workspace/results/tb_update_plan.yaml",
 ) -> str:
-    compatibility_findings = format_compatibility_findings("/workspace/generated_tb")
+    compatibility_findings = format_compatibility_findings(tb_dir)
 
     return f"""
-You are the failure-diagnosis engineer for an LLM-generated UVM environment.
+You are the failure-diagnosis engineer for an LLM-generated cocotb+pyuvm environment.
 
-Work in /workspace. Do NOT edit any files in this step.
+The RTL implementation is intentionally unavailable to you. Work only from the
+specification, reference model, verification plan, generated TB, and simulation
+result. Do NOT attempt to locate, reconstruct, or request RTL. Do NOT edit any
+files in this step.
 
 Read these authoritative inputs:
 
-- RTL: {rtl}
 - Specification: {spec}
 - Reference model: {ref_model}
 - Accepted verification plan: {plan}
-- Generated UVM environment: /workspace/generated_tb
+- Generated UVM environment: {tb_dir}
 - Simulation result: {result_path}
 
 The simulation result contains compiler/linker/runtime logs. Determine the
@@ -246,7 +249,49 @@ IMPORTANT CLASSIFICATION RULE:
   the generated files and simulation command carefully before classifying it.
   Do not assume every internal fault is a simulator defect.
 
-Create /workspace/generated/results/tb_update_plan.yaml with exactly:
+DIAGNOSIS GROUNDING RULES:
+
+The simulation result is the primary evidence for the diagnosis.
+
+Before assigning a root cause or proposing a TB change:
+1. Identify the exact failing test and failure.
+2. Extract the exact generated-TB file, line, function/class, and error message
+   when available.
+3. Inspect the corresponding generated-TB implementation.
+4. Verify that the proposed root cause actually exists in that code.
+5. Verify that the proposed root cause is consistent with the observed
+   simulation state and error.
+6. Only then create the repair plan.
+
+Do not infer a root cause merely because it is a common failure mode.
+
+In particular:
+- Do not classify a failure as reset-related unless the simulation evidence
+  shows that reset was active or the failure is directly caused by reset
+  handling.
+- Do not claim that code is missing a behavior if the inspected generated TB
+  already implements that behavior.
+- Do not propose changing a file unrelated to the actual failure location
+  unless the inspected code proves that the unrelated file is the true root
+  cause.
+- If the evidence does not support the diagnosis, investigate the generated TB
+  further rather than inventing a cause.
+
+The changes section must contain the minimal generated-TB change that fixes the
+diagnosed root cause.
+
+Before finalizing the YAML, check this chain for consistency:
+
+SIMULATION FAILURE
+    -> FAILING FILE / FUNCTION / LINE
+    -> INSPECTED GENERATED CODE
+    -> ROOT CAUSE
+    -> PROPOSED CHANGE
+
+If the proposed change is already present in the generated TB, do not propose
+that same change again. Re-evaluate the root cause.
+
+Create {update_plan_path} with exactly:
 
 version: "1.0"
 
@@ -254,6 +299,9 @@ verdict: generation_bug | template_bug | non_actionable
 
 root_cause:
   category: compile | elaboration | connectivity | driver | monitor | sequence | scoreboard | reference_model_integration | reset | timeout | other
+  file: <relative generated-TB file, or null if not applicable>
+  line: <line number, or null if not available>
+  function: <function/class/method, or null if not available>
   summary: <short root cause>
   evidence: <specific evidence from the result>
 
@@ -289,34 +337,32 @@ Rules:
 """.strip()
 
 
-def build_repair_prompt(plan_path: str) -> str:
+def build_repair_prompt(plan_path: str, workspace: str = "/workspace") -> str:
     return f"""
-You are repairing an LLM-generated UVM verification environment.
+You are repairing an LLM-generated cocotb+pyuvm verification environment.
 
-Work in /workspace.
+Your filesystem is intentionally sanitized. The RTL implementation is NOT
+available to you. Work only inside {workspace}. Do not search parent
+directories, request RTL, or attempt to reconstruct it.
 
 Read:
-- /workspace/generated/results/tb_update_plan.yaml
-- /workspace/generated_tb
-- the RTL, specification, reference model, and accepted verification plan
-  referenced by the simulation/manifest artifacts
+- {plan_path}
+- {workspace}/tb
+- {workspace}/specification.md
+- {workspace}/reference_model.py
+- {workspace}/verification_plan.yaml
 
 Apply ONLY the changes described in {plan_path}.
 
 Rules:
-- Modify only files under /workspace/generated_tb.
-- Do not modify RTL, specification, reference model, or verification plan.
+- Modify only files under {workspace}/tb.
+- Do not modify the specification, reference model, or verification plan.
 - Do not redesign the UVM architecture.
 - Preserve existing test names and manifest/build configuration unless the
   update plan explicitly requires changing them.
 - Fix the root cause, not just the observed symptom.
-- For a parameterized-interface compatibility repair:
-  * keep the interface declaration non-parameterized;
-  * render concrete widths in the interface;
-  * use `virtual <dut>_if` everywhere in UVM components;
-  * use `uvm_config_db#(virtual <dut>_if)` for both set and get;
-  * keep DUT parameterization only where the DUT itself is instantiated;
-  * grep all generated SV after editing and remove every forbidden match.
+- Preserve the existing cocotb+pyuvm architecture and contract.
+- Do not introduce SystemVerilog UVM code or RTL dependencies.
 - After editing, inspect all affected files for syntax, connectivity, widths,
   UVM phase/objection correctness, and reference-model integration.
 - Keep the change minimal.

@@ -1,0 +1,1669 @@
+dut:
+  name: fifo
+  file: benchmarks/fifo/fifo.sv
+  description: Synchronous FIFO with DATA_WIDTH-bit data, DEPTH entries, registered
+    read output, and combinational full/empty flags.
+parameters:
+- name: DATA_WIDTH
+  default: '8'
+  description: Width of the data buses din and dout in bits.
+  test_values:
+  - 4
+  - 8
+  - 16
+- name: DEPTH
+  default: '4'
+  description: Number of entries the FIFO can hold; occupancy counting and pointer
+    modulo use DEPTH.
+  test_values:
+  - 2
+  - 4
+  - 8
+clock_and_reset:
+  clock:
+    name: clk
+    type: posedge
+    description: Master clock; the FIFO samples all control/data inputs and updates
+      state on the rising edge.
+  reset:
+    name: rst_n
+    polarity: active-low
+    type: asynchronous
+    description: Asynchronous active-low reset; asserting rst_n low clears pointers,
+      count, and dout.
+    reset_value:
+      count: 0
+      wr_ptr: 0
+      rd_ptr: 0
+      dout: 0
+      full: 0
+      empty: 1
+ports:
+  inputs:
+  - name: clk
+    width: 1
+    description: Master clock, rising-edge triggered.
+    type: logic
+    latency: null
+  - name: rst_n
+    width: 1
+    description: Active-low asynchronous reset.
+    type: logic
+    latency: null
+  - name: wr_en
+    width: 1
+    description: Write request; an accepted write pushes din on the rising edge.
+    type: logic
+    latency: null
+  - name: rd_en
+    width: 1
+    description: Read request; an accepted read pops the oldest entry onto dout on
+      the rising edge.
+    type: logic
+    latency: null
+  - name: din
+    width: DATA_WIDTH
+    description: Input data bus, DATA_WIDTH bits wide.
+    type: logic
+    latency: null
+  outputs:
+  - name: dout
+    width: DATA_WIDTH
+    description: Registered output data; updated with the oldest entry on the edge
+      after an accepted read, cleared to 0 by reset.
+    type: logic
+    latency: 1
+  - name: full
+    width: 1
+    description: Asserted combinationally when count == DEPTH.
+    type: logic
+    latency: null
+  - name: empty
+    width: 1
+    description: Asserted combinationally when count == 0.
+    type: logic
+    latency: null
+  inouts: []
+functional_behavior:
+  description: Synchronous FIFO holding DATA_WIDTH-bit values in first-in-first-out
+    order. On each rising clock edge a write is accepted when wr_en==1 and full==0,
+    storing din and advancing wr_ptr modulo DEPTH; a read is accepted when rd_en==1
+    and empty==0, placing the oldest stored value on the registered output dout and
+    advancing rd_ptr modulo DEPTH. When both are accepted in the same cycle both complete
+    and occupancy is unchanged. Occupancy count increments on a write-only cycle,
+    decrements on a read-only cycle, and is unchanged on a both-or-neither cycle,
+    so count stays within [0, DEPTH]. full and empty are combinational functions of
+    count.
+  reset_behavior: Asynchronous active-low reset (negedge rst_n) clears wr_ptr, rd_ptr,
+    and count, drives dout to 0, empties the FIFO, so empty==1 and full==0.
+  reference_model:
+    language: python
+    file: benchmarks/fifo/ref_model.py
+    function: step(state, wr_en, rd_en, din, depth)
+    logic: State holds a deque (queue) and the registered dout. step computes full
+      (len(queue)==depth) and empty (len(queue)==0), appends din when the write is
+      accepted, pops the oldest entry into dout when the read is accepted, and returns
+      the new queue and dout. reset() returns an empty queue and dout=0.
+    latency: 1
+directed_test_scenarios:
+- id: TC001
+  name: reset_check
+  description: Verify the asynchronous active-low reset initializes empty/full/dout,
+    and that the state persists after reset deassertion.
+  priority: high
+  stimulus:
+    sequence:
+    - action: reset
+      signals:
+        rst_n: 0
+        wr_en: 0
+        rd_en: 0
+        din: 0
+      cycles: null
+      description: Assert the asynchronous active-low reset.
+    - action: wait
+      signals: {}
+      cycles: 3
+      description: Hold reset asserted for 3 clock cycles.
+    - action: check
+      signals:
+        empty: 1
+        full: 0
+        dout: 0
+      cycles: null
+      description: While reset is asserted, empty=1, full=0, dout=0.
+    - action: deassert_reset
+      signals:
+        rst_n: 1
+      cycles: null
+      description: Release reset.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Wait one cycle after reset release.
+    - action: check
+      signals:
+        empty: 1
+        full: 0
+        dout: 0
+      cycles: null
+      description: Reset state is preserved after reset release.
+  expected: empty==1, full==0, dout==0 after reset assert and after reset release;
+    internal count stays 0.
+  note: count is an internal RTL signal (integer) and should be reachable from the
+    testbench handle.
+- id: TC002
+  name: write_read_basic
+  description: Push three distinct values and pop them, verifying FIFO ordering and
+    the one-cycle-registered dout.
+  priority: high
+  stimulus:
+    sequence:
+    - action: reset
+      signals:
+        rst_n: 0
+        wr_en: 0
+        rd_en: 0
+        din: 0
+      cycles: null
+      description: Assert reset.
+    - action: wait
+      signals: {}
+      cycles: 3
+      description: Hold reset asserted for 3 clock cycles.
+    - action: deassert_reset
+      signals:
+        rst_n: 1
+      cycles: null
+      description: Release reset.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Synchronize after reset release.
+    - action: write
+      signals:
+        wr_en: 1
+        rd_en: 0
+        din: 17
+      cycles: null
+      description: Push 17.
+    - action: write
+      signals:
+        wr_en: 1
+        rd_en: 0
+        din: 34
+      cycles: null
+      description: Push 34.
+    - action: write
+      signals:
+        wr_en: 1
+        rd_en: 0
+        din: 51
+      cycles: null
+      description: Push 51.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Allow flags to settle.
+    - action: check
+      signals:
+        empty: 0
+        full: 0
+      cycles: null
+      description: FIFO non-empty and not full.
+    - action: read
+      signals:
+        rd_en: 1
+        wr_en: 0
+      cycles: null
+      description: Pop the oldest entry.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Wait for the registered dout update.
+    - action: check
+      signals:
+        dout: 17
+      cycles: null
+      description: dout shows the first pushed value.
+    - action: read
+      signals:
+        rd_en: 1
+        wr_en: 0
+      cycles: null
+      description: Pop the next entry.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Wait for the registered dout update.
+    - action: check
+      signals:
+        dout: 34
+      cycles: null
+      description: dout shows the second pushed value.
+    - action: read
+      signals:
+        rd_en: 1
+        wr_en: 0
+      cycles: null
+      description: Pop the next entry.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Wait for the registered dout update.
+    - action: check
+      signals:
+        dout: 51
+      cycles: null
+      description: dout shows the third pushed value.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Allow flags to settle.
+    - action: check
+      signals:
+        empty: 1
+        full: 0
+      cycles: null
+      description: FIFO drained back to empty.
+  expected: Values 17, 34, 51 are read back strictly in FIFO order; dout is sampled
+    one cycle after each accepted read; empty asserts only after the FIFO drains.
+  note: ''
+- id: TC003
+  name: write_until_full
+  description: Fill the FIFO to the full threshold, verify full and that a write while
+    full is ignored, then drain in order.
+  priority: high
+  stimulus:
+    sequence:
+    - action: reset
+      signals:
+        rst_n: 0
+        wr_en: 0
+        rd_en: 0
+        din: 0
+      cycles: null
+      description: Assert reset.
+    - action: wait
+      signals: {}
+      cycles: 3
+      description: Hold reset asserted for 3 clock cycles.
+    - action: deassert_reset
+      signals:
+        rst_n: 1
+      cycles: null
+      description: Release reset.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Synchronize after reset release.
+    - action: write
+      signals:
+        wr_en: 1
+        rd_en: 0
+        din: '0x0A'
+      cycles: null
+      description: Push 0x0A.
+    - action: write
+      signals:
+        wr_en: 1
+        rd_en: 0
+        din: '0x0B'
+      cycles: null
+      description: Push 0x0B.
+    - action: write
+      signals:
+        wr_en: 1
+        rd_en: 0
+        din: '0x0C'
+      cycles: null
+      description: Push 0x0C.
+    - action: write
+      signals:
+        wr_en: 1
+        rd_en: 0
+        din: '0x0D'
+      cycles: null
+      description: Push 0x0D, reaching DEPTH=4.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Allow full to assert.
+    - action: check
+      signals:
+        full: 1
+        empty: 0
+      cycles: null
+      description: FIFO is full and non-empty.
+    - action: write
+      signals:
+        wr_en: 1
+        rd_en: 0
+        din: '0x0E'
+      cycles: null
+      description: Attempt a write while full; must be ignored.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Allow the (ignored) write cycle to complete.
+    - action: check
+      signals:
+        full: 1
+        empty: 0
+      cycles: null
+      description: Occupancy still DEPTH after the ignored write.
+    - action: read
+      signals:
+        rd_en: 1
+        wr_en: 0
+      cycles: null
+      description: Pop oldest entry.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Wait for registered dout update.
+    - action: check
+      signals:
+        dout: '0x0A'
+      cycles: null
+      description: dout returns the first stored value.
+    - action: read
+      signals:
+        rd_en: 1
+        wr_en: 0
+      cycles: null
+      description: Pop next entry.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Wait for registered dout update.
+    - action: check
+      signals:
+        dout: '0x0B'
+      cycles: null
+      description: dout returns the second stored value.
+    - action: read
+      signals:
+        rd_en: 1
+        wr_en: 0
+      cycles: null
+      description: Pop next entry.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Wait for registered dout update.
+    - action: check
+      signals:
+        dout: '0x0C'
+      cycles: null
+      description: dout returns the third stored value.
+    - action: read
+      signals:
+        rd_en: 1
+        wr_en: 0
+      cycles: null
+      description: Pop next entry.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Wait for registered dout update.
+    - action: check
+      signals:
+        dout: '0x0D'
+      cycles: null
+      description: dout returns the fourth stored value.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Allow flags to settle.
+    - action: check
+      signals:
+        empty: 1
+        full: 0
+      cycles: null
+      description: FIFO drained and empty.
+  expected: full asserts after the fourth accepted write; the fifth write (0x0E) is
+    dropped and never stored; draining returns 0x0A, 0x0B, 0x0C, 0x0D in FIFO order.
+  note: ''
+- id: TC004
+  name: read_until_empty
+  description: Drain the FIFO to empty and verify a read while empty is ignored and
+    dout retains its last value.
+  priority: high
+  stimulus:
+    sequence:
+    - action: reset
+      signals:
+        rst_n: 0
+        wr_en: 0
+        rd_en: 0
+        din: 0
+      cycles: null
+      description: Assert reset.
+    - action: wait
+      signals: {}
+      cycles: 3
+      description: Hold reset asserted for 3 clock cycles.
+    - action: deassert_reset
+      signals:
+        rst_n: 1
+      cycles: null
+      description: Release reset.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Synchronize after reset release.
+    - action: write
+      signals:
+        wr_en: 1
+        rd_en: 0
+        din: '0x11'
+      cycles: null
+      description: Push 0x11.
+    - action: write
+      signals:
+        wr_en: 1
+        rd_en: 0
+        din: '0x22'
+      cycles: null
+      description: Push 0x22.
+    - action: write
+      signals:
+        wr_en: 1
+        rd_en: 0
+        din: '0x33'
+      cycles: null
+      description: Push 0x33.
+    - action: write
+      signals:
+        wr_en: 1
+        rd_en: 0
+        din: '0x44'
+      cycles: null
+      description: Push 0x44.
+    - action: read
+      signals:
+        rd_en: 1
+        wr_en: 0
+      cycles: null
+      description: Pop oldest entry.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Wait for registered dout update.
+    - action: check
+      signals:
+        dout: '0x11'
+      cycles: null
+      description: dout returns 0x11.
+    - action: read
+      signals:
+        rd_en: 1
+        wr_en: 0
+      cycles: null
+      description: Pop next entry.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Wait for registered dout update.
+    - action: check
+      signals:
+        dout: '0x22'
+      cycles: null
+      description: dout returns 0x22.
+    - action: read
+      signals:
+        rd_en: 1
+        wr_en: 0
+      cycles: null
+      description: Pop next entry.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Wait for registered dout update.
+    - action: check
+      signals:
+        dout: '0x33'
+      cycles: null
+      description: dout returns 0x33.
+    - action: read
+      signals:
+        rd_en: 1
+        wr_en: 0
+      cycles: null
+      description: Pop the last entry.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Wait for registered dout update.
+    - action: check
+      signals:
+        dout: '0x44'
+      cycles: null
+      description: dout returns 0x44.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Allow flags to settle.
+    - action: check
+      signals:
+        empty: 1
+        full: 0
+      cycles: null
+      description: FIFO is empty.
+    - action: read
+      signals:
+        rd_en: 1
+        wr_en: 0
+      cycles: null
+      description: Attempt a read while empty; must be ignored.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Let the ignored read cycle complete.
+    - action: check
+      signals:
+        empty: 1
+        dout: '0x44'
+      cycles: null
+      description: 'Read ignored: empty still 1 and dout retains 0x44.'
+  expected: empty asserts after the last pop; a read attempted while empty is ignored;
+    dout is not cleared and retains the last popped value, 0x44.
+  note: ''
+- id: TC005
+  name: simultaneous_read_write
+  description: 'With a partially full FIFO, assert wr_en and rd_en in the same cycle:
+    both accepted, occupancy unchanged, oldest value on dout.'
+  priority: high
+  stimulus:
+    sequence:
+    - action: reset
+      signals:
+        rst_n: 0
+        wr_en: 0
+        rd_en: 0
+        din: 0
+      cycles: null
+      description: Assert reset.
+    - action: wait
+      signals: {}
+      cycles: 3
+      description: Hold reset asserted for 3 clock cycles.
+    - action: deassert_reset
+      signals:
+        rst_n: 1
+      cycles: null
+      description: Release reset.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Synchronize after reset release.
+    - action: write
+      signals:
+        wr_en: 1
+        rd_en: 0
+        din: '0x11'
+      cycles: null
+      description: Push 0x11.
+    - action: write
+      signals:
+        wr_en: 1
+        rd_en: 0
+        din: '0x22'
+      cycles: null
+      description: Push 0x22.
+    - action: write
+      signals:
+        wr_en: 1
+        rd_en: 0
+        din: '0x33'
+      cycles: null
+      description: Push 0x33.
+    - action: read_write
+      signals:
+        wr_en: 1
+        rd_en: 1
+        din: '0x44'
+      cycles: null
+      description: Simultaneously pop oldest and push 0x44.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Wait for the registered dout update.
+    - action: check
+      signals:
+        dout: '0x11'
+        empty: 0
+        full: 0
+      cycles: null
+      description: Oldest value 0x11 on dout; FIFO neither empty nor full.
+    - action: read
+      signals:
+        rd_en: 1
+        wr_en: 0
+      cycles: null
+      description: Pop next entry.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Wait for registered dout update.
+    - action: check
+      signals:
+        dout: '0x22'
+      cycles: null
+      description: dout returns 0x22.
+    - action: read
+      signals:
+        rd_en: 1
+        wr_en: 0
+      cycles: null
+      description: Pop next entry.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Wait for registered dout update.
+    - action: check
+      signals:
+        dout: '0x33'
+      cycles: null
+      description: dout returns 0x33.
+    - action: read
+      signals:
+        rd_en: 1
+        wr_en: 0
+      cycles: null
+      description: Pop next entry.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Wait for registered dout update.
+    - action: check
+      signals:
+        dout: '0x44'
+      cycles: null
+      description: dout returns the value written in the simultaneous cycle.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Allow flags to settle.
+    - action: check
+      signals:
+        empty: 1
+      cycles: null
+      description: FIFO drained.
+  expected: In the simultaneous cycle the oldest entry (0x11) appears on dout while
+    0x44 is enqueued; occupancy stays at 3; subsequent reads return 0x22, 0x33, 0x44
+    in order.
+  note: ''
+- id: TC006
+  name: simultaneous_read_write_at_full
+  description: 'At full occupancy, a simultaneous read/write cycle: the write is dropped,
+    the read is accepted, occupancy decreases.'
+  priority: high
+  stimulus:
+    sequence:
+    - action: reset
+      signals:
+        rst_n: 0
+        wr_en: 0
+        rd_en: 0
+        din: 0
+      cycles: null
+      description: Assert reset.
+    - action: wait
+      signals: {}
+      cycles: 3
+      description: Hold reset asserted for 3 clock cycles.
+    - action: deassert_reset
+      signals:
+        rst_n: 1
+      cycles: null
+      description: Release reset.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Synchronize after reset release.
+    - action: write
+      signals:
+        wr_en: 1
+        rd_en: 0
+        din: '0x01'
+      cycles: null
+      description: Push 0x01.
+    - action: write
+      signals:
+        wr_en: 1
+        rd_en: 0
+        din: '0x02'
+      cycles: null
+      description: Push 0x02.
+    - action: write
+      signals:
+        wr_en: 1
+        rd_en: 0
+        din: '0x03'
+      cycles: null
+      description: Push 0x03.
+    - action: write
+      signals:
+        wr_en: 1
+        rd_en: 0
+        din: '0x04'
+      cycles: null
+      description: Push 0x04, reaching full.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Allow full to assert.
+    - action: check
+      signals:
+        full: 1
+      cycles: null
+      description: FIFO is full.
+    - action: read_write
+      signals:
+        wr_en: 1
+        rd_en: 1
+        din: '0xFF'
+      cycles: null
+      description: At full, attempt write of 0xFF and a read; write must be dropped,
+        read accepted.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Wait for the registered dout update.
+    - action: check
+      signals:
+        dout: '0x01'
+        full: 0
+        empty: 0
+      cycles: null
+      description: Oldest value 0x01 popped; occupancy is now DEPTH-1.
+    - action: read
+      signals:
+        rd_en: 1
+        wr_en: 0
+      cycles: null
+      description: Pop next entry.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Wait for registered dout update.
+    - action: check
+      signals:
+        dout: '0x02'
+      cycles: null
+      description: dout returns 0x02.
+    - action: read
+      signals:
+        rd_en: 1
+        wr_en: 0
+      cycles: null
+      description: Pop next entry.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Wait for registered dout update.
+    - action: check
+      signals:
+        dout: '0x03'
+      cycles: null
+      description: dout returns 0x03.
+    - action: read
+      signals:
+        rd_en: 1
+        wr_en: 0
+      cycles: null
+      description: Pop the last stored entry.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Wait for registered dout update.
+    - action: check
+      signals:
+        dout: '0x04'
+      cycles: null
+      description: dout returns 0x04; 0xFF was never stored.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Allow flags to settle.
+    - action: check
+      signals:
+        empty: 1
+      cycles: null
+      description: FIFO drained.
+  expected: At full, the simultaneous write of 0xFF is dropped (never stored) while
+    the read is accepted; occupancy decreases from 4 to 3; draining returns 0x01,
+    0x02, 0x03, 0x04 in order.
+  note: ''
+- id: TC007
+  name: simultaneous_read_write_at_empty
+  description: 'At empty occupancy, a simultaneous read/write cycle: the read is ignored,
+    the write is accepted, occupancy increases.'
+  priority: high
+  stimulus:
+    sequence:
+    - action: reset
+      signals:
+        rst_n: 0
+        wr_en: 0
+        rd_en: 0
+        din: 0
+      cycles: null
+      description: Assert reset.
+    - action: wait
+      signals: {}
+      cycles: 3
+      description: Hold reset asserted for 3 clock cycles.
+    - action: deassert_reset
+      signals:
+        rst_n: 1
+      cycles: null
+      description: Release reset.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Synchronize after reset release.
+    - action: read_write
+      signals:
+        wr_en: 1
+        rd_en: 1
+        din: '0xAA'
+      cycles: null
+      description: At empty, attempt a read and write 0xAA; read must be ignored,
+        write accepted.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Wait for the registered dout update.
+    - action: check
+      signals:
+        empty: 0
+        full: 0
+        dout: 0
+      cycles: null
+      description: Write accepted; ignored read leaves dout unchanged at the post-reset
+        value 0.
+    - action: read
+      signals:
+        rd_en: 1
+        wr_en: 0
+      cycles: null
+      description: Pop the stored entry.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Wait for registered dout update.
+    - action: check
+      signals:
+        dout: '0xAA'
+      cycles: null
+      description: dout returns the value written in the simultaneous cycle.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Allow flags to settle.
+    - action: check
+      signals:
+        empty: 1
+      cycles: null
+      description: FIFO drained back to empty.
+  expected: At empty, the simultaneous read is ignored (dout remains 0 from reset)
+    and the write of 0xAA is accepted; the next accepted read returns 0xAA.
+  note: ''
+- id: TC008
+  name: pointer_wraparound_ordering
+  description: Interleave reads and writes across fill and drain cycles so rd_ptr
+    and wr_ptr wrap modulo DEPTH; verify ordering and flag coherence.
+  priority: medium
+  stimulus:
+    sequence:
+    - action: reset
+      signals:
+        rst_n: 0
+        wr_en: 0
+        rd_en: 0
+        din: 0
+      cycles: null
+      description: Assert reset.
+    - action: wait
+      signals: {}
+      cycles: 3
+      description: Hold reset asserted for 3 clock cycles.
+    - action: deassert_reset
+      signals:
+        rst_n: 1
+      cycles: null
+      description: Release reset.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Synchronize after reset release.
+    - action: write
+      signals:
+        wr_en: 1
+        rd_en: 0
+        din: '0x10'
+      cycles: null
+      description: Push 0x10.
+    - action: write
+      signals:
+        wr_en: 1
+        rd_en: 0
+        din: '0x11'
+      cycles: null
+      description: Push 0x11.
+    - action: write
+      signals:
+        wr_en: 1
+        rd_en: 0
+        din: '0x12'
+      cycles: null
+      description: Push 0x12.
+    - action: write
+      signals:
+        wr_en: 1
+        rd_en: 0
+        din: '0x13'
+      cycles: null
+      description: Push 0x13, reaching full.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Allow full to assert.
+    - action: check
+      signals:
+        full: 1
+      cycles: null
+      description: FIFO is full.
+    - action: read
+      signals:
+        rd_en: 1
+        wr_en: 0
+      cycles: null
+      description: Pop oldest entry.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Wait for registered dout update.
+    - action: check
+      signals:
+        dout: '0x10'
+      cycles: null
+      description: dout returns 0x10.
+    - action: read
+      signals:
+        rd_en: 1
+        wr_en: 0
+      cycles: null
+      description: Pop next entry.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Wait for registered dout update.
+    - action: check
+      signals:
+        dout: '0x11'
+      cycles: null
+      description: dout returns 0x11.
+    - action: write
+      signals:
+        wr_en: 1
+        rd_en: 0
+        din: '0x14'
+      cycles: null
+      description: Push 0x14.
+    - action: write
+      signals:
+        wr_en: 1
+        rd_en: 0
+        din: '0x15'
+      cycles: null
+      description: Push 0x15.
+    - action: read
+      signals:
+        rd_en: 1
+        wr_en: 0
+      cycles: null
+      description: Pop next entry.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Wait for registered dout update.
+    - action: check
+      signals:
+        dout: '0x12'
+      cycles: null
+      description: dout returns 0x12.
+    - action: read
+      signals:
+        rd_en: 1
+        wr_en: 0
+      cycles: null
+      description: Pop next entry.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Wait for registered dout update.
+    - action: check
+      signals:
+        dout: '0x13'
+      cycles: null
+      description: dout returns 0x13.
+    - action: write
+      signals:
+        wr_en: 1
+        rd_en: 0
+        din: '0x16'
+      cycles: null
+      description: Push 0x16.
+    - action: read
+      signals:
+        rd_en: 1
+        wr_en: 0
+      cycles: null
+      description: Pop next entry.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Wait for registered dout update.
+    - action: check
+      signals:
+        dout: '0x14'
+      cycles: null
+      description: dout returns 0x14.
+    - action: read
+      signals:
+        rd_en: 1
+        wr_en: 0
+      cycles: null
+      description: Pop next entry.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Wait for registered dout update.
+    - action: check
+      signals:
+        dout: '0x15'
+      cycles: null
+      description: dout returns 0x15.
+    - action: read
+      signals:
+        rd_en: 1
+        wr_en: 0
+      cycles: null
+      description: Pop next entry.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Wait for registered dout update.
+    - action: check
+      signals:
+        dout: '0x16'
+      cycles: null
+      description: dout returns 0x16.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Allow flags to settle.
+    - action: check
+      signals:
+        empty: 1
+        full: 0
+      cycles: null
+      description: FIFO drained and empty.
+  expected: Reads return values in strict FIFO order (0x10..0x16) across multiple
+    pointer wraps; occupancy stays within [0, DEPTH]; full/empty flags remain coherent.
+  note: ''
+- id: TC009
+  name: reset_during_operation
+  description: Assert an asynchronous reset while the FIFO holds data; verify clean
+    recovery and continued correct operation.
+  priority: medium
+  stimulus:
+    sequence:
+    - action: reset
+      signals:
+        rst_n: 0
+        wr_en: 0
+        rd_en: 0
+        din: 0
+      cycles: null
+      description: Assert reset.
+    - action: wait
+      signals: {}
+      cycles: 3
+      description: Hold reset asserted for 3 clock cycles.
+    - action: deassert_reset
+      signals:
+        rst_n: 1
+      cycles: null
+      description: Release reset.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Synchronize after reset release.
+    - action: write
+      signals:
+        wr_en: 1
+        rd_en: 0
+        din: '0x21'
+      cycles: null
+      description: Push 0x21.
+    - action: write
+      signals:
+        wr_en: 1
+        rd_en: 0
+        din: '0x22'
+      cycles: null
+      description: Push 0x22.
+    - action: reset
+      signals:
+        rst_n: 0
+        wr_en: 0
+        rd_en: 0
+        din: 0
+      cycles: null
+      description: Assert asynchronous reset mid-operation.
+    - action: wait
+      signals: {}
+      cycles: 2
+      description: Hold reset asserted.
+    - action: check
+      signals:
+        empty: 1
+        full: 0
+        dout: 0
+      cycles: null
+      description: FIFO cleared despite in-flight data.
+    - action: deassert_reset
+      signals:
+        rst_n: 1
+      cycles: null
+      description: Release reset.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Synchronize after reset release.
+    - action: write
+      signals:
+        wr_en: 1
+        rd_en: 0
+        din: '0x5A'
+      cycles: null
+      description: Push 0x5A after reset.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Allow flags to settle.
+    - action: check
+      signals:
+        empty: 0
+      cycles: null
+      description: FIFO accepts writes after reset.
+    - action: read
+      signals:
+        rd_en: 1
+        wr_en: 0
+      cycles: null
+      description: Pop the stored entry.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Wait for registered dout update.
+    - action: check
+      signals:
+        dout: '0x5A'
+      cycles: null
+      description: dout returns the post-reset written value.
+  expected: An asynchronous reset clears all FIFO state regardless of pending data;
+    after release the FIFO accepts a new write and returns it correctly on a read.
+  note: ''
+- id: TC010
+  name: data_boundary_roundtrip
+  description: Push minimum and maximum data values to fill, then drain, verifying
+    data integrity across the full bus width.
+  priority: medium
+  stimulus:
+    sequence:
+    - action: reset
+      signals:
+        rst_n: 0
+        wr_en: 0
+        rd_en: 0
+        din: 0
+      cycles: null
+      description: Assert reset.
+    - action: wait
+      signals: {}
+      cycles: 3
+      description: Hold reset asserted for 3 clock cycles.
+    - action: deassert_reset
+      signals:
+        rst_n: 1
+      cycles: null
+      description: Release reset.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Synchronize after reset release.
+    - action: write
+      signals:
+        wr_en: 1
+        rd_en: 0
+        din: '0x00'
+      cycles: null
+      description: Push minimum data value.
+    - action: write
+      signals:
+        wr_en: 1
+        rd_en: 0
+        din: '0xFF'
+      cycles: null
+      description: Push maximum data value.
+    - action: write
+      signals:
+        wr_en: 1
+        rd_en: 0
+        din: '0x00'
+      cycles: null
+      description: Push minimum data value.
+    - action: write
+      signals:
+        wr_en: 1
+        rd_en: 0
+        din: '0xFF'
+      cycles: null
+      description: Push maximum data value, reaching full.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Allow full to assert.
+    - action: check
+      signals:
+        full: 1
+      cycles: null
+      description: FIFO is full.
+    - action: read
+      signals:
+        rd_en: 1
+        wr_en: 0
+      cycles: null
+      description: Pop oldest entry.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Wait for registered dout update.
+    - action: check
+      signals:
+        dout: '0x00'
+      cycles: null
+      description: dout returns the minimum data value.
+    - action: read
+      signals:
+        rd_en: 1
+        wr_en: 0
+      cycles: null
+      description: Pop next entry.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Wait for registered dout update.
+    - action: check
+      signals:
+        dout: '0xFF'
+      cycles: null
+      description: dout returns the maximum data value.
+    - action: read
+      signals:
+        rd_en: 1
+        wr_en: 0
+      cycles: null
+      description: Pop next entry.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Wait for registered dout update.
+    - action: check
+      signals:
+        dout: '0x00'
+      cycles: null
+      description: dout returns the minimum data value.
+    - action: read
+      signals:
+        rd_en: 1
+        wr_en: 0
+      cycles: null
+      description: Pop next entry.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Wait for registered dout update.
+    - action: check
+      signals:
+        dout: '0xFF'
+      cycles: null
+      description: dout returns the maximum data value.
+    - action: wait
+      signals: {}
+      cycles: 1
+      description: Allow flags to settle.
+    - action: check
+      signals:
+        empty: 1
+      cycles: null
+      description: FIFO drained.
+  expected: Boundary values 0x00 and 0xFF (for DATA_WIDTH=8) are stored and returned
+    intact in FIFO order; no data is corrupted at the extremes of the data bus.
+  note: The generator instantiates this scenario for each parameter test_value; under
+    alternate DATA_WIDTH the extremal stimulus values scale to (1<<DATA_WIDTH)-1.
+corner_cases:
+- name: write_when_full
+  description: wr_en asserted while full==1.
+  expected: Write ignored; count stays DEPTH; no stored data is overwritten; the written
+    value is dropped.
+- name: read_when_empty
+  description: rd_en asserted while empty==1.
+  expected: Read ignored; count stays 0; dout is unchanged.
+- name: simultaneous_read_write_when_full
+  description: wr_en and rd_en both asserted while count==DEPTH.
+  expected: Write dropped, read accepted, occupancy decrements to DEPTH-1.
+- name: simultaneous_read_write_when_empty
+  description: wr_en and rd_en both asserted while count==0.
+  expected: Read dropped, write accepted, occupancy increments to 1.
+- name: simultaneous_read_write_mid_occupancy
+  description: wr_en and rd_en both asserted with 0 < count < DEPTH.
+  expected: Both accepted; oldest value appears on dout; newest value is enqueued;
+    occupancy unchanged.
+- name: pointer_wraparound
+  description: Sustained read/write traffic through more than one full pass of the
+    memory array.
+  expected: rd_ptr and wr_ptr wrap modulo DEPTH with no data loss, duplication, or
+    ordering violation.
+- name: full_to_empty_transition
+  description: Fill completely then drain completely in consecutive cycles.
+  expected: full asserts exactly at count==DEPTH and empty exactly at count==0; they
+    are never asserted simultaneously.
+- name: reset_mid_stream
+  description: Assert rst_n while writes and reads are in flight.
+  expected: All state is cleared asynchronously; post-reset operation is clean and
+    correct.
+- name: dout_retention_after_ignored_read
+  description: Read while empty after prior successful reads.
+  expected: dout retains the last successfully read value; it equals 0 only immediately
+    after reset.
+randomized_testing_strategy:
+  description: Constrained-random drive of wr_en, rd_en, and din over many cycles
+    while the reference-model scoreboard checks every cycle; periodic and random mid-test
+    reset injections verify state recovery.
+  constraints:
+  - variable: wr_en
+    range:
+    - 0
+    - 1
+  - variable: rd_en
+    range:
+    - 0
+    - 1
+  - variable: din
+    range:
+    - 0
+    - 255
+  injection:
+  - type: periodic_reset
+    frequency: per_test
+    duration_cycles:
+    - 2
+    - 3
+    description: Apply an asynchronous reset between randomized bursts to verify clean
+      re-initialization.
+  - type: random_mid_test_reset
+    frequency: null
+    duration_cycles:
+    - 1
+    - 4
+    description: Inject an asynchronous reset at a random point mid-stream while operations
+      are pending; verify recovery to a clean empty state.
+  pass_criteria: Scoreboard reports zero mismatches across all randomized runs including
+    reset injections; occupancy stays within [0, DEPTH]; full/empty flags are consistent
+    with the tracked queue length; no data is dropped or duplicated; FIFO ordering
+    is preserved.
+functional_coverage:
+  covergroups:
+  - name: fifo_operation_cg
+    description: Coverage over the write/read enable space and their interaction with
+      the occupancy flags.
+    clk: clk
+    sample_on: posedge
+    bins:
+    - name: wr_en_bins
+      variable: wr_en
+      bins:
+      - name: wr_idle
+        range:
+        - 0
+        - 0
+        expression: null
+      - name: wr_active
+        range:
+        - 1
+        - 1
+        expression: null
+    - name: rd_en_bins
+      variable: rd_en
+      bins:
+      - name: rd_idle
+        range:
+        - 0
+        - 0
+        expression: null
+      - name: rd_active
+        range:
+        - 1
+        - 1
+        expression: null
+    - name: full_bins
+      variable: full
+      bins:
+      - name: not_full
+        range:
+        - 0
+        - 0
+        expression: null
+      - name: is_full
+        range:
+        - 1
+        - 1
+        expression: null
+    - name: empty_bins
+      variable: empty
+      bins:
+      - name: not_empty
+        range:
+        - 0
+        - 0
+        expression: null
+      - name: is_empty
+        range:
+        - 1
+        - 1
+        expression: null
+    crosses:
+    - name: wr_rd_combos
+      variables:
+      - wr_en
+      - rd_en
+      description: All four wr_en/rd_en combinations.
+    - name: write_while_full
+      variables:
+      - wr_en
+      - full
+      description: Write requested while the FIFO is full; must be ignored.
+    - name: read_while_empty
+      variables:
+      - rd_en
+      - empty
+      description: Read requested while the FIFO is empty; must be ignored.
+    - name: op_against_flags
+      variables:
+      - wr_en
+      - rd_en
+      - full
+      - empty
+      description: Operations sampled against occupancy flags.
+  - name: fifo_occupancy_cg
+    description: Coverage of the occupancy count levels, parameterized by DEPTH.
+    clk: clk
+    sample_on: posedge
+    bins:
+    - name: count_levels
+      variable: count
+      bins:
+      - name: empty_level
+        range: null
+        expression: count == 0
+      - name: one_entry
+        range: null
+        expression: count == 1
+      - name: mid_level
+        range: null
+        expression: count == DEPTH / 2
+      - name: near_full_level
+        range: null
+        expression: count == DEPTH - 1
+      - name: full_level
+        range: null
+        expression: count == DEPTH
+    crosses: []
+  - name: fifo_data_cg
+    description: Coverage of boundary values on the write and read data buses.
+    clk: clk
+    sample_on: posedge
+    bins:
+    - name: write_data_bins
+      variable: din
+      bins:
+      - name: data_zero
+        range:
+        - 0
+        - 0
+        expression: null
+      - name: data_max
+        range: null
+        expression: din == (1 << DATA_WIDTH) - 1
+    - name: read_data_bins
+      variable: dout
+      bins:
+      - name: data_zero_out
+        range:
+        - 0
+        - 0
+        expression: null
+      - name: data_max_out
+        range: null
+        expression: dout == (1 << DATA_WIDTH) - 1
+    crosses:
+    - name: boundary_data_roundtrip
+      variables:
+      - din
+      - dout
+      description: Boundary-value data written and later read back intact.
+scoreboard_reference_model_strategy:
+  description: A predictor based on ref_model.py maintains the expected queue contents
+    and expected dout; a comparator samples the DUT after every clock edge and checks
+    dout, full, empty, and the occupancy count against the predictor.
+  architecture:
+  - type: predictor_scoreboard
+    description: A Python predictor invokes ref_model.step(state, wr_en, rd_en, din,
+      depth) on every clock edge, tracking expected queue contents and expected dout.
+      Expected full and empty derive from the expected queue length.
+  - type: in_order_comparator
+    description: The comparator samples DUT dout, full, empty, and count after each
+      clock edge. dout is compared one cycle after an accepted read (matching the
+      registered output); full/empty and count are compared every cycle. Popped data
+      is compared against the oldest queued value for strict FIFO ordering.
+  pass_criteria: All sampled comparisons match for every cycle of the directed and
+    randomized tests; no unexpected data drop or duplication; FIFO ordering preserved;
+    occupancy bounded by [0, DEPTH]; full/empty flags match the tracked queue length.
+  error_reporting: Report each mismatch with the cycle count, the operation in flight
+    (wr_en, rd_en, din), expected vs actual dout/full/empty/count, the current expected
+    queue contents, and a short trace of recent operations for debug.
+useful_assertions:
+- name: reset_clean_state
+  description: After asynchronous reset, the FIFO is empty, not full, and dout is
+    cleared.
+  severity: error
+  assertion: 'after rst_n assertion: empty == 1 && full == 0 && dout == 0'
+  note: ''
+- name: no_overflow
+  description: A write while full is ignored; occupancy never exceeds DEPTH.
+  severity: error
+  assertion: if (full && wr_en) then count does not increase on the next cycle
+  note: ''
+- name: no_underflow
+  description: A read while empty is ignored; occupancy never goes below 0.
+  severity: error
+  assertion: if (empty && rd_en) then count does not decrease on the next cycle
+  note: ''
+- name: occupancy_bounds
+  description: Occupancy count always stays within 0 and DEPTH inclusive.
+  severity: error
+  assertion: 0 <= count <= DEPTH at all times
+  note: ''
+- name: flags_mutually_exclusive
+  description: full and empty are never asserted simultaneously.
+  severity: error
+  assertion: '!(full && empty)'
+  note: ''
+- name: count_update_consistency
+  description: count increments on a write-only cycle, decrements on a read-only cycle,
+    and is unchanged when both or neither operation is accepted.
+  severity: error
+  assertion: count_next == count + (wr_accepted && !rd_accepted) - (rd_accepted &&
+    !wr_accepted)
+  note: ''
+- name: fifo_ordering
+  description: A read pops the oldest unread written value; data returns in first-in-first-out
+    order.
+  severity: error
+  assertion: dout sampled after an accepted read equals the oldest queued value per
+    the reference model
+  note: ''
+discrepancies:
+- id: DIS-1
+  severity: low
+  title: Registered dout sampling latency
+  rtl: dout is a registered output updated on the clock edge following an accepted
+    read and cleared by reset.
+  spec: The spec calls dout 'registered output data' but does not state the exact
+    sampling instant; ref_model.step returns the popped value in the same step call
+    as the read.
+  impact: A testbench that samples dout combinationally in the read-request cycle
+    would miscompare against the reference model by one cycle.
+  recommendation: Sample dout one cycle after an accepted read and align the reference-model
+    comparison to that cycle (as done throughout this plan).
+- id: DIS-2
+  severity: low
+  title: Write silently dropped during simultaneous read and write at full
+  rtl: At full occupancy (count==DEPTH) with wr_en and rd_en both asserted, the write
+    is ignored and only the read is accepted; the slot freed by the simultaneous read
+    is not reused in the same cycle.
+  spec: The spec states a write while full is ignored, so this is consistent with
+    the spec; however it is a subtle protocol decision that differs from FIFOs that
+    accept the write when a slot is freed in the same cycle.
+  impact: Consumers expecting the write to be accepted because a slot is freed in
+    the same cycle would observe silent data loss (0xFF dropped in TC006).
+  recommendation: Preserve the drop-write behavior in the reference model and pin
+    it with directed test TC006.
+- id: DIS-3
+  severity: low
+  title: dout retention on ignored read
+  rtl: A read while empty is ignored and dout retains the last successfully read value
+    (0 only after reset).
+  spec: The spec says a read while empty is ignored but is silent on the resulting
+    dout value.
+  impact: Tests must not assume dout==0 whenever empty is asserted; only a freshly-reset
+    FIFO guarantees dout==0.
+  recommendation: Check dout retention explicitly (TC004) and treat dout==0 as the
+    post-reset value only.

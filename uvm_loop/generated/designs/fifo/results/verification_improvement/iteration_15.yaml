@@ -1,0 +1,223 @@
+schema_version: '1.0'
+iteration: 15
+quality_score: 81.88
+metrics:
+  tests_total: 13
+  tests_passed: 13
+  tests_failed: 0
+  functional_coverage:
+    available: true
+    percentage: 87.5
+  planned_coverage_points: 7
+  generated_coverage_points: 7
+  planned_coverage_crosses: 5
+  generated_coverage_crosses: 5
+  python_assertions: 17
+  checker_coroutines: 1
+  test_classes: 13
+  sequences: 0
+  planned_assertions: 7
+  test_health_score: 100.0
+  coverage_quality_score: 87.5
+  assertion_quality_score: 100.0
+  scenario_quality_score: 0.0
+  scenario_coverage:
+    planned: 10
+    generated: 10
+    executed: 0
+    score: 0.0
+    planned_ids:
+    - TC001
+    - TC002
+    - TC003
+    - TC004
+    - TC005
+    - TC006
+    - TC007
+    - TC008
+    - TC009
+    - TC010
+    generated_ids:
+    - TC001
+    - TC002
+    - TC003
+    - TC004
+    - TC005
+    - TC006
+    - TC007
+    - TC008
+    - TC009
+    - TC010
+    executed_ids: []
+  parameter_coverage:
+    available: false
+    score: 100.0
+    planned: {}
+    observed: {}
+  tb_quality_score: 81.88
+weaknesses:
+- id: W-DRIVER-IDLE-WALL
+  severity: medium
+  category: driver_limitation
+  title: Driver inserts mandatory idle cycle between every consecutive item
+  affected_tests:
+  - FifoBackToBackTest
+  - FifoRandomizedTest
+  - FifoTC002Test
+  - FifoTC003Test
+  - FifoTC004Test
+  - FifoTC005Test
+  - FifoTC006Test
+  - FifoTC007Test
+  - FifoTC008Test
+  - FifoTC009Test
+  - FifoTC010Test
+  - FifoCornerTest
+  evidence:
+  - 'driver.py lines 109-127: after every item_done() the driver calls self._drive_idle()
+    and then loops back to get_next_item(). There is always at least one rising edge
+    where idle (wr_en=0, rd_en=0) is sampled between any two consecutive items regardless
+    of how quickly the sequence provides the next item.'
+  - sequences.py BackToBackSeq (line 801-876) documents this as W-NO-BACK-TO-BACK
+    and states the driver inserts the CONTRACT 9.3 idle wall between items.
+  - The test named FifoBackToBackTest (test.py line 326) is intended to exercise consecutive
+    operations but the driver makes truly back-to-back stimulus impossible.
+  likely_cause: The driver was designed with a conservative idle-cycle wall (CONTRACT
+    9.3) between items to avoid a pyuvm try_next_item() crash (W-DRIVER-TRY-NEXT-CRASH
+    fix). The idle cycle is driven after item_done() before blocking on the next get_next_item(),
+    so even when the sequencer has the next item ready, one idle cycle always elapses.
+  investigation_targets:
+  - tb/driver.py
+  - tb/sequences.py (BackToBackSeq)
+  recommended_action: Restructure the driver loop so that when get_next_item() returns
+    an item immediately (sequencer already has it queued), the driver drives the next
+    item at the same falling edge as item_done() rather than inserting an idle cycle.
+    Alternatively, add a driver mode flag (e.g. back_to_back=True) that skips the
+    idle cycle and drives the next item at the same falling edge, then use this mode
+    in the BackToBackSeq test.
+  confidence: high
+- id: W-SINGLE-PARAM-CONFIG
+  severity: high
+  category: parameter_coverage
+  title: Only default parameter configuration (DATA_WIDTH=8, DEPTH=4) was simulated
+  affected_tests:
+  - FifoTC001Test
+  - FifoTC002Test
+  - FifoTC003Test
+  - FifoTC004Test
+  - FifoTC005Test
+  - FifoTC006Test
+  - FifoTC007Test
+  - FifoTC008Test
+  - FifoTC009Test
+  - FifoTC010Test
+  - FifoCornerTest
+  - FifoBackToBackTest
+  - FifoRandomizedTest
+  evidence:
+  - 'simulation_result.json: all 13 test command arrays show no DATA_WIDTH or DEPTH
+    environment variable overrides. Every test ran with the default DATA_WIDTH=8,
+    DEPTH=4 configuration.'
+  - verification_plan.yaml specifies test_values for DATA_WIDTH (4, 8, 16) and DEPTH
+    (2, 4, 8), totaling 9 parameter combinations, but only 1 combination was exercised.
+  - tb/test_top.py lines 112-113 reads DATA_WIDTH and DEPTH from environment variables,
+    confirming the TB is parameterized, but the simulation harness did not override
+    these from the defaults.
+  likely_cause: The simulation harness or regression runner did not sweep the planned
+    parameter combinations. The TB code is correctly parameterized (sequences scale
+    with DEPTH, data masks scale with DATA_WIDTH), but each parameter combination
+    requires a separate simulation invocation with overridden environment variables.
+  investigation_targets:
+  - tb/test_top.py (parameter resolution from env vars)
+  - simulation harness / regression runner configuration
+  recommended_action: 'Run the full test suite for each planned parameter combination:
+    DATA_WIDTH in {4, 8, 16} and DEPTH in {2, 4, 8}, passing DATA_WIDTH and DEPTH
+    as environment variables to each make invocation. This will exercise 9 configurations
+    total and verify that boundary-value and occupancy logic scales correctly.'
+  confidence: high
+- id: W-DEASSERT-RESET-TIMING
+  severity: medium
+  category: reset_timing
+  title: Reset deassertion uses Timer-based settle rather than clock-edge alignment
+  affected_tests:
+  - FifoTC001Test
+  - FifoTC009Test
+  - FifoRandomizedTest
+  evidence:
+  - 'sequences.py lines 122-133 (_release_reset): deassertion is aligned to FallingEdge
+    then followed by await Timer(1, unit=''ns''). The Timer settle is a fixed 1ns
+    delay independent of the clock period, which may be insufficient for slow clock
+    configurations or leave excessive margin for fast ones.'
+  - 'simulation_result.json: all tests used CLK_HALF_PERIOD_NS=5 (10ns period), so
+    the 1ns settle after FallingEdge gives approximately 4ns before the next RisingEdge.
+    This is adequate for the default clock but would be proportionally tighter at
+    faster clocks.'
+  likely_cause: The reset deassertion timing was designed for the default 10ns clock
+    period. Using a fixed Timer(1, unit='ns') rather than a clock-aligned settle means
+    the setup margin scales inversely with clock frequency.
+  investigation_targets:
+  - tb/sequences.py (_release_reset method, lines 122-133)
+  recommended_action: Replace the fixed Timer(1, unit='ns') in _release_reset with
+    a settle that is proportional to the clock period (e.g. await Timer(clk_half_period_ns,
+    unit='ns') or wait for an additional FallingEdge after deassertion). This ensures
+    the reset recovery timing margin is consistent across all clock configurations.
+  confidence: medium
+- id: W-ASSERTION-MISSING-FULL-EMPTY-COUNT-INVARIANT
+  severity: low
+  category: assertion_gap
+  title: No dedicated assertion checks full/empty flags against internal count
+  affected_tests:
+  - FifoTC001Test
+  - FifoTC002Test
+  - FifoTC003Test
+  - FifoTC004Test
+  - FifoTC005Test
+  - FifoTC006Test
+  - FifoTC007Test
+  - FifoTC008Test
+  - FifoTC009Test
+  - FifoTC010Test
+  - FifoCornerTest
+  - FifoBackToBackTest
+  - FifoRandomizedTest
+  evidence:
+  - 'assertions.py: check_flags_mutually_exclusive (line 275) verifies full and empty
+    are never both 1, but no assertion checks full==(count==DEPTH) and empty==(count==0)
+    on every cycle.'
+  - 'assertions.py: check_count_update_consistency (line 294) checks count transitions
+    but does not verify that full/empty are derived correctly from count.'
+  - scoreboard.py lines 190-112 does check full/empty against the reference model
+    queue length, which is equivalent. However, if the scoreboard itself had a logic
+    error (e.g. comparing against the wrong state), both the scoreboard and the reference
+    model in check_fifo_ordering would share the same bug.
+  likely_cause: The assertion set covers mutual exclusion of full/empty and count-update
+    consistency but omits the direct invariant that the combinational flags full and
+    empty are derived from the internal count. The scoreboard provides this check,
+    but it uses the same reference model logic as check_fifo_ordering, so a shared-model
+    bug would not be caught by the assertion layer.
+  investigation_targets:
+  - tb/assertions.py (check_flags_mutually_exclusive, check_count_update_consistency)
+  recommended_action: 'Add a new always-on assertion (e.g. check_flags_count_consistency)
+    that on every non-reset post-edge cycle asserts: full == (dut.count == DEPTH)
+    and empty == (dut.count == 0), when the internal count signal is reachable from
+    the testbench handle. This closes the gap between the scoreboard''s reference-model-based
+    check and a direct pin-level invariant check.'
+  confidence: high
+authoritative_inputs:
+- specification
+- reference_model
+- verification_plan
+rtl_exposed_to_llm: false
+comparison:
+  previous_quality_score: 81.88
+  delta: 0.0
+analysis_summary:
+  overall_status: verification_weakness
+  tests_total: 13
+  tests_passed: 13
+  tests_failed: 0
+changed_files:
+- coverage.py
+analysis_report_path: /home/auralab/nwark/chia_sept7_for_multi_rtl_with_multi_llm/for_multiple_rtl_updation_generalized/generated/designs/fifo/llm_verification_analysis_workspace/weakness_report.yaml
+decision_path: /home/auralab/nwark/chia_sept7_for_multi_rtl_with_multi_llm/for_multiple_rtl_updation_generalized/generated/designs/fifo/results/verification_improvement/decisions/iteration_15.yaml
+accepted: true
