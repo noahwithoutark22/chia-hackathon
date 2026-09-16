@@ -703,6 +703,40 @@ def run_closure_loop(
         if floorplan.get("method") != "explicit_area":
             schema.pop("DIE_AREA_SCALE", None)
 
+    # The reverse of the DIE_AREA_SCALE check above: CORE_UTILIZATION is the
+    # utilization-method design's own area lever, but nothing previously
+    # stopped it from ALSO being offered on an explicit-area design (its
+    # baseline config.mk's DIE_AREA/CORE_AREA lines are always copied
+    # verbatim into the working config regardless of what else is set) --
+    # so touching CORE_UTILIZATION there sets both floorplan methods at
+    # once and hits the exact same ORFS hard-exit, even with DIE_AREA_SCALE
+    # never involved. Observed live on ihp-sg13g2's i2c-gpio-expander (an
+    # explicit-area design): "Floorplan initialization methods are mutually
+    # exclusive, pick one." the first time a batch slot proposed a
+    # CORE_UTILIZATION change on its own.
+    if "CORE_UTILIZATION" in schema:
+        floorplan = get(_read_baseline_floorplan_remote.chia_remote(design_config_mk))
+        if floorplan.get("method") == "explicit_area":
+            schema.pop("CORE_UTILIZATION", None)
+
+    # Enum-typed tunables (currently just MAX_ROUTING_LAYER) assume a fixed
+    # set of platform-native values ("met1".."met5", sky130hd/nangate45's
+    # naming). A platform with different layer names -- observed live on
+    # ihp-sg13g2, whose baseline config.mk already has MAX_ROUTING_LAYER =
+    # "TopMetal2" -- has a legal current value the schema's enum doesn't
+    # recognize. Without this check, EVERY apply_tunables_remote call for
+    # such a design fails re-validating this untouched baseline value, even
+    # on rounds that never ask to change it. Drop any such key entirely
+    # rather than offer one guaranteed to break on first use.
+    enum_keys = [k for k, spec in schema.items() if spec.get("type") == "enum"]
+    if enum_keys:
+        current_enum_values = get(
+            read_tunables_remote.chia_remote(design_config_mk, json.dumps(schema)))
+        for key in enum_keys:
+            current_val = current_enum_values.get(key)
+            if current_val is not None and current_val not in schema[key]["values"]:
+                schema.pop(key, None)
+
     locked = validate_tunables(locked_tunables or {}, schema)
 
     baseline_path = Path(design_config_mk)
@@ -1408,7 +1442,26 @@ def run_closure_loop(
         overlapping-call hazard).
         """
         nonlocal feedback
-        starting_prev = history[-1] if history else None
+        # The round's starting point must be the most recent entry with a
+        # real, usable config -- history[-1] alone breaks this the moment a
+        # WHOLE round crashes (every slot), because that round's own two
+        # crashed entries are then the newest history has, and a crashed
+        # entry's "config" is exactly the crash-triggering values. Anchoring
+        # the next round on it doesn't recover, it just re-applies the same
+        # bad value again under whatever new change is layered on top --
+        # observed live on ihp-sg13g2's i2c-gpio-expander: DIE_AREA_SCALE=0.92
+        # crashed floorplan once, never got reverted because the round it
+        # crashed in had no survivor, and five consecutive rounds after it
+        # crashed the same way regardless of which other knob was touched,
+        # since every one of them still carried that same 0.92 forward.
+        # Skipping back to the most recent non-crashed entry (closed or
+        # merely violating -- both have real metrics and a real config,
+        # only "crashed" means neither) is the same recovery the wrap-up
+        # code already does when restoring the best run before signoff,
+        # just applied one round earlier.
+        starting_prev = next((e for e in reversed(history) if not e.get("crashed")), None)
+        if starting_prev is None:
+            starting_prev = history[-1] if history else None
         winner_config = dict(starting_prev["config"]) if starting_prev else {}
         base_run_index = len(history) + 1
 
@@ -1510,8 +1563,20 @@ def run_closure_loop(
         for (run_index, paths, cand, slot_index), result in zip(slots, results):
             print(f"  [slot {paths['flow_variant']}] run {run_index} finished "
                   f"-- {result.get('status') or result.get('fatal_error')}")
-            config_under_test = get(read_tunables_remote.chia_remote(
-                str(paths["working_config_mk"]), schema_json))
+            try:
+                config_under_test = get(read_tunables_remote.chia_remote(
+                    str(paths["working_config_mk"]), schema_json))
+            except Exception as exc:
+                # Purely informational (what got baked into this slot's working
+                # config, for the trace/ledger payload) -- a transient Ray-level
+                # error here must not cost the whole round's already-completed
+                # flow results the way an unguarded get() previously did (this
+                # call sat right after the salvage logic above but wasn't
+                # itself covered by it). Fall back to the candidate's own
+                # requested diff, which is the next best description available.
+                print(f"  (warning: could not re-read slot {paths['flow_variant']}'s config "
+                      f"after the run ({exc}) -- falling back to the requested diff)")
+                config_under_test = cand.get("suggested_changes", {})
             entries.append((run_index, config_under_test, result, slot_index))
 
         # Sorted worst-first so history[-1] ends up as the round's best
