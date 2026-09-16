@@ -1,0 +1,327 @@
+schema_version: '1.0'
+iteration: 6
+quality_score: 58.8
+metrics:
+  tests_total: 13
+  tests_passed: 3
+  tests_failed: 10
+  functional_coverage:
+    available: true
+    percentage: 87.5
+  planned_coverage_points: 7
+  generated_coverage_points: 7
+  planned_coverage_crosses: 5
+  generated_coverage_crosses: 5
+  python_assertions: 18
+  checker_coroutines: 2
+  test_classes: 13
+  sequences: 0
+  planned_assertions: 7
+  test_health_score: 23.08
+  coverage_quality_score: 87.5
+  assertion_quality_score: 100.0
+  scenario_quality_score: 0.0
+  scenario_coverage:
+    planned: 10
+    generated: 10
+    executed: 0
+    score: 0.0
+    planned_ids:
+    - TC001
+    - TC002
+    - TC003
+    - TC004
+    - TC005
+    - TC006
+    - TC007
+    - TC008
+    - TC009
+    - TC010
+    generated_ids:
+    - TC001
+    - TC002
+    - TC003
+    - TC004
+    - TC005
+    - TC006
+    - TC007
+    - TC008
+    - TC009
+    - TC010
+    executed_ids: []
+  parameter_coverage:
+    available: false
+    score: 100.0
+    planned: {}
+    observed: {}
+  tb_quality_score: 58.8
+weaknesses:
+- id: W-RUNTIME-CRASH-MAJORITY
+  severity: critical
+  category: tb_infrastructure
+  title: Ten of thirteen tests crash at runtime before exercising any scenario
+  affected_tests:
+  - FifoTC001Test
+  - FifoTC003Test
+  - FifoTC005Test
+  - FifoTC006Test
+  - FifoTC007Test
+  - FifoTC008Test
+  - FifoTC009Test
+  - FifoCornerTest
+  - FifoBackToBackTest
+  - FifoRandomizedTest
+  evidence:
+  - 'simulation_result.json: all ten tests report status=runtime_error, returncode=2,
+    clean_exit=false'
+  - 'simulation_result.json: scoreboard_mismatches=0 and assertion_failures=0 for
+    every crashing test, indicating the crash occurs before any checking logic runs'
+  - 'simulation_result.json: the three passing tests (TC002, TC004, TC010) all complete
+    with returncode=0 and clean_exit=true, proving the DUT and basic infrastructure
+    work'
+  - 'simulation_result.json TC001 log: the test starts (UVM_TESTNAME logged, cocotb
+    initialized) but crashes before completing'
+  - "simulation_result.json TC003 log: same pattern \u2014 compilation succeeds, cocotb\
+    \ initializes, test starts, then crashes"
+  likely_cause: 'Inference: the crash occurs during pyuvm phase transitions or coroutine
+    cleanup in cocotb 2.1.0 / pyuvm 5.0.0 / Verilator 5.042. The tests that crash
+    include both simple (TC001: reset-only, no drive_item calls) and complex (TC008:
+    pointer wraparound) scenarios, ruling out DUT-specific or scenario-specific causes.
+    The driver''s infinite-loop run_phase coroutine (blocked on get_next_item() when
+    the sequence never issues a drive_item) may not be cleanly cancellable during
+    pyuvm phase teardown, causing an unhandled exception or Verilator segfault at
+    simulation exit.'
+  investigation_targets:
+  - tb/driver.py run_phase coroutine lifecycle and cancellation behavior
+  - tb/test.py _run_single_sequence drain_cycles timing vs pyuvm run_phase objection
+    teardown
+  - tb/test_top.py uvm_root().run_test exception handling interaction with cocotb
+    coroutine cleanup
+  recommended_action: Investigate whether the driver's blocked get_next_item() coroutine
+    prevents clean pyuvm run_phase termination. Add explicit sequencer.stop() or driver
+    shutdown mechanism before dropping the run_phase objection. Alternatively, ensure
+    the driver's infinite loop can be cancelled gracefully by catching asyncio.CancelledError.
+    Reproduce with the simplest crashing test (FifoTC001Test) which never calls drive_item.
+  confidence: medium
+- id: W-SCOREBOARD-MISMATCH-UNCHECKED
+  severity: high
+  category: pass_fail_logic
+  title: All three passing tests each report one scoreboard mismatch yet still pass
+  affected_tests:
+  - FifoTC002Test
+  - FifoTC004Test
+  - FifoTC010Test
+  evidence:
+  - 'simulation_result.json: FifoTC002Test status=pass, returncode=0, scoreboard_mismatches=1'
+  - 'simulation_result.json: FifoTC004Test status=pass, returncode=0, scoreboard_mismatches=1'
+  - 'simulation_result.json: FifoTC010Test status=pass, returncode=0, scoreboard_mismatches=1'
+  - "tb/test.py report_phase: checks sb._mismatch_count > 0 and raises AssertionError\
+    \ if true \u2014 yet the test still returns code 0"
+  - "tb/scoreboard.py report_phase: logs warning 'FifoScoreboard FAILED: N comparison\
+    \ mismatch(es)' when _mismatch_count is nonzero \u2014 this message is what the\
+    \ simulation framework extracts as the mismatch count"
+  likely_cause: "Inference: a pyuvm phase-ordering issue causes the test's report_phase\
+    \ to execute before the scoreboard has processed all pending monitor transactions.\
+    \ The scoreboard's run_phase is an infinite coroutine (while True: tr = await\
+    \ self.analysis_fifo.get()). When pyuvm transitions from run_phase to report_phase,\
+    \ the scoreboard may still have unprocessed items in its analysis FIFO. The test's\
+    \ report_phase sees _mismatch_count==0 and passes. The scoreboard's report_phase\
+    \ then processes the remaining item(s), finds the mismatch, and logs the warning\
+    \ \u2014 but the test has already been marked as passed by cocotb."
+  investigation_targets:
+  - tb/test.py report_phase: sb._mismatch_count check timing relative to scoreboard
+      run_phase completion
+  - tb/scoreboard.py run_phase: whether analysis_fifo items are fully drained before
+      report_phase
+  - tb/test.py _run_single_sequence: drain_cycles count (currently 2) may be insufficient
+      for the scoreboard to process final transactions before objection drop
+  recommended_action: 'Add a drain mechanism that ensures the scoreboard''s analysis
+    FIFO is empty before the test''s report_phase checks _mismatch_count. Options:
+    (1) increase drain_cycles in _run_single_sequence to give the scoreboard more
+    time, (2) add an explicit drain loop in the test''s run_phase that waits until
+    the scoreboard''s analysis_fifo is empty after the sequence completes, or (3)
+    move the mismatch check from report_phase to a post-drain synchronization point.
+    Also investigate whether pyuvm 5.0.0 properly awaits all run_phase coroutines
+    before starting report_phase.'
+  confidence: high
+- id: W-NO-SIMULTANEOUS-RW-EXERCISED
+  severity: high
+  category: scenario_coverage
+  title: Simultaneous read and write is never exercised across all passing tests
+  affected_tests:
+  - FifoTC002Test
+  - FifoTC004Test
+  - FifoTC010Test
+  evidence:
+  - 'fifo_coverage_FifoTC002Test.yml: wr_rd_combos bin (''wr_active'', ''rd_active''):
+    0 hits'
+  - 'fifo_coverage_FifoTC004Test.xml: wr_rd_combos bin (''wr_active'', ''rd_active''):
+    0 hits'
+  - 'fifo_coverage_FifoTC010Test.xml: wr_rd_combos bin (''wr_active'', ''rd_active''):
+    0 hits'
+  - 'tb/fifo_coverage coverage.py: op_against_flags cross reachable bin (1, 1, 0,
+    0) has 0 hits in all three passing tests'
+  - 'simulation_result.json: TC005, TC006, TC007 (the three tests that exercise simultaneous
+    R/W) all crash with runtime_error'
+  likely_cause: 'Inference: the only tests designed to exercise simultaneous read+write
+    (TC005 mid-occupancy, TC006 at full, TC007 at empty) all crash at runtime due
+    to W-RUNTIME-CRASH-MAJORITY. The three passing tests are sequential-only (write-then-read
+    or read-then-write). No test in the passing set drives wr_en=1 and rd_en=1 in
+    the same cycle.'
+  investigation_targets:
+  - tb/sequences.py SimultaneousReadWriteSeq, SimultaneousReadWriteFullSeq, SimultaneousReadWriteEmptySeq
+  - tb/test.py FifoTC005Test, FifoTC006Test, FifoTC007Test
+  recommended_action: Fix the runtime crash (W-RUNTIME-CRASH-MAJORITY) so that TC005/TC006/TC007
+    can execute. The simultaneous read+write scenario is a critical FIFO behavior
+    per the specification ('When both read and write are accepted in the same cycle,
+    both operations occur and the occupancy remains unchanged') and per DIS-2 (write
+    silently dropped during simultaneous R/W at full). Without exercising this, a
+    defect in the simultaneous-cycle logic would be undetected.
+  confidence: high
+- id: W-NO-RANDOMIZED-TESTING
+  severity: high
+  category: scenario_coverage
+  title: Constrained-random test with reset injections never executes
+  affected_tests:
+  - FifoRandomizedTest
+  evidence:
+  - 'simulation_result.json: FifoRandomizedTest status=runtime_error, returncode=2,
+    clean_exit=false'
+  - 'tb/sequences.py FifoRandomizedSeq: drives 240 cycles of constrained-random wr_en/rd_en/din
+    with periodic reset injections (every 60 cycles) and one random mid-test reset'
+  - 'verification_plan.yaml randomized_testing_strategy: pass_criteria requires zero
+    mismatches across all randomized runs including reset injections'
+  likely_cause: 'Inference: FifoRandomizedTest crashes due to the same infrastructure
+    issue as W-RUNTIME-CRASH-MAJORITY. This test is the most comprehensive verification
+    strategy per the plan, covering 240 random cycles with reset injections.'
+  investigation_targets:
+  - tb/sequences.py FifoRandomizedSeq body method
+  - tb/test.py FifoRandomizedTest
+  recommended_action: Fix the runtime crash so FifoRandomizedTest can execute. This
+    test provides the widest functional coverage by driving all four wr_en/rd_en combinations
+    against varying occupancy states with reset injections. Until it runs, the constrained-random
+    verification strategy from the plan is completely unexercised.
+  confidence: high
+- id: W-NO-CORNER-CASE-TESTING
+  severity: high
+  category: scenario_coverage
+  title: All nine corner-case scenarios are never verified
+  affected_tests:
+  - FifoCornerTest
+  evidence:
+  - 'simulation_result.json: FifoCornerTest status=runtime_error, returncode=2, clean_exit=false'
+  - 'tb/sequences.py CORNER_SEQUENCES: WriteWhenFullSeq, ReadWhenEmptySeq, SimultaneousRWFullSeq,
+    SimultaneousRWEmptySeq, SimultaneousRWMidSeq, PointerWraparoundSeq, FullToEmptyTransitionSeq,
+    ResetMidStreamSeq, DoutRetentionSeq'
+  - 'verification_plan.yaml corner_cases: lists 9 corner-case scenarios with expected
+    behaviors'
+  likely_cause: 'Inference: FifoCornerTest crashes due to the same infrastructure
+    issue as W-RUNTIME-CRASH-MAJORITY. This test runs all nine corner-case sequences
+    sequentially.'
+  investigation_targets:
+  - tb/test.py FifoCornerTest _run_scenario method
+  - tb/sequences.py CORNER_SEQUENCES collection
+  recommended_action: Fix the runtime crash so FifoCornerTest can execute. Even if
+    individual corner cases are tested elsewhere, the aggregate test ensures all corner
+    cases run in a single regression pass.
+  confidence: high
+- id: W-NO-RESET-SCENARIO-VERIFIED
+  severity: medium
+  category: scenario_coverage
+  title: Dedicated reset behavior check never completes
+  affected_tests:
+  - FifoTC001Test
+  evidence:
+  - 'simulation_result.json: FifoTC001Test status=runtime_error, returncode=2'
+  - 'verification_plan.yaml TC001: Verify asynchronous active-low reset initializes
+    empty/full/dout, and state persists after deassertion'
+  - "tb/sequences.py ResetCheckSeq: only calls _assert_reset, _check_outputs, _release_reset\
+    \ \u2014 never calls _drive_item, making it the simplest test"
+  likely_cause: 'Inference: TC001 crashes despite being the simplest test (no drive_item
+    calls). This reinforces that the crash is an infrastructure issue (W-RUNTIME-CRASH-MAJORITY)
+    rather than a stimulus-specific problem. The driver blocks indefinitely on get_next_item()
+    since no items are ever sequenced, and this blocked coroutine may cause issues
+    during pyuvm phase teardown.'
+  investigation_targets:
+  - tb/driver.py run_phase: behavior when no items are ever sequenced
+  - tb/test.py FifoTC001Test _run_scenario
+  recommended_action: Fix the runtime crash. As a secondary measure, consider whether
+    the driver should have a timeout or shutdown mechanism when no items arrive within
+    a reasonable number of cycles.
+  confidence: medium
+- id: W-FIFO-ORDERING-UNVERIFIED
+  severity: medium
+  category: scenario_coverage
+  title: FIFO ordering across pointer wraps never verified in passing tests
+  affected_tests:
+  - FifoTC002Test
+  - FifoTC004Test
+  - FifoTC010Test
+  evidence:
+  - 'simulation_result.json: FifoTC008Test (pointer_wraparound_ordering) status=runtime_error'
+  - "tb/sequences.py PointerWrapOrderingSeq: fills to full, reads 2, writes 2, reads\
+    \ 2, writes 1, drains \u2014 exercises pointer wrap-around with interleaved operations"
+  - 'verification_plan.yaml TC008: Interleave reads and writes across fill and drain
+    cycles so rd_ptr and wr_ptr wrap modulo DEPTH'
+  - 'coverage YAML files: no test that exercises more than one full fill-drain cycle
+    completes'
+  likely_cause: 'Inference: TC008 crashes due to W-RUNTIME-CRASH-MAJORITY. The three
+    passing tests each do a single fill-then-drain cycle, which only exercises pointer
+    positions 0 through DEPTH-1 once. Pointer wrap-around (where rd_ptr or wr_ptr
+    wraps from DEPTH-1 back to 0 and then advances further) is never tested.'
+  investigation_targets:
+  - tb/sequences.py PointerWrapOrderingSeq body method
+  recommended_action: 'Fix the runtime crash so TC008 can execute. Pointer wrap-around
+    is a critical FIFO behavior: a defect in the modular pointer arithmetic (e.g.,
+    off-by-one in the wrap condition) would only manifest after the pointer has advanced
+    past position 0 more than once.'
+  confidence: high
+- id: W-OPERATION-AGAINST-FLAGS-COVERAGE-GAP
+  severity: medium
+  category: functional_coverage
+  title: Three of eight reachable op_against_flags bins are never hit in passing tests
+  affected_tests:
+  - FifoTC002Test
+  - FifoTC004Test
+  - FifoTC010Test
+  evidence:
+  - 'fifo_coverage_FifoTC004Test.xml: op_against_flags coverage=7/16 (43.75%); reachable-only:
+    7/8'
+  - "fifo_coverage_FifoTC004Test.xml: missed reachable bin (wr_active, rd_active,\
+    \ not_full, not_empty): 0 hits \u2014 simultaneous R/W at mid occupancy"
+  - 'fifo_coverage_FifoTC002Test.yml: op_against_flags coverage=5/16 (31.25%); reachable-only:
+    5/8'
+  - 'fifo_coverage_FifoTC010Test.xml: op_against_flags coverage=7/16 (43.75%); reachable-only:
+    7/8'
+  - 'tb/coverage.py _REACHABLE_OP_FLAG_COMBOS: defines 8 structurally reachable combinations;
+    the simultaneous R/W bin (1,1,0,0) is reachable but never hit'
+  likely_cause: 'Inference: the best-performing test (TC004) hits 7/8 reachable bins,
+    missing only the simultaneous read+write bin. This is a direct consequence of
+    no passing test driving wr_en=1 and rd_en=1 simultaneously (W-NO-SIMULTANEOUS-RW-EXERCISED).
+    TC002 hits only 5/8 because it also never reaches full.'
+  investigation_targets:
+  - tb/coverage.py _REACHABLE_OP_FLAG_COMBOS and coverage reporting
+  - tb/sequences.py for test sequences that would hit the missed bin
+  recommended_action: Fix the runtime crash so TC005/TC006/TC007 can execute and hit
+    the simultaneous R/W bins. Additionally, ensure the cross-test coverage merge
+    correctly aggregates the reachable-only metric across all tests to give an accurate
+    regression-wide view.
+  confidence: high
+authoritative_inputs:
+- specification
+- reference_model
+- verification_plan
+rtl_exposed_to_llm: false
+comparison:
+  previous_quality_score: 81.88
+  delta: -23.08
+analysis_summary:
+  overall_status: functional_failure
+  tests_total: 13
+  tests_passed: 3
+  tests_failed: 10
+changed_files:
+- coverage.py
+- sequences.py
+analysis_report_path: /home/auralab/nwark/chia_sept7_for_multi_rtl_with_multi_llm/for_multiple_rtl_updation_generalized/generated/designs/fifo/llm_verification_analysis_workspace/weakness_report.yaml
+accepted: false

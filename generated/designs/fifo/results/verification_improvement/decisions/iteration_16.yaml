@@ -1,0 +1,62 @@
+schema_version: '1.0'
+decision:
+  action: improve
+  weakness_id: W-ASSERTION-MISSING-FULL-EMPTY-COUNT-INVARIANT
+  failure_class: missing_check
+  failure_mechanism: missing_state_check
+  source: guidance_supported
+  confidence: high
+diagnosis:
+  observed_plan: The verification plan defines seven always-on assertions but omits
+    a direct invariant check that the combinational flags full and empty are derived
+    correctly from the internal count signal. check_flags_mutually_exclusive verifies
+    !(full && empty), and check_count_update_consistency verifies count transitions,
+    but neither asserts full==(count==DEPTH) and empty==(count==0) on every post-reset
+    cycle.
+  observed_problem: No assertion independently verifies that the DUT's combinational
+    full/empty flags match the internal count on every cycle. The scoreboard checks
+    full/empty against the reference model queue length (equivalent), but check_fifo_ordering
+    in assertions.py also uses the same reference model, so a shared-model bug would
+    defeat both layers. The pin-level invariant full==(count==DEPTH), empty==(count==0)
+    is the only check that is fully independent of any reference model or scoreboard
+    logic.
+  consequence: If the RTL has a bug in its full/empty derivation from count (e.g.
+    off-by-one in the comparison, wrong polarity, or stale combinational logic), the
+    only detection layer is the scoreboard, which itself depends on the reference
+    model step() function matching the same semantics. A logic error shared between
+    the RTL's flag derivation and the reference model's flag derivation would pass
+    all existing checks undetected.
+candidate_interventions:
+- Add a new always-on checker coroutine check_flags_count_consistency to assertions.py
+  that asserts full==(count==DEPTH) and empty==(count==0) on every non-reset post-edge
+  cycle, reading dut.count directly; skip the check when count is not reachable (consistent
+  with existing count-based checks).
+- 'No change: the scoreboard already provides equivalent checking through ref_model.step()
+  comparisons, so the incremental value is debatable.'
+- 'Defer: focus on higher-severity weaknesses first (W-SINGLE-PARAM-CONFIG or W-DEASSERT-RESET-TIMING).'
+selected_intervention:
+  type: add_always_on_assertion
+  changed_files:
+  - tb/assertions.py
+  expected_effect:
+  - Adds an independent pin-level invariant check that full and empty are derived
+    correctly from the internal count, independent of any reference model or scoreboard
+    logic.
+  - 'Closes the defense-in-depth gap: a shared-model bug in the scoreboard and check_fifo_ordering
+    would still be caught by this direct comparison of DUT pins against DUT internal
+    state.'
+  - No existing checks are weakened or removed; the new checker is additive and follows
+    the exact same sampling pattern (RisingEdge + ReadOnly) as the six existing checkers.
+regression_risks:
+- If the RTL does not expose dut.count (CONTRACT.md section 9.5), the check is skipped
+  per cycle just like check_no_overflow, check_no_underflow, check_occupancy_bounds,
+  and check_count_update_consistency. No false failures.
+- The new assertion uses the same _read_count helper and _to_int pattern as existing
+  count-based checkers, so no new failure modes are introduced.
+validation:
+- All 13 existing tests must still pass with zero mismatches and zero assertion failures.
+- The new checker coroutine is listed in the FifoAssertions.start() checkers list
+  and is counted in the start() log message (7 -> 8 checkers).
+- 'Code review: confirm the checker uses RisingEdge + ReadOnly sampling consistent
+  with all existing checkers, and that it reads dut.count through _read_count() to
+  handle non-reachable signals gracefully.'

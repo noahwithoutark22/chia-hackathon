@@ -1,0 +1,56 @@
+schema_version: '1.0'
+decision:
+  action: defer
+  weakness_id: W-PARAM-NO-SWEEP
+  failure_class: insufficient_parameter_exploration
+  failure_mechanism: insufficient_parameter_exploration
+  source: mixed
+  confidence: medium
+diagnosis:
+  observed_problem: 'All 13 regression tests execute exclusively at default parameters
+    (DATA_WIDTH=8, DEPTH=4). The verification plan declares 9 parameter combinations
+    (DATA_WIDTH in {4,8,16} x DEPTH in {2,4,8}) that should be swept, but zero non-default
+    configurations are exercised. Width-dependent logic (boundary data scaling, data
+    masking) and depth-dependent logic (pointer wrapping at DEPTH=2, occupancy bin
+    collapse) at non-default parameters remain entirely unverified.
+
+    '
+  consequence: 'A bug that manifests only at a non-default parameter configuration
+    (e.g. DEPTH=2 pointer aliasing, DATA_WIDTH=4 narrower boundary values) would be
+    missed by the entire regression. Coverage infrastructure bin deduplication (coverage.py
+    _count_level_bins) at collapsed DEPTH values has never been validated in simulation.
+
+    '
+candidate_interventions:
+- Add a Makefile 'regress' target iterating over all 9 parameter combinations, invoking
+  key tests with DATA_WIDTH and DEPTH env-var overrides per run.
+- Add a Python wrapper script (tb/param_sweep.py) that spawns one subprocess per parameter
+  combination, avoiding Makefile modification entirely.
+- Defer to a future iteration when the execution mechanism can reliably modify build
+  infrastructure files.
+selected_intervention:
+  type: defer
+  expected_effect:
+  - No TB change this iteration; the weakness is preserved in the backlog.
+  - Avoids a third no-change execution failure on the same Makefile mechanism (iterations
+    17 and 19 both produced no TB changes).
+  - The TB Python infrastructure is already parameterized (test_top.py reads DATA_WIDTH/DEPTH
+    from env, sequences use self.depth/self.data_width from ConfigDB, coverage collector
+    accepts parameterized depth and data_width). Only the Makefile regress target
+    is missing.
+regression_risks:
+- 'None: no TB files are modified in a defer decision.'
+- The weakness persists and non-default parameter configurations remain unverified
+  in subsequent iterations until the execution layer can produce the Makefile change
+  or an alternative wrapper mechanism is implemented.
+validation:
+- Prior attempts at this exact mechanism (iterations 17, 19) both resulted in no_change
+  because the execution LLM produced zero TB modifications. No new evidence suggests
+  a third attempt would succeed.
+- The weakness report itself confirms TB infrastructure readiness (test_top.py lines
+  112-113 read params from env vars; sequences.py uses ConfigDB- resolved self.depth
+  and self.data_width). The gap is solely the missing regression wrapper invocation,
+  not any TB code deficiency.
+- A future iteration should either (a) retry the Makefile regress target with explicit
+  step-by-step Makefile content in the intervention spec, or (b) use an alternative
+  mechanism such as a Python wrapper script that avoids Makefile modification entirely.

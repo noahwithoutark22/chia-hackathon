@@ -1,0 +1,21 @@
+`include "uvm_macros.svh"
+import uvm_pkg::*;
+class {{ spec.dut_name }}_base_test extends uvm_test;
+  `uvm_component_utils({{ spec.dut_name }}_base_test)
+  {{ spec.dut_name }}_env env;
+  function new(string name,uvm_component parent); super.new(name,parent); endfunction
+  function void build_phase(uvm_phase phase); super.build_phase(phase); env={{ spec.dut_name }}_env::type_id::create("env",this); endfunction
+endclass
+{% for s in spec.scenarios %}
+class {{ spec.dut_name }}_test_{{ s.name|lower|replace(" ","_") }} extends {{ spec.dut_name }}_base_test;
+  `uvm_component_utils({{ spec.dut_name }}_test_{{ s.name|lower|replace(" ","_") }})
+  function new(string name,uvm_component parent); super.new(name,parent); endfunction
+  task run_phase(uvm_phase phase);
+    {{ spec.dut_name }}_seq_{{ s.name|lower|replace(" ","_") }} seq;
+    phase.raise_objection(this);
+    seq={{ spec.dut_name }}_seq_{{ s.name|lower|replace(" ","_") }}::type_id::create("seq");
+    seq.start(env.agent.sequencer);
+    phase.drop_objection(this);
+  endtask
+endclass
+{% endfor %}

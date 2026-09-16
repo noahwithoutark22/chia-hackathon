@@ -1,0 +1,79 @@
+schema_version: '1.0'
+decision:
+  action: improve
+  weakness_id: W-RESET-DEASSERT-TIMING
+  failure_class: incomplete_check
+  failure_mechanism: incorrect_reset_observation
+  source: guidance_supported
+  confidence: high
+diagnosis:
+  observed_problem: '_release_reset() in sequences.py always aligns reset deassertion
+    to FallingEdge(self.dut.clk), guaranteeing a full half-period of setup time before
+    the next sampling rising edge. The async reset recovery path is therefore only
+    exercised under ideal timing conditions.
+
+    '
+  consequence: 'A real-world reset deassert can occur at any clock phase. Bugs in
+    the RTL''s async reset recovery (e.g. metastability, partial pointer restoration,
+    or glitched count/full/empty) that only manifest when rst_n deasserts within the
+    setup/hold window of the rising edge are never detected by the current TB.
+
+    '
+candidate_interventions:
+- 'Add a ResetDeassertNearEdgeSeq corner sequence that deasserts reset using Timer
+  with a randomized offset (e.g. 1ns to clk_half_period-1 ns after FallingEdge) to
+  place the deassertion near the rising edge''s setup/hold window, then verifies clean
+  recovery.
+
+  '
+- 'Modify _release_reset() to accept an optional phase parameter for all callers to
+  optionally exercise near-edge deassert (broader but higher risk of breaking existing
+  sequences).
+
+  '
+- 'Defer: the issue is real but the near-edge timing scenario may produce X/Z metastability
+  in simulation that is tool-dependent and hard to validate deterministically.
+
+  '
+selected_intervention:
+  type: add_near_edge_reset_deassert_sequence
+  expected_effect:
+  - 'Exercises the async reset recovery path with rst_n deasserting near the clock
+    edge setup/hold window, a timing scenario currently never tested.
+
+    '
+  - 'If the RTL has a reset recovery bug (e.g. pointer corruption on near-edge deassert),
+    this sequence would catch it while existing sequences would not.
+
+    '
+  - 'The sequence is purely additive: added to CORNER_SEQUENCES and exercised by FifoCornerTest;
+    no existing sequence or test is modified.
+
+    '
+  - 'Validation: the sequence should pass all existing scoreboard and assertion checks,
+    confirming clean recovery under near-edge deassert timing.
+
+    '
+regression_risks:
+- 'Near-edge reset deassert may produce X/Z values in some simulators (tool-dependent
+  metastability modeling), which could cause spurious assertion failures if not properly
+  guarded by the existing _to_int None-skip logic.
+
+  '
+- "If the RTL has a genuine reset recovery bug at near-edge timing, this sequence\
+  \ may fail \u2014 which is the intended detection behavior but would change the\
+  \ test pass/fail state.\n"
+validation:
+- 'Confirm FifoCornerTest still passes (all existing corner sequences unaffected,
+  new sequence executes and passes).
+
+  '
+- 'Confirm all 13 existing tests still pass with no regressions.
+
+  '
+- 'Verify the new sequence logs its deassert timing (Timer offset used) for debug
+  traceability.
+
+  '
+- Check that the sequence's recovery assertions (empty=1, full=0, dout=0 after release)
+  and post-recovery operation checks are satisfied.

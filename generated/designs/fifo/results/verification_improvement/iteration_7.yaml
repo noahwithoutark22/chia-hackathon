@@ -1,0 +1,96 @@
+schema_version: '1.0'
+iteration: 7
+quality_score: 58.8
+metrics:
+  tests_total: 13
+  tests_passed: 3
+  tests_failed: 10
+  functional_coverage:
+    available: true
+    percentage: 87.5
+  planned_coverage_points: 7
+  generated_coverage_points: 7
+  planned_coverage_crosses: 5
+  generated_coverage_crosses: 5
+  python_assertions: 18
+  checker_coroutines: 2
+  test_classes: 13
+  sequences: 0
+  planned_assertions: 7
+  test_health_score: 23.08
+  coverage_quality_score: 87.5
+  assertion_quality_score: 100.0
+  scenario_quality_score: 0.0
+  scenario_coverage:
+    planned: 10
+    generated: 10
+    executed: 0
+    score: 0.0
+    planned_ids:
+    - TC001
+    - TC002
+    - TC003
+    - TC004
+    - TC005
+    - TC006
+    - TC007
+    - TC008
+    - TC009
+    - TC010
+    generated_ids:
+    - TC001
+    - TC002
+    - TC003
+    - TC004
+    - TC005
+    - TC006
+    - TC007
+    - TC008
+    - TC009
+    - TC010
+    executed_ids: []
+  parameter_coverage:
+    available: false
+    score: 100.0
+    planned: {}
+    observed: {}
+  tb_quality_score: 58.8
+weaknesses:
+- id: boundary_data_concurrent_coverage_cross
+  severity: medium
+  category: coverage_timing
+  title: boundary_data_concurrent coverage cross samples din and dout in the same
+    cycle although dout is a latency-1 registered output
+  affected_tests:
+  - boundary_data_concurrent
+  evidence:
+  - Coverage cross boundary_data_concurrent samples din and dout simultaneously despite
+    dout being a latency-1 registered output
+  likely_cause: 'Likely inference: the coverage monitor samples din and dout in the
+    same clock cycle without accounting for the pipeline delay on dout, causing inaccurate
+    cross coverage data'
+  investigation_targets:
+  - tb_boundary_data_concurrent coverage sampling logic
+  - coverage monitor definition for boundary_data_concurrent cross
+  recommended_action: Adjust the coverage monitor to sample dout one cycle after din
+    to reflect the actual latency, or restructure the cross coverage to sample din
+    and dout from valid aligned time windows
+  confidence: medium
+authoritative_inputs:
+- specification
+- reference_model
+- verification_plan
+rtl_exposed_to_llm: false
+comparison:
+  previous_quality_score: 81.88
+  delta: -23.08
+analysis_summary:
+  overall_status: verification_weakness
+  tests_total: 1
+  tests_passed: 1
+  tests_failed: 0
+changed_files:
+- coverage.py
+- sequences.py
+analysis_report_path: /home/auralab/nwark/chia_sept7_for_multi_rtl_with_multi_llm/for_multiple_rtl_updation_generalized/generated/designs/fifo/llm_verification_analysis_workspace/weakness_report.yaml
+accepted: false

@@ -1,0 +1,69 @@
+version: "1.0"
+planner_contract:
+  must:
+    - use_only_capabilities_from_capabilities_yaml
+    - identify_real_dut_signals
+    - describe_clock_and_reset_semantics_from_rtl
+    - describe_output_latency_from_rtl
+    - reference_the_supplied_python_model_as_the_behavioral_oracle
+    - provide_test_intent_without_generating_uvm_source_code
+  must_not:
+    - invent_ports
+    - invent_reference_model_functions
+    - duplicate_reference_model_algorithms
+    - assume_adder_specific_signals
+    - emit_yaml_or_systemverilog_inside_string_fields_when_structured_fields_exist
+
+generator_contract:
+  must:
+    - validate_generation_spec_before_rendering
+    - render_with_jinja_only
+    - generate_a_manifest
+    - generate_reference_model_adapter
+    - preserve_the_original_rtl
+    - fail_closed_on_unsupported_features
+  scoreboard:
+    oracle: python_reference_model
+    no_inline_prediction: true
+    compare_only_after_expected_value_is_obtained: true
+  repair:
+    yaml_syntax: deterministic_first_then_llm
+    semantic: reviewer_feedback
+
+simulation_contract:
+  must:
+    - generated_tb_must_provide_generation_manifest_fields
+    - manifest_must_identify_exact_top_module_and_top_file
+    - manifest_compile_files_must_be_direct_compiler_inputs_in_valid_order
+    - manifest_test_classes_must_be_exact_runtime_uvm_test_names
+    - reference_model_must_be_exercised_by_the_scoreboard
+    - tb_top_must_have_a_deterministic_watchdog_for_verilator
+    - watchdog_must_not_replace_functional_completion_checks
+  verilator:
+    require_define: UVM_NO_DPI
+    require_timing: true
+    build_parallelism: "-j 0"
+    timeout_wrapper_required: true
+  repair:
+    toolchain_or_template_failures_must_not_be_patched_per_generation: true
+    generated_tb_repairs_must_be_minimal_and_dut_specific: true
+
+
+verilator_compatibility:
+  version: "5.042"
+  uvm: "1800.2-2020.3.1"
+  hard_requirements:
+    - compile_with_timing
+    - define_UVM_NO_DPI
+    - use_timeout_wrapper_for_every_test
+    - keep_watchdog_in_tb_top
+  virtual_interface: non_parameterized_only
+  forbidden_patterns:
+    - parameterized_virtual_interface_type
+    - uvm_config_db_specialized_with_parameterized_virtual_interface
+  guidance:
+    - Render interface widths concretely from the validated GenerationSpec rather than parameterizing the interface type.
+    - Declare virtual interfaces as `virtual <dut>_if`, not `virtual <dut>_if#(...)`.
+    - Use `uvm_config_db#(virtual <dut>_if)` for interface propagation.
+    - Do not remove UVM_NO_DPI to solve linker errors; UVM DPI is intentionally disabled in this toolchain.
+    - Do not remove the watchdog or timeout wrapper.

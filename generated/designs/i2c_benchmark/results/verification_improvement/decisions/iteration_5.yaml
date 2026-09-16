@@ -1,0 +1,70 @@
+schema_version: '1.0'
+decision:
+  action: improve
+  weakness_id: I2C_WEAK_002
+  failure_class: assertion_quality
+  failure_mechanism: 'masked_failure via incomplete_signal_observation: tb/test_top.py
+    _drive_i2c_pullups writes a full-strength ''1'' onto the open-drain scl/sda inouts
+    every clock cycle, out-driving the DUT so its drive-vs-release behavior is unobservable;
+    the plan''s I2C_12 per-phase checks (check_bus_start_phase / check_bus_access_phase)
+    were consequently dropped and only the warning-severity scl_sda_released_in_idle
+    checker remains, so a DUT violating specification section 7 passes all 16 tests'
+  source: mixed
+  confidence: high
+diagnosis:
+  observed_problem: The open-drain pull-up is modeled as a continuous strong drive
+    of scl/sda to '1', swamping the DUT's own drive in the simulator; per-sequence
+    comments confirm bus phase checks were dropped because the bus level is set entirely
+    by the environment, and the residual release check is warning-only with zero violations,
+    so spec-section-7 open-drain behavior is unverifiable.
+  consequence: A non-compliant DUT (bus line held low in idle, or no observable START/access/STOP-like
+    drive) passes the full green regression, and the plan's I2C_12 per-phase observability
+    remains structurally impossible while the environment out-drives the lines.
+candidate_interventions:
+- 'Replace the continuous force-drive in _drive_i2c_pullups with a detect-release-and-pull-up
+  model: drive ''1'' only while the line reads released (z/x) and drive ''z'' (back
+  off) whenever the DUT drives, so a DUT pull-low becomes observable while released
+  lines still resolve high'
+- Re-implement plan I2C_12 per-phase checks (sda low in START-like phase, scl low
+  in access phase) at assertion severity
+- Add a directed scenario establishing a prior non-zero read_data before an unsupported-address
+  transaction and asserting read_data==0x00 at done (I2C_WEAK_003 recommendation)
+- Restore the read_data==0x00 oracle for unsupported-address transactions in the scoreboard
+  and randomized self-check (I2C_WEAK_001 recommendation)
+selected_intervention:
+  type: observability_preserving_open_drain_pullup_model
+  expected_effect:
+  - 'scl/sda are no longer strong-driven: the environment drives ''z'' while the DUT
+    drives the line and pulls to ''1'' only while the line is released, so a DUT pull-low
+    reads ''0'' instead of being masked; a never-driving DUT still reads a pulled-up
+    ''1'''
+  - 'All 16 tests stay green on the current RTL: the DUT releases both lines in idle
+    (zero idle-release violations in current logs), so resolved bus levels remain
+    ''1'' in every sampled window and idle/release checks behave exactly as before'
+  - A future DUT violating spec section 7 while idle now trips scl_sda_released_in_idle
+    (warning) and _check_bus_idle (error in I2C_01/I2C_12) instead of being hidden
+    by the environment drive
+  - The observability blocker for the plan's I2C_12 per-phase checks is removed, so
+    check_bus_start_phase / check_bus_access_phase become implementable in a later
+    iteration once the DUT provides observable bus drive
+regression_risks:
+- 'Transient X on the inouts during power-up/reset or drive transitions could spuriously
+  trip scl_is_released/sda_is_released and redden I2C_01/I2C_12; mitigation: pull
+  up any z/x line at step granularity and assertion checkers already skip while rst_n
+  is asserted'
+- If the current RTL actually holds a line low during a sampled idle window (contrary
+  to the logged zero warnings), the idle-release checks redden; the regression run
+  must catch this before acceptance
+- 'No DUT-visible stimulus change: for a never-driving DUT the resolved level stays
+  ''1'' under both models, so the transaction FSM and all abstract-pin components
+  (driver/monitor/scoreboard/coverage) are unaffected'
+validation:
+- Run the full 16-test regression (make regression); every test must remain green
+- Confirm I2C01ResetBehaviorTest and I2C12OpenDrainBusReleaseTest idle/release checks
+  still pass with the new pull-up model
+- Confirm the end-of-test assertion report still shows zero scl_sda_released_in_idle
+  violations
+- Code-inspection check that the pull-up coroutine drives 'z' (back-off) whenever
+  the DUT holds the line and '1' only when the line is released
+- Re-run I2CRandomizedTest with a fixed seed and confirm scoreboard/self-check results
+  are unchanged (no interaction with the abstract pins)

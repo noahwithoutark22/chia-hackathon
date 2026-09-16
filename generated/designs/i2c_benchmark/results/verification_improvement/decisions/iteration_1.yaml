@@ -1,0 +1,73 @@
+schema_version: '1.0'
+decision:
+  action: improve
+  weakness_id: W-ORACLE-UNSUPPORTED-READDATA
+  failure_class: scoreboard_oracle
+  failure_mechanism: 'masked_failure: the read_data==0x00 oracle for unsupported-address
+    transactions is gated off in both scoring paths (I2CScoreboard._on_monitor_item
+    and I2CRandomizedSequence._random_transaction) to accommodate observed RTL behavior
+    (I2C_DISC_001), so the documented major defect can never be detected while all
+    16 tests stay green'
+  source: mixed
+  confidence: high
+diagnosis:
+  observed_problem: Specification section 4, the reference model, the plan scoreboard/randomized
+    pass criteria, and CONTRACT.md section 12.6 all require read_data==0x00 on unsupported-address
+    transactions, but both scoring paths restrict the read_data comparison to supported-address
+    reads only (compare_read_data = slave_addr==0x50 and rw==1), and the directed/corner
+    unsupported-slave checks assert 0x00 only immediately after reset when the value
+    is trivially 0x00.
+  consequence: 'The environment''s designated detector for the major I2C_DISC_001
+    defect is inert: an RTL that retains stale read_data on unsupported-address transactions
+    passes the entire regression (16/16, 0 mismatches, 0 assertion failures), producing
+    a false-green signal and contradicting the documented discrepancy guards and the
+    plan''s explicit ''do not weaken the oracle'' recommendation.'
+candidate_interventions:
+- Restore the read_data==0x00 comparison for unsupported-address transactions (both
+  rw directions) in I2CScoreboard._on_monitor_item
+- Restore the same comparison in I2CRandomizedSequence._random_transaction
+- 'Add a directed scenario: supported read of a non-zero value immediately followed
+  by an unsupported-address transaction without an intervening reset (deterministic
+  I2C_DISC_001 trigger)'
+- 'Fix the vacuous ack_error_implies_unsupported_address checker to correlate done/ack_error
+  with the latched offer address instead of the released pin (defer: separate weakness
+  W-ASSERTION-ACK-SLAVEADDR-VACUOUS)'
+- 'Re-add the plan-required START-like/access-phase open-drain checks in I2C_12 (defer:
+  separate weakness W-SCENARIO-OPENDRAIN-CHECKS-DROPPED; blocked by the always-on
+  pull-up force masking DUT drive)'
+selected_intervention:
+  type: restore_spec_mandated_read_data_oracle_for_unsupported_transactions_in_both_scoring_paths
+  expected_effect:
+  - Every unsupported-address transaction (write and read) is compared against the
+    reference-model result read_data==0x00 in the scoreboard and the randomized self-check
+  - 'I2C_DISC_001 becomes detectable: the randomized test fails loudly when an unsupported
+    transaction follows a supported read with non-zero read_data instead of silently
+    passing'
+  - Supported-address writes remain excluded from read_data comparison (spec leaves
+    read_data during a write unspecified), preserving current behavior there
+  - Scoreboard code, sequence self-check, and CONTRACT.md section 12.6's documented
+    comparison scope become consistent
+regression_risks:
+- I2CRandomizedTest is expected to FAIL on the current RTL once the check is live
+  (true positive for the documented I2C_DISC_001 discrepancy); this is the intended
+  detection outcome and must be triaged as a DUT defect per the plan's recommendation,
+  never re-waived
+- Any new failure must be attributable to stale non-zero read_data on an unsupported-address
+  transaction; a failure on an unsupported transaction that followed only writes/reset
+  would warrant investigation rather than blind revert
+- Directed/corner unsupported tests (I2C07/08/09, corner 00/01/7F) must remain green
+  because they check immediately after reset; if any of those regress, the triggering
+  sequence must be re-examined
+validation:
+- Run make UVM_TESTNAME=I2CRandomizedTest I2C_SEED=<fixed> before and after the change;
+  after the change the run must report a read_data mismatch on an unsupported-address
+  transaction (detector live)
+- Run make UVM_TESTNAME=I2C07UnsupportedSlave00Test, I2C08UnsupportedSlave01Test,
+  I2C09UnsupportedSlave7FTest and I2CCornerCaseTest - must still pass (post-reset
+  read_data==0x00 holds)
+- Run the full 16-test regression and verify that only I2CRandomizedTest (the designated
+  I2C_DISC_001 detector) fails, with each failure traced to read_data!=0x00 on an
+  unsupported transaction
+- 'Static review: only the compare_read_data gate expressions change in tb/scoreboard.py
+  and tb/sequences.py; ack_error/busy/done comparisons and the reference-model invocation
+  are untouched'

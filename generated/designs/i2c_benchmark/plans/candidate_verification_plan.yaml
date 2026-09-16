@@ -1,0 +1,1002 @@
+dut:
+  name: i2c_master
+  file: benchmarks/i2c_benchmark/i2c_master.sv
+  description: >-
+    Transaction-level I2C master controller. Accepts a start request and one
+    register-oriented transaction (7-bit slave address, 8-bit register
+    address, 8-bit data), executes an abstracted START/transfer/STOP sequence,
+    and reports completion via a single-cycle done pulse. A built-in 256-byte
+    memory array models an EEPROM-like slave at address 0x50.
+
+parameters: []
+
+clock_and_reset:
+  clock:
+    name: clk
+    type: posedge
+    description: >-
+      System clock. All synchronous state advances on the rising edge.
+  reset:
+    name: rst_n
+    polarity: active-low
+    type: asynchronous
+    description: >-
+      Asynchronous active-low reset. While asserted, the controller shall be
+      idle: busy=0, done=0, ack_error=0, read_data=0x00, and the I2C SCL/SDA
+      lines released (high-impedance, pulled up by the environment).
+    reset_value:
+      state: IDLE
+      busy: 0
+      done: 0
+      ack_error: 0
+      read_data: 0x00
+      scl: released
+      sda: released
+
+ports:
+  inputs:
+    - name: clk
+      width: 1
+      type: logic
+      description: System clock.
+    - name: rst_n
+      width: 1
+      type: logic
+      description: Active-low asynchronous reset.
+    - name: start
+      width: 1
+      type: logic
+      description: >-
+        Transaction request. Sampled only while idle (busy=0); started
+        requests begin a transaction.
+    - name: rw
+      width: 1
+      type: logic
+      description: >-
+        Transaction direction latched at start. 0 = write write_data to
+        reg_addr; 1 = read from reg_addr into read_data.
+    - name: slave_addr
+      width: 7
+      type: logic
+      description: >-
+        7-bit I2C slave address. Only 0x50 is supported; any other address
+        completes with ack_error=1.
+    - name: reg_addr
+      width: 8
+      type: logic
+      description: 8-bit register (memory byte) address within the slave.
+    - name: write_data
+      width: 8
+      type: logic
+      description: 8-bit data byte written for a write transaction (rw=0).
+  outputs:
+    - name: read_data
+      width: 8
+      type: logic
+      description: >-
+        Data byte returned by a read transaction from the supported slave.
+        Expected to be 0x00 for transactions to unsupported slave addresses
+        and for reads of never-written registers.
+    - name: busy
+      width: 1
+      type: logic
+      description: >-
+        High while a transaction is active; deasserted in the completion
+        state along with the done pulse.
+    - name: done
+      width: 1
+      type: logic
+      description: One-clock-cycle completion pulse per transaction.
+    - name: ack_error
+      width: 1
+      type: logic
+      description: >-
+        Set at the end of a transaction whose slave address is not the
+        supported 0x50; cleared when returning to idle for the next
+        transaction.
+  inouts:
+    - name: scl
+      width: 1
+      description: >-
+        Open-drain I2C clock line. Driven low during the transfer phase and
+        released (high-impedance) otherwise; environment provides pull-ups.
+    - name: sda
+      width: 1
+      description: >-
+        Open-drain I2C data line. Driven low during START-like phase and
+        released (high-impedance) otherwise; environment provides pull-ups.
+
+functional_behavior:
+  description: >-
+    The controller operates as a transaction-level I2C master with one
+    supported EEPROM-like slave at 7-bit address 0x50 and a 256-byte
+    byte-addressed memory. A request is accepted when start is asserted
+    while idle; rw, slave_addr, reg_addr, and write_data are latched and
+    busy goes high. The transaction advances through a START-like phase
+    (SDA driven low, SCL released), a transfer/access phase (for slave
+    0x50: write memory[reg_addr]=write_data for rw=0, or present
+    memory[reg_addr] on read_data for rw=1; for any other address ack_error
+    is set), a STOP-like phase (both lines released), and a completion
+    state in which busy drops and done pulses for one clock. After that the
+    controller returns to idle and may accept the next transaction. A read
+    from a register that has never been written returns 0x00. Back-to-back
+    transactions are permitted once idle.
+  reset_behavior: >-
+    Asserting rst_n (active-low, asynchronous) clears the FSM to IDLE and
+    drives busy=0, done=0, ack_error=0, read_data=0x00, and releases SCL
+    and SDA (SDA/SCL high-impedance). The specification and reference model
+    treat the internal memory as cleared on reset; the RTL does not
+    explicitly clear its memory on reset (see discrepancies).
+  reference_model:
+    language: python
+    file: benchmarks/i2c_benchmark/i2c_reference_model.py
+    function: transact
+    logic: >-
+      I2CReferenceModel.transact(rw, slave_addr, reg_addr, write_data)
+      validates input widths, then returns done=1, busy_after=0 for every
+      transaction. For slave_addr != 0x50 it returns ack_error=1 and
+      read_data=0. For the supported slave, rw=0 stores write_data at
+      reg_addr in memory and returns ack_error=0, read_data=0; rw=1 returns
+      ack_error=0 and read_data=memory.get(reg_addr, 0). Model memory is
+      cleared by reset().
+    latency: transaction-level (results compared when DUT done pulses)
+
+directed_test_scenarios:
+  - id: I2C_01
+    name: Reset Behavior
+    description: >-
+      Verify all outputs after reset: busy=0, done=0, ack_error=0,
+      read_data=0x00, and SCL/SDA lines released (pulled up to 1).
+    priority: high
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 8
+          description: Assert and release rst_n with start deasserted.
+        - action: check
+          signals:
+            busy: 0
+            done: 0
+            ack_error: 0
+            read_data: 0
+          description: Sample outputs after reset; all must be cleared.
+        - action: check_bus_idle
+          description: Verify scl and sda are not driven low (released).
+    expected:
+      busy: 0
+      done: 0
+      ack_error: 0
+      read_data: 0x00
+
+  - id: I2C_02
+    name: Write Then Read Back
+    description: >-
+      Write 0xAA to register 0x10 on supported slave 0x50, then read it back
+      and verify read_data.
+    priority: high
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 8
+          description: Idle the controller.
+        - action: transaction
+          signals:
+            rw: 0
+            slave_addr: 0x50
+            reg_addr: 0x10
+            write_data: 0xAA
+          description: Start a write of 0xAA to reg 0x10.
+        - action: wait_done
+          description: Wait for the done pulse.
+        - action: check
+          signals:
+            ack_error: 0
+            busy: 0
+          description: Write must complete with no NACK and idle state.
+        - action: transaction
+          signals:
+            rw: 1
+            slave_addr: 0x50
+            reg_addr: 0x10
+            write_data: 0
+          description: Start a read of reg 0x10.
+        - action: wait_done
+          description: Wait for the done pulse.
+        - action: check
+          signals:
+            ack_error: 0
+            read_data: 0xAA
+          description: Read data must equal the previously written value.
+    expected:
+      ack_error: 0
+      read_data: 0xAA
+
+  - id: I2C_03
+    name: Read Before Write Returns Zero
+    description: >-
+      Read a register that has never been written; the reference result is
+      0x00.
+    priority: high
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 8
+          description: Idle the controller.
+        - action: transaction
+          signals:
+            rw: 1
+            slave_addr: 0x50
+            reg_addr: 0x42
+            write_data: 0
+          description: Read never-written reg 0x42.
+        - action: wait_done
+          description: Wait for the done pulse.
+        - action: check
+          signals:
+            ack_error: 0
+            read_data: 0
+          description: Unwritten register must return 0x00.
+    expected:
+      ack_error: 0
+      read_data: 0x00
+
+  - id: I2C_04
+    name: Repeated Writes to Same Register
+    description: >-
+      Write 0x55 then 0xAA to the same register; last write must win on a
+      subsequent read.
+    priority: high
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 8
+          description: Idle the controller.
+        - action: transaction
+          signals:
+            rw: 0
+            slave_addr: 0x50
+            reg_addr: 0x08
+            write_data: 0x55
+          description: First write to reg 0x08.
+        - action: wait_done
+          description: Wait for the done pulse.
+        - action: transaction
+          signals:
+            rw: 0
+            slave_addr: 0x50
+            reg_addr: 0x08
+            write_data: 0xAA
+          description: Overwrite reg 0x08.
+        - action: wait_done
+          description: Wait for the done pulse.
+        - action: transaction
+          signals:
+            rw: 1
+            slave_addr: 0x50
+            reg_addr: 0x08
+            write_data: 0
+          description: Read back reg 0x08.
+        - action: wait_done
+          description: Wait for the done pulse.
+        - action: check
+          signals:
+            read_data: 0xAA
+            ack_error: 0
+          description: Must read the last written value.
+    expected:
+      ack_error: 0
+      read_data: 0xAA
+
+  - id: I2C_05
+    name: Boundary Register Address 0x00
+    description: >-
+      Write 0xFF to register 0x00 (lowest address) and read it back.
+    priority: medium
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 8
+          description: Idle the controller.
+        - action: transaction
+          signals:
+            rw: 0
+            slave_addr: 0x50
+            reg_addr: 0x00
+            write_data: 0xFF
+          description: Write to boundary reg 0x00.
+        - action: wait_done
+          description: Wait for done.
+        - action: transaction
+          signals:
+            rw: 1
+            slave_addr: 0x50
+            reg_addr: 0x00
+            write_data: 0
+          description: Read boundary reg 0x00.
+        - action: wait_done
+          description: Wait for done.
+        - action: check
+          signals:
+            read_data: 0xFF
+            ack_error: 0
+          description: Read back 0xFF.
+    expected:
+      read_data: 0xFF
+      ack_error: 0
+
+  - id: I2C_06
+    name: Boundary Register Address 0xFF
+    description: >-
+      Write 0x55 to register 0xFF (highest address) and read it back.
+    priority: medium
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 8
+          description: Idle the controller.
+        - action: transaction
+          signals:
+            rw: 0
+            slave_addr: 0x50
+            reg_addr: 0xFF
+            write_data: 0x55
+          description: Write to boundary reg 0xFF.
+        - action: wait_done
+          description: Wait for done.
+        - action: transaction
+          signals:
+            rw: 1
+            slave_addr: 0x50
+            reg_addr: 0xFF
+            write_data: 0
+          description: Read boundary reg 0xFF.
+        - action: wait_done
+          description: Wait for done.
+        - action: check
+          signals:
+            read_data: 0x55
+            ack_error: 0
+          description: Read back 0x55.
+    expected:
+      read_data: 0x55
+      ack_error: 0
+
+  - id: I2C_07
+    name: Unsupported Slave Address 0x00
+    description: >-
+      Write transaction to unsupported slave 0x00 must complete with
+      ack_error=1 and read_data=0x00 (per spec/reference model).
+    priority: high
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 8
+          description: Idle the controller.
+        - action: transaction
+          signals:
+            rw: 0
+            slave_addr: 0x00
+            reg_addr: 0x00
+            write_data: 0x55
+          description: Start transaction to unsupported slave 0x00.
+        - action: wait_done
+          description: Wait for done.
+        - action: check
+          signals:
+            ack_error: 1
+            busy: 0
+            read_data: 0
+          description: >-
+            ack_error must be 1, busy back to 0, and read_data must be 0x00
+            for the transaction result.
+    expected:
+      ack_error: 1
+      busy: 0
+      read_data: 0x00
+
+  - id: I2C_08
+    name: Unsupported Slave Address 0x01
+    description: >-
+      Read transaction to unsupported slave 0x01 must complete with
+      ack_error=1 and read_data=0x00.
+    priority: medium
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 8
+          description: Idle the controller.
+        - action: transaction
+          signals:
+            rw: 1
+            slave_addr: 0x01
+            reg_addr: 0x10
+            write_data: 0
+          description: Start read from unsupported slave 0x01.
+        - action: wait_done
+          description: Wait for done.
+        - action: check
+          signals:
+            ack_error: 1
+            read_data: 0
+          description: ack_error=1 and read_data=0x00.
+    expected:
+      ack_error: 1
+      read_data: 0x00
+
+  - id: I2C_09
+    name: Unsupported Slave Address 0x7F
+    description: >-
+      Transaction to the maximum 7-bit address 0x7F must complete with
+      ack_error=1 and read_data=0x00.
+    priority: medium
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 8
+          description: Idle the controller.
+        - action: transaction
+          signals:
+            rw: 0
+            slave_addr: 0x7F
+            reg_addr: 0xFF
+            write_data: 0xAA
+          description: Start write to unsupported slave 0x7F.
+        - action: wait_done
+          description: Wait for done.
+        - action: check
+          signals:
+            ack_error: 1
+            read_data: 0
+          description: ack_error=1 and read_data=0x00.
+    expected:
+      ack_error: 1
+      read_data: 0x00
+
+  - id: I2C_10
+    name: Start While Busy Is Ignored
+    description: >-
+      Assert start while a transaction is in progress; the extra request must
+      be ignored and the in-flight transaction must complete normally with a
+      single done pulse.
+    priority: high
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 8
+          description: Idle the controller.
+        - action: transaction
+          signals:
+            rw: 0
+            slave_addr: 0x50
+            reg_addr: 0x10
+            write_data: 0x11
+          description: Start primary write of 0x11 to reg 0x10.
+        - action: transaction
+          signals:
+            rw: 0
+            slave_addr: 0x50
+            reg_addr: 0x20
+            write_data: 0x22
+          description: >-
+            Assert start again while busy (controller not idle); this request
+            must be ignored.
+        - action: wait_done
+          description: Wait for the single expected done pulse.
+        - action: check
+          signals:
+            ack_error: 0
+          description: Primary transaction completes without error.
+        - action: transaction
+          signals:
+            rw: 1
+            slave_addr: 0x50
+            reg_addr: 0x20
+            write_data: 0
+          description: Read reg 0x20 to confirm the busy-time start was ignored.
+        - action: wait_done
+          description: Wait for done.
+        - action: check
+          signals:
+            read_data: 0
+          description: >-
+            reg 0x20 was never written, so 0x00 confirms the second start was
+            ignored.
+        - action: transaction
+          signals:
+            rw: 1
+            slave_addr: 0x50
+            reg_addr: 0x10
+            write_data: 0
+          description: Read reg 0x10 to confirm the primary write landed.
+        - action: wait_done
+          description: Wait for done.
+        - action: check
+          signals:
+            read_data: 0x11
+          description: Primary write data must be intact.
+    expected:
+      ack_error: 0
+      done_pulses: 1
+
+  - id: I2C_11
+    name: Done Pulse Width
+    description: >-
+      Verify done pulses for exactly one clock cycle and busy returns low
+      together with the pulse.
+    priority: medium
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 8
+          description: Idle the controller.
+        - action: transaction
+          signals:
+            rw: 0
+            slave_addr: 0x50
+            reg_addr: 0x05
+            write_data: 0x5A
+          description: Start a write transaction.
+        - action: wait_done
+          description: Capture the cycle window around done.
+        - action: check_done_pulse_width
+          description: >-
+            done must be sampled high for exactly one cycle and low on the
+            following cycle; busy must be observed low while done is high.
+    expected:
+      done_high_cycles: 1
+      busy_while_done: 0
+
+  - id: I2C_12
+    name: Open-Drain Bus Release
+    description: >-
+      Verify SCL/SDA open-drain behavior: both released (pulled up) in idle
+      and after reset, SDA driven low during the START-like phase, SCL driven
+      low during the access phase, and both released after completion.
+    priority: medium
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 8
+          description: Reset with environment pull-ups applied.
+        - action: check_bus_idle
+          description: scl=1 and sda=1 (released, pulled up).
+        - action: transaction
+          signals:
+            rw: 0
+            slave_addr: 0x50
+            reg_addr: 0x00
+            write_data: 0x00
+          description: Start a write transaction.
+        - action: check_bus_start_phase
+          description: >-
+            During the START-like phase sda is driven low while scl remains
+            released.
+        - action: check_bus_access_phase
+          description: >-
+            During the access phase scl is driven low while sda is released.
+        - action: wait_done
+          description: Wait for completion.
+        - action: check_bus_idle
+          description: Both lines released again after the transaction.
+    expected:
+      scl_idle: released
+      sda_idle: released
+
+  - id: I2C_13
+    name: Multi-Register Independence
+    description: >-
+      Write distinct values to several registers and read them back to confirm
+      each register address maps to independent storage.
+    priority: low
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 8
+          description: Idle the controller.
+        - action: transaction
+          signals:
+            rw: 0
+            slave_addr: 0x50
+            reg_addr: 0x01
+            write_data: 0x11
+          description: Write 0x11 to reg 0x01.
+        - action: wait_done
+          description: Wait for done.
+        - action: transaction
+          signals:
+            rw: 0
+            slave_addr: 0x50
+            reg_addr: 0x02
+            write_data: 0x22
+          description: Write 0x22 to reg 0x02.
+        - action: wait_done
+          description: Wait for done.
+        - action: transaction
+          signals:
+            rw: 0
+            slave_addr: 0x50
+            reg_addr: 0x03
+            write_data: 0x33
+          description: Write 0x33 to reg 0x03.
+        - action: wait_done
+          description: Wait for done.
+        - action: transaction
+          signals:
+            rw: 1
+            slave_addr: 0x50
+            reg_addr: 0x02
+            write_data: 0
+          description: Read reg 0x02.
+        - action: wait_done
+          description: Wait for done.
+        - action: check
+          signals:
+            read_data: 0x22
+          description: Each register holds its own value.
+        - action: transaction
+          signals:
+            rw: 1
+            slave_addr: 0x50
+            reg_addr: 0x01
+            write_data: 0
+          description: Read reg 0x01.
+        - action: wait_done
+          description: Wait for done.
+        - action: check
+          signals:
+            read_data: 0x11
+          description: Each register holds its own value.
+    expected:
+      ack_error: 0
+
+  - id: I2C_14
+    name: Back-to-Back Transactions
+    description: >-
+      Start a new transaction in the cycle immediately after done; the
+      controller must accept it cleanly.
+    priority: low
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 8
+          description: Idle the controller.
+        - action: transaction
+          signals:
+            rw: 0
+            slave_addr: 0x50
+            reg_addr: 0x0A
+            write_data: 0x12
+          description: First transaction.
+        - action: wait_done
+          description: Wait for done.
+        - action: transaction
+          signals:
+            rw: 1
+            slave_addr: 0x50
+            reg_addr: 0x0A
+            write_data: 0
+          description: >-
+            Start immediately following completion (controller idle again).
+        - action: wait_done
+          description: Wait for the second done pulse.
+        - action: check
+          signals:
+            read_data: 0x12
+            ack_error: 0
+          description: Second transaction reads the value written by the first.
+    expected:
+      ack_error: 0
+      read_data: 0x12
+
+corner_cases:
+  - name: Read of Never-Written Register
+    description: Read any register before any write to it; result must be 0x00.
+    expected:
+      read_data: 0x00
+      ack_error: 0
+  - name: Register Address 0x00 Boundary
+    description: Write and read at the lowest register address.
+    expected:
+      read_data: 0x00
+      ack_error: 0
+  - name: Register Address 0xFF Boundary
+    description: Write and read at the highest register address.
+    expected:
+      read_data: 0xFF
+      ack_error: 0
+  - name: Data Value 0x00
+    description: Write 0x00 and read it back.
+    expected:
+      read_data: 0x00
+      ack_error: 0
+  - name: Data Value 0xFF
+    description: Write 0xFF and read it back.
+    expected:
+      read_data: 0xFF
+      ack_error: 0
+  - name: Data Value 0x55
+    description: Write pattern 0x55 and read it back.
+    expected:
+      read_data: 0x55
+      ack_error: 0
+  - name: Data Value 0xAA
+    description: Write pattern 0xAA and read it back.
+    expected:
+      read_data: 0xAA
+      ack_error: 0
+  - name: Unsupported Address 0x00
+    description: Transaction to slave address 0x00 (also the address boundary).
+    expected:
+      ack_error: 1
+      read_data: 0x00
+  - name: Unsupported Address 0x7F
+    description: Transaction to the maximum 7-bit slave address 0x7F.
+    expected:
+      ack_error: 1
+      read_data: 0x00
+  - name: Unsupported Address 0x01
+    description: Transaction to slave address 0x01.
+    expected:
+      ack_error: 1
+      read_data: 0x00
+  - name: Start While Busy
+    description: Assert start during an active transaction; request must be ignored.
+    expected:
+      done_pulses: 1
+      ack_error: 0
+
+randomized_testing_strategy:
+  description: >-
+    Constrained-random stimulus drives back-to-back write and read
+    transactions with randomized slave addresses, register addresses, and
+    data. slave_addr is restricted to the 7-bit range with the supported
+    address 0x50 covered as a frequent legal value alongside unsupported
+    addresses; rw alternates between reads and writes. After each random
+    transaction the environment waits for done and scores outputs against the
+    reference model.
+  constraints:
+    - variable: slave_addr
+      range: [0, 127]
+    - variable: reg_addr
+      range: [0, 255]
+    - variable: write_data
+      range: [0, 255]
+    - variable: rw
+      range: [0, 1]
+  injection:
+    - type: reset_during_transaction
+      frequency: rare
+      duration_cycles: [2, 4]
+      description: >-
+        Occasionally assert rst_n while a transaction is in progress to
+        verify the controller recovers to the reset/idle state and that a
+        subsequent transaction still matches the (reset) reference model.
+  pass_criteria: >-
+    Every randomized transaction must match the reference model: done pulses
+    exactly once per started transaction, busy returns to 0, ack_error=1 if
+    and only if slave_addr != 0x50, and read_data matches the reference
+    model result (memory value for supported reads, 0x00 for unsupported
+    addresses). No mismatches allowed; all generated stimulus must remain
+    within 7-bit slave addresses and 8-bit register/data values.
+
+functional_coverage:
+  covergroups:
+    - name: transaction_cg
+      description: >-
+        Sampled on each done pulse to cover the transaction space: direction,
+        slave-address class, register-address class, write-data patterns,
+        and acknowledgment outcome.
+      clk: clk
+      sample_on: done
+      bins:
+        - name: rw_cp
+          variable: rw
+          bins:
+            - name: write
+              range: [0, 0]
+            - name: read
+              range: [1, 1]
+        - name: slave_addr_cp
+          variable: slave_addr
+          bins:
+            - name: supported_0x50
+              range: [0x50, 0x50]
+            - name: unsupported_low
+              range: [0x00, 0x4F]
+            - name: unsupported_high
+              range: [0x51, 0x7F]
+        - name: reg_addr_cp
+          variable: reg_addr
+          bins:
+            - name: boundary_0x00
+              range: [0x00, 0x00]
+            - name: boundary_0xFF
+              range: [0xFF, 0xFF]
+            - name: mid_range
+              range: [0x01, 0xFE]
+        - name: write_data_cp
+          variable: write_data
+          bins:
+            - name: data_0x00
+              range: [0x00, 0x00]
+            - name: data_0xFF
+              range: [0xFF, 0xFF]
+            - name: data_0x55
+              range: [0x55, 0x55]
+            - name: data_0xAA
+              range: [0xAA, 0xAA]
+        - name: ack_error_cp
+          variable: ack_error
+          bins:
+            - name: no_nack
+              range: [0, 0]
+            - name: nack
+              range: [1, 1]
+        - name: read_data_cp
+          variable: read_data
+          bins:
+            - name: read_zero
+              range: [0x00, 0x00]
+            - name: read_pattern_0xAA
+              range: [0xAA, 0xAA]
+            - name: read_pattern_0x55
+              range: [0x55, 0x55]
+            - name: read_max
+              range: [0xFF, 0xFF]
+      crosses:
+        - name: rw_x_slave_addr
+          variables: [rw_cp, slave_addr_cp]
+          description: Cross direction with slave-address class.
+        - name: rw_x_reg_addr
+          variables: [rw_cp, reg_addr_cp]
+          description: Cross direction with register-address class.
+        - name: slave_addr_x_ack_error
+          variables: [slave_addr_cp, ack_error_cp]
+          description: >-
+            Cross slave-address class with acknowledgment outcome (NACK must
+            correlate with unsupported addresses).
+
+scoreboard_reference_model_strategy:
+  type: transaction-level reference-model scoreboard
+  description: >-
+    A Python scoreboard mirrors the DUT's byte-addressed memory using
+    I2CReferenceModel from the reference model file. The scoreboard tracks
+    every accepted transaction (sampled on start while idle), replays the
+    same (rw, slave_addr, reg_addr, write_data) stimulus through the model,
+    and compares the model result against DUT outputs sampled on the done
+    pulse. The reference model is reset in lockstep with the DUT.
+  architecture:
+    - type: reference_model_mirror
+      description: >-
+        I2CReferenceModel instance maintains expected memory state and
+        produces expected done, busy_after, ack_error, and read_data for each
+        transaction. reset() is invoked whenever the DUT is reset so both
+        memories start from the same state.
+    - type: transaction_scoreboard
+      description: >-
+        A FIFO of in-flight transactions keyed by issue order. When start is
+        accepted (busy transitions 0->1), the transaction parameters are
+        recorded and the reference result is enqueued. When done pulses, the
+        DUT outputs are sampled and compared against the dequeued reference
+        result: ack_error always; read_data for supported-address reads; done
+        and busy state for every transaction. write_data is compared through
+        later reads of the affected register (memory consistency check).
+  pass_criteria: >-
+    For every transaction, ack_error and completion behavior must match the
+    reference model exactly. For reads of supported addresses, read_data must
+    equal the reference model's memory value (0x00 if never written). For
+    transactions to unsupported addresses, read_data must be 0x00 per
+    specification. Any mismatch is a failure. No transaction may be left
+    uncompleted in the FIFO at end of test.
+  error_reporting: >-
+    On mismatch, report the transaction index, the issued stimulus
+    (rw, slave_addr, reg_addr, write_data), the reference-model expected
+    values (ack_error, read_data), the observed DUT values, and the cycle
+    time of the done pulse. Memory-state mismatches are reported with the
+    affected register address.
+
+useful_assertions:
+  - name: reset_clears_outputs
+    description: >-
+      Immediately after reset release, busy, done, ack_error must be 0 and
+      read_data must be 0x00.
+    assertion: >-
+      At the first clock edge after deasserting rst_n: busy == 0 &&
+      done == 0 && ack_error == 0 && read_data == 0x00
+    severity: error
+    note: >-
+      Enforces the specification reset contract on the DUT outputs.
+  - name: busy_deasserted_after_done
+    description: >-
+      busy must be deasserted in the same cycle the done pulse is observed.
+    assertion: >-
+      done == 1 implies busy == 0
+    severity: error
+    note: >-
+      The completion state drives busy low and done high together, matching
+      the reference model's busy_after=0 behavior.
+  - name: done_pulses_exactly_one_cycle
+    description: >-
+      done must never be high for more than one consecutive clock cycle.
+    assertion: >-
+      (done == 1) at cycle N implies (done == 0) at cycle N+1
+    severity: error
+    note: >-
+      Guards the completion-pulse behavior required by the specification.
+  - name: ack_error_implies_unsupported_address
+    description: >-
+      A transaction that completes with ack_error=1 must have been addressed
+      to a slave other than 0x50.
+    assertion: >-
+      On done with ack_error == 1: slave_addr != 0x50
+    severity: error
+    note: >-
+      The supported address 0x50 must never produce a NACK.
+  - name: no_simultaneous_start_done
+    description: >-
+      done and start must not be asserted simultaneously; transactions are
+      defined by a done pulse distinct from request cycles.
+    assertion: >-
+      never (done == 1 && start == 1)
+    severity: warning
+    note: >-
+      Keeps transactions well separated in the scoreboard's FIFO ordering.
+  - name: scl_sda_released_in_idle
+    description: >-
+      SCL and SDA must not be actively driven low while the controller is
+      idle.
+    assertion: >-
+      When busy == 0 (and not during an active transaction): scl != 0 and
+      sda != 0, where 0 indicates an actively driven low line; released
+      lines read 1 under pull-up.
+    severity: warning
+    note: >-
+      Verifies the open-drain release behavior for both bus lines between
+      transactions.
+
+discrepancies:
+  - id: I2C_DISC_001
+    severity: major
+    title: >-
+      RTL does not drive read_data to 0x00 for unsupported-address
+      transactions
+    rtl: >-
+      In the ACCESS state, for active_addr != 0x50 the RTL only asserts
+      ack_error; read_data is left unchanged and retains its previous value
+      for the duration of the transaction.
+    spec: >-
+      Specification section 4 states that a transaction addressed to any
+      address other than 0x50 shall complete with read_data = 0x00 for the
+      transaction result. The Python reference model likewise returns
+      read_data=0 for unsupported slave addresses.
+    impact: >-
+      If a previous supported read left a non-zero read_data, an unsupported
+      transaction will leave that stale value on read_data instead of 0x00.
+      The reference-model check (read_data expected 0x00) will flag this
+      behavior as a DUT defect.
+    recommendation: >-
+      The verification environment must keep the specification/reference
+      model expectation (read_data == 0x00 after unsupported-address
+      transactions) as the oracle. Do not weaken the check to match the RTL.
+  - id: I2C_DISC_002
+    severity: minor
+    title: >-
+      RTL does not clear the internal memory on reset; reference model does
+    rtl: >-
+      The RTL memory array [0:255] is not written during reset; previously
+      stored bytes persist across a reset event.
+    spec: >-
+      The specification's reset section lists busy/done/ack_error/read_data
+      and bus release but does not state whether the byte memory is cleared.
+      The reference model's reset() clears all memory.
+    impact: >-
+      When the scoreboard resets the reference model in lockstep with the
+      DUT, a read of a previously written register after reset will return
+      0x00 from the reference model but a stale value from the RTL, producing
+      a mismatch.
+    recommendation: >-
+      The specification does not explicitly resolve memory reset behavior, so
+      the ambiguity is recorded here. The environment resets the reference
+      model in lockstep with the DUT (treating memory as cleared on reset) and
+      reports any read-after-reset stale-value behavior as a DUT defect rather
+      than silently accepting it.

@@ -1,0 +1,59 @@
+version: '1.0'
+verdict: generation_bug
+root_cause:
+  category: monitor
+  summary: I2CMonitor._wait_transaction_start reconstructs the transaction stimulus
+    at the busy 0->1 rising edge, but the DUT asserts busy one clock cycle after the
+    request-latching edge (not "with request acceptance" as the generated CONTRACT
+    §6 assumes); by the time busy rises, the driver has already deasserted start and
+    released the pins, so the monitor publishes a fabricated all-zero stimulus that
+    corrupts scoreboard comparisons.
+  evidence: tb/monitor.py:153-160 captures stimulus at the busy rising edge; DUT asserts
+    busy one cycle after the request-latching edge while the driver has already deasserted
+    start and released the pins (tb/driver.py:88-92); 11 failing tests (I2C02-06,
+    I2C11, I2C13, I2C14, I2CCornerCaseTest, I2CRandomizedTest) crash at about 200
+    ns on a spurious ack_error mismatch against a reference model run with a fabricated
+    all-zero stimulus (start=0, slave_addr=0x0000), while observed ack_error tracks
+    the real transactions (e.g. 0 for supported 0x50); I2C10StartWhileBusyTest fails
+    on 'primary write did not go busy' (tb/sequences.py:473), proving busy is still
+    0 right after the latching edge; I2C07/08/09 pass only coincidentally because
+    unsupported addresses 0x00/0x01/0x7F keep model and DUT in agreement regardless
+    of the erroneous stimulus; grounded tracebacks run monitor.py:125 -> :207 -> scoreboard.py:100
+    -> :192; deterministic compatibility scan = NONE.
+changes:
+- file: tb/monitor.py
+  action: modify
+  reason: The monitor captures stimulus at the late busy rising edge, after the driver
+    has released the pins, so it fabricates an all-zero transaction stimulus that
+    causes spurious ack_error mismatches.
+  instructions:
+  - Add a rising-edge stimulus capture at the request-latching edge (start==1 && busy==0),
+    before the busy-transition probe.
+  - Keep the existing falling-edge probe (start==1, busy==0).
+  - Guard the busy-rise fallback so it can never publish a fabricated all-zero item.
+- file: tb/sequences.py
+  action: modify
+  reason: I2C10StartWhileBusyTest fails because _start_while_busy_flow assumes busy
+    is already high immediately after the primary request is latched, but the DUT
+    asserts busy one clock cycle later.
+  instructions:
+  - In _start_while_busy_flow, wait for busy to rise after the primary offer before
+    asserting that the device went busy.
+  - Land the busy-time start poke inside the busy window.
+validation:
+  tests:
+  - I2C02WriteThenReadBackTest
+  - I2C03ReadBeforeWriteTest
+  - I2C04RepeatedWritesTest
+  - I2C05BoundaryAddr00Test
+  - I2C06BoundaryAddrFFTest
+  - I2C10StartWhileBusyTest
+  - I2C11DonePulseWidthTest
+  - I2C13MultiRegIndependenceTest
+  - I2C14BackToBackTest
+  - I2CCornerCaseTest
+  - I2CRandomizedTest
+  requirements:
+  - build succeeds
+  - no UVM_ERROR or UVM_FATAL
+  - no reference-model mismatch

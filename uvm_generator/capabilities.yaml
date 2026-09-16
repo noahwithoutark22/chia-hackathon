@@ -1,0 +1,61 @@
+version: "1.0"
+generator: chia-uvm-generator
+supported:
+  interface:
+    clocks: true
+    resets: true
+    reset_polarity: [active_low, active_high]
+    reset_style: [synchronous, asynchronous, async_assert_sync_deassert]
+  ports:
+    directions: [input, output, inout]
+    packed_width_bits: [1, 64]
+    parameterized_widths: true
+  timing:
+    registered_outputs: true
+    latency_cycles: [0, 64]
+  stimulus:
+    directed: true
+    constrained_random: true
+    per_scenario_constraints: true
+    explicit_values: true
+  checking:
+    scoreboard: true
+    assertions: true
+    coverage: true
+  reference_model:
+    language: python
+    direct_invocation: true
+    supported_return: tuple_1_or_2_outputs
+    supported_scalar_bits: [1, 64]
+    max_arguments: 8
+    supported_argument_types: [int]
+    function_signature: "python_function(*integer_args) -> tuple[integer_outputs]"
+    integration: embedded_python_dpi_c
+  rendering:
+    engine: jinja2
+    deterministic: true
+  components:
+    - interface
+    - transaction
+    - sequencer
+    - sequences
+    - driver
+    - monitor
+    - agent
+    - scoreboard
+    - env
+    - test
+    - tb_top
+rules:
+  - "Every transaction input must map to an actual DUT input port other than clock/reset."
+  - "Every monitored output must map to an actual DUT output/inout port."
+  - "Clock and reset are structural signals and must not be transaction fields."
+  - "Every assertion and coverage signal must exist in the DUT interface."
+  - "The scoreboard must use the actual supplied Python reference-model function; do not reimplement its algorithm in SystemVerilog."
+  - "Reference-model argument order must be explicit and must map to transaction input fields or generator constants."
+  - "Reference-model return values must map explicitly to checked DUT outputs."
+  - "Registered-output checking must use the declared latency and previous sampled inputs where required."
+  - "Asynchronous reset behavior must be represented explicitly when the RTL uses an asynchronous reset sensitivity event."
+  - "The renderer may only emit constructs represented by the validated generation schema."
+  - "LLM output is data, not source code: do not return complete SystemVerilog components in the generation specification."
+  - "If a requested feature is outside capabilities, generation must fail rather than silently approximating it."

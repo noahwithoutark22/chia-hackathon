@@ -1,0 +1,120 @@
+[
+  {
+    "iteration": 1,
+    "weakness_id": "W-ADAPTIVE-SKIP-MASKS-PARAMETER-COVERAGE",
+    "failure_class": "stimulus",
+    "failure_mechanism": "insufficient_parameter_exploration + scenario_not_executed: the generated bench pairs an adaptive log-and-skip (sequences.py _targets -> test.py elaboration_applies -> pass-without-stimulus) with a Makefile/worker that only ever elaborates the RTL default (DATA_WIDTH=4, SECDED=0), so the plan's SECDED=1 and non-4-width scenarios report '1 item checked, 1 passed' without exercising the DUT (corroborated by merged coverage: secded_on/width_1,8,11,16/secded_parity_* all 0)",
+    "action": "improve",
+    "source": "mixed",
+    "confidence": "high",
+    "selected_intervention": {
+      "type": "TB-only regression-scope fix: per-test elaboration selection (Makefile DATA_WIDTH/SECDED defaults keyed by UVM_TESTNAME) plus converting the silent log-and-skip path into a loud 'unexercised' failure in HammingTestBase.report_phase",
+      "expected_effect": [
+        "Each plan scenario now runs on its target (DATA_WIDTH, SECDED): SECDED=1 stimulus (TC3, TC8, corner SECDED checks) and non-4 widths (TC5 -> 8, TC7/corner -> 1/11/16) exercise real DUT transactions instead of skipping",
+        "Functional coverage rises toward the plan goals: secded_on, secded_parity_zero/one, width_1/8/11/16 and the data_x_secded / width_x_secded cross bins receive hits, and the SECDED ordering-shift / even-weight / R-boundary structural checks actually execute",
+        "Under the applicable-elaboration item guard, every passing test now proves real stimulus was scored, so a regression back to the single-default-elaboration runner fails loudly as 'unexercised' rather than reporting pass"
+      ]
+    },
+    "changed_files": [
+      "test.py",
+      "test_top.py"
+    ],
+    "result": "rejected",
+    "old_quality_score": 70.42,
+    "new_quality_score": 61.42,
+    "old_tests_failed": 0,
+    "new_tests_failed": 3,
+    "decision_path": "/home/auralab/nwark/for_multiple_rtl_updation_generalized/generated/designs/hamming_encoder/results/verification_improvement/decisions/iteration_1.yaml",
+    "reason": "Candidate did not satisfy existing acceptance criteria.",
+    "weakness_report_generated": false
+  },
+  {
+    "iteration": 2,
+    "weakness_id": "W-PHANTOM-PRIMED-TRANSACTION",
+    "failure_class": "observation",
+    "failure_mechanism": "incorrect_transaction_reconstruction + duplicated/lost transactions: the monitor infers a transaction from a change of the sampled (data_in, code_out) pin pair instead of from drive events. Because tb_top primes dut.data_in(=0) at time 0, the idle pair (0,0) is X/Z-free, so the first sample is published as a phantom 'settled transaction' before any stimulus; skipped/no-stimulus tests therefore report '1 item checked, 1 passed'. The same pair-change rule coalesces back-to-back identical drives (930 of 1000 randomized vectors scored) \u2014 both weaknesses share this single root cause.",
+    "action": "improve",
+    "source": "mixed",
+    "confidence": "high",
+    "selected_intervention": {
+      "type": "TB-only observation fix: per-drive transaction publication via a shared drive counter (HammingDutPins.drive_count, incremented by HammingDriver after each item_done; HammingMonitor publishes one item per counter increment instead of on pin-pair change). No CONTRACT.md edit, no new ConfigDB keys, no new DUT ports, no RTL/spec/plan/model change.",
+      "expected_effect": [
+        "No phantom transaction: skipped/no-stimulus tests now report 0 scoreboard items and 0 coverage hits, so pass-by-skip is no longer masked as '1 item checked, 1 passed'; report_phase empty-run guard truthfully reflects exercised stimulus.",
+        "Item counts match driven-vector counts for every test (TC1=1/1, TC2=1/1, TC4=16/16, TC5=256/256, TC6/TC8/corners per drive, HammingRandomizedTest=1000/1000), restoring the plan's 'scoreboard re-checks every driven vector' criterion and per-drive coverage sampling.",
+        "All 10 tests keep passing under the default elaboration: every driven vector remains bit-exact against hamming_encode, so no test outcome changes except honest counts."
+      ]
+    },
+    "changed_files": [
+      "driver.py",
+      "dut_helper.py",
+      "monitor.py"
+    ],
+    "result": "accepted",
+    "old_quality_score": 70.42,
+    "new_quality_score": 70.42,
+    "old_tests_failed": 0,
+    "new_tests_failed": 0,
+    "decision_path": "/home/auralab/nwark/for_multiple_rtl_updation_generalized/generated/designs/hamming_encoder/results/verification_improvement/decisions/iteration_2.yaml",
+    "reason": "Candidate satisfied existing acceptance criteria.",
+    "weakness_report_generated": true
+  },
+  {
+    "iteration": 3,
+    "weakness_id": "HW-COVERAGE-NOT-ENFORCED",
+    "failure_class": "coverage",
+    "failure_mechanism": "coverage_metric_not_exported + coverage_not_connected_to_observation (interacting): the in-process cross-test merge in tb/coverage.py `_merge_per_test_coverage` filters per-test YAMLs with an mtime staleness check (`mtime >= self._run_start_time`), which in the sequential multi-process regression discards the 9 per-test files written by earlier processes, so the promised regression-level aggregate is never computed ('excluded 9 stale per-test file(s)' / 'aggregate merge from 1 per-test file(s)' in every log) and no persistent union view exists; coverage is reported only as last-test-wins exports. The headline single-elaboration gap (HW-SINGLE-ELABORATION) is real but runner-gated; iteration 1's fail-loud/per-test-elaboration fix was rejected, so this iteration targets the TB-fixable coverage-accounting half while preserving the truthful evidence of the 15/36 (41.67%) elaboration ceiling.",
+    "action": "improve",
+    "source": "mixed",
+    "confidence": "high",
+    "selected_intervention": {
+      "type": "TB-only coverage-accounting fix in tb/coverage.py: (a) drop the per-process mtime freshness filter in `_merge_per_test_coverage` (keep RUN_ID scoping; exclude only the generic hamming_encoder_coverage.yml), (b) write the merged per-bin-max union to hamming_encoder_coverage_aggregate.yml in the same bins:_hits shape the per-test exports use, (c) log each test's coverage (bins hit/total, %) in report_phase next to its verdict. No elaboration, Makefile, pass/fail, spec, plan, reference-model, CONTRACT.md, or RTL change.",
+      "expected_effect": [
+        "Merge log becomes truthful: 'aggregate merge from 10 per-test file(s)' with no 'excluded ... stale' warning, computing the true regression-level union percentage (still capped at 15/36 = 41.67% while the runner elaborates only (4,0), but now accumulative and honest).",
+        "hamming_encoder_coverage_aggregate.yml persists the per-bin-max union so the analyzer can consume a regression-level view instead of the last test's overwritten generic export.",
+        "Each test verdict is accompanied by its coverage state, surfacing (not enforcing) the plan coverage goals exactly as the weakness report's recommended_action requests.",
+        "When the runner later drives the DATA_WIDTH x SECDED matrix, the repaired merge automatically accumulates secded_on / width_8 / width_11 / width_16 and the width_x_secded cross bins - the mechanism HW-SECDED-WIDTH-GAP depends on.",
+        "All 10 tests keep passing with unchanged verdicts (logging-only change; no new pass/fail criterion is invented)."
+      ]
+    },
+    "changed_files": [
+      "coverage.py"
+    ],
+    "result": "accepted",
+    "old_quality_score": 70.42,
+    "new_quality_score": 70.42,
+    "old_tests_failed": 0,
+    "new_tests_failed": 0,
+    "decision_path": "/home/auralab/nwark/for_multiple_rtl_updation_generalized/generated/designs/hamming_encoder/results/verification_improvement/decisions/iteration_3.yaml",
+    "reason": "Candidate satisfied existing acceptance criteria.",
+    "weakness_report_generated": true
+  },
+  {
+    "iteration": 4,
+    "weakness_id": "W2-SKIPPED-TESTS-PASS",
+    "failure_class": "skip_semantics_false_pass",
+    "failure_mechanism": "false_pass + scenario_not_executed (interacting, runner-gated): the adaptive-skip path (HammingTestBase.report_phase -> 'TEST SKIPPED ... passing without stimulus' when elaboration_applies(conf) is false) returns an implicit pass, and no machine-readable artifact records which tests skipped, which (DATA_WIDTH,SECDED) elaboration each test actually ran, or which plan scenarios executed; the worker elaborates every test with the default (4,0) only, so TC3/TC5/TC7 publish 0 transactions while the regression still reports 10/10 pass",
+    "action": "improve",
+    "source": "mixed",
+    "confidence": "high",
+    "selected_intervention": {
+      "type": "TB-only reporting fix in tb/test.py: per-test execution/skip ledger YAML export + RUN_ID-scoped aggregate merge (following the accepted tb/coverage.py pattern) + WARNING-level 'TEST SKIPPED -> SCENARIO <id> NOT EXECUTED' log; no change to pass/fail verdicts, no new ConfigDB keys, no contract/spec/plan/model/RTL change",
+      "expected_effect": [
+        "Skips become visible and machine-readable: under the default elaboration the aggregate ledger truthfully reports tests_total=10, tests_skipped=3 (TC3/TC5/TC7 with reasons), tests_executed=7, and lists executed scenario IDs TC1/TC2/TC4/TC6/TC8 + corner + randomized, closing the executed_ids=[] scenario-quality gap without inventing stimulus.",
+        "Per-configuration auditability (W1 recommendation): every per-test record carries the actual (DATA_WIDTH, SECDED) and checked/item counts, so the run's configuration coverage is auditable against hamming_encoder_coverage_aggregate.yml (width_4/secded_off only) instead of inferred, and zero-execution scenarios correlate exactly with the zero coverage bins.",
+        "All 10 tests keep their verdicts (logging/export-only, try/except-wrapped), so the acceptance criteria are preserved; when the runner later drives the DATA_WIDTH x SECDED matrix, the ledger auto-accumulates the newly executed scenarios with no further TB change.",
+        "W3 remains surfaced not violated: coverage goals stay report-only, but the analyzer now has ground-truth executed-scenario data from the TB itself."
+      ]
+    },
+    "changed_files": [
+      "test.py"
+    ],
+    "result": "accepted",
+    "old_quality_score": 70.42,
+    "new_quality_score": 70.42,
+    "old_tests_failed": 0,
+    "new_tests_failed": 0,
+    "decision_path": "/home/auralab/nwark/for_multiple_rtl_updation_generalized/generated/designs/hamming_encoder/results/verification_improvement/decisions/iteration_4.yaml",
+    "reason": "Candidate satisfied existing acceptance criteria.",
+    "weakness_report_generated": true
+  }
+]

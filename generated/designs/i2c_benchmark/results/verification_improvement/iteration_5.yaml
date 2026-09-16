@@ -1,0 +1,223 @@
+schema_version: '1.0'
+iteration: 4
+quality_score: 100.0
+metrics:
+  tests_total: 16
+  tests_passed: 16
+  tests_failed: 0
+  functional_coverage:
+    available: false
+    percentage: null
+  planned_coverage_points: 6
+  generated_coverage_points: 6
+  planned_coverage_crosses: 3
+  generated_coverage_crosses: 3
+  python_assertions: 6
+  checker_coroutines: 6
+  test_classes: 16
+  sequences: 1
+  planned_assertions: 6
+  test_health_score: 100.0
+  coverage_quality_score: 100.0
+  assertion_quality_score: 100.0
+  scenario_quality_score: 100.0
+  scenario_coverage:
+    planned: 14
+    generated: 14
+    executed: 14
+    score: 100.0
+    planned_ids:
+    - I2C_01
+    - I2C_02
+    - I2C_03
+    - I2C_04
+    - I2C_05
+    - I2C_06
+    - I2C_07
+    - I2C_08
+    - I2C_09
+    - I2C_10
+    - I2C_11
+    - I2C_12
+    - I2C_13
+    - I2C_14
+    generated_ids:
+    - I2C_01
+    - I2C_02
+    - I2C_03
+    - I2C_04
+    - I2C_05
+    - I2C_06
+    - I2C_07
+    - I2C_08
+    - I2C_09
+    - I2C_10
+    - I2C_11
+    - I2C_12
+    - I2C_13
+    - I2C_14
+    executed_ids:
+    - I2C_01
+    - I2C_02
+    - I2C_03
+    - I2C_04
+    - I2C_05
+    - I2C_06
+    - I2C_07
+    - I2C_08
+    - I2C_09
+    - I2C_10
+    - I2C_11
+    - I2C_12
+    - I2C_13
+    - I2C_14
+  parameter_coverage:
+    available: false
+    score: 100.0
+    planned: {}
+    observed: {}
+  tb_quality_score: 100.0
+weaknesses:
+- id: I2C_WEAK_001
+  severity: critical
+  category: scoreboard_oracle
+  title: read_data==0x00 oracle is disabled for unsupported-address transactions,
+    so the documented I2C_DISC_001 RTL defect is undetectable
+  affected_tests:
+  - I2CRandomizedTest
+  - I2C07UnsupportedSlave00Test
+  - I2C08UnsupportedSlave01Test
+  - I2C09UnsupportedSlave7FTest
+  - I2CCornerCaseTest
+  evidence:
+  - "tb/scoreboard.py:171-172: compare_read_data = (int(item.slave_addr) == SUPPORTED_SLAVE_ADDR\
+    \ and int(item.rw) == 1) \u2014 read_data is compared ONLY for supported-address\
+    \ reads; the independent-oracle comparison is skipped for every unsupported-address\
+    \ transaction."
+  - "tb/sequences.py:1022-1024: identical gating in I2CRandomizedSequence._random_transaction\
+    \ \u2014 because the randomized sequence owns the self-check flag, unsupported-address\
+    \ read_data is never checked there either."
+  - "tb/CONTRACT.md:441-451 and 454-460 (stage-6 consistency pass): 'the scoreboard\
+    \ and the randomized sequence still require read_data == 0x00 for unsupported-address\
+    \ transactions (I2C_DISC_001) ... I2CRandomizedTest is the bench's detector for\
+    \ the major I2C_DISC_001 defect on the current RTL.' The implemented code does\
+    \ NOT apply this scope \u2014 CONTRACT is unmet."
+  - "verification_plan.yaml (scoreboard_reference_model_strategy / I2C_DISC_001):\
+    \ 'Do not weaken the check to match the RTL' and read_data must be 0x00 for unsupported-address\
+    \ transactions \u2014 the weakness is exactly the forbidden weakening."
+  - 'reference_model.py: returns read_data=0 for slave_addr != 0x50, so the scoreboard
+    never needs RTL-derived expectations to flag this.'
+  - "simulation_result.json: I2CRandomizedTest '59 items, 59 matched' \u2014 with\
+    \ the check disabled, stale read_data on the unsupported-address majority of the\
+    \ item stream is never compared; all 16 tests pass, so the documented defect produces\
+    \ a green suite (false confidence)."
+  likely_cause: The scoreboard/self-check scope was weakened to the supported-address-read-only
+    set after empirically observing the current RTL's behavior, while the plan and
+    CONTRACT.md still promise the full comparison (inferred from the deliberate code
+    comments referencing the empirical observation).
+  investigation_targets:
+  - tb/scoreboard.py (_on_monitor_item / compare_read_data)
+  - tb/sequences.py (I2CRandomizedSequence._random_transaction)
+  recommended_action: 'Restore the plan/CONTRACT comparison scope in the scoreboard:
+    compare read_data == 0x00 at every done-pulse for every unsupported-address transaction
+    (rw == 0 or rw == 1), independent of the reference model memory, and keep the
+    randomized self-check gating symmetric. Verify the suite then fails on the current
+    RTL exactly at the first unsupported-address item carrying a stale read_data.'
+  confidence: high
+- id: I2C_WEAK_002
+  severity: high
+  category: assertion_quality
+  title: "Open-drain scl/sda behavior is not verifiable \u2014 the environment force-drives\
+    \ both lines and the plan I2C_12 phase checks are not implemented"
+  affected_tests:
+  - I2C12OpenDrainBusReleaseTest
+  - I2C01ResetBehaviorTest
+  - I2CRandomizedTest
+  evidence:
+  - 'tb/test_top.py:68-83 (_drive_i2c_pullups): the environment writes scl and sda
+    to ''1'' on every clock cycle for the whole test (''# Keep both lines driven high
+    on every clock cycle''), so the DUT''s own open-drain drive (0 or high-Z) cannot
+    be observed as a distinct bus level.'
+  - "tb/sequences.py:570-649 (OpenDrainBusReleaseSeq): the START-like release and\
+    \ access-phase bus checks required by verification_plan.yaml I2C_12 are explicitly\
+    \ dropped with an in-code note \u2014 'the RTL does not observably drive the open-drain\
+    \ scl/sda lines in simulation ... the bus level is entirely set by the environment\
+    \ drive (verified empirically) ... intentionally not asserted'."
+  - 'tb/assertions.py:406-436 (scl_sda_released_in_idle): the only scl/sda release
+    checker runs at warning severity and counts violations without failing the test;
+    simulation_result.json logs report zero violations for I2C12.'
+  - 'verification_plan.yaml I2C_12 (check_bus_start_phase / check_bus_access_phase
+    / check_bus_idle_phase): the phase-level checks listed in the plan have no corresponding
+    implementation.'
+  - "specification.md \xA77 requires the DUT to drive scl/sda low during transfers\
+    \ and release (high-Z) them in idle; a DUT violating \xA77 (e.g., holding the\
+    \ bus low) would pass all 16 tests."
+  likely_cause: The pull-up model was implemented as a full-strength continuous drive,
+    which swamps the DUT's open-drain drive in the simulator; the plan's phase checks
+    were then dropped because the bus level was not observable, and the remaining
+    release check was demoted to warning severity (all inferred from the in-code notes).
+  investigation_targets:
+  - tb/test_top.py (_drive_i2c_pullups)
+  - tb/sequences.py (OpenDrainBusReleaseSeq)
+  - tb/assertions.py (_check_scl_sda_released_in_idle)
+  recommended_action: Replace the continuous force-drive with a true pull-up model
+    that preserves observability (drive high only while the DUT releases, or use a
+    detect-release-and-pullup scheme), re-implement the plan I2C_12 per-phase scl/sda
+    checks, and promote release violations to test-failing severity.
+  confidence: high
+- id: I2C_WEAK_003
+  severity: medium
+  category: stimulus_quality
+  title: Unsupported-address (NACK) scenarios always run immediately after reset,
+    so their read_data==0x00 checks are vacuously satisfied and cannot trigger I2C_DISC_001
+  affected_tests:
+  - I2C07UnsupportedSlave00Test
+  - I2C08UnsupportedSlave01Test
+  - I2C09UnsupportedSlave7FTest
+  - I2CCornerCaseTest
+  evidence:
+  - "tb/sequences.py:401-406, 417-422, 433-438 and 820-859 (UnsupportedSlave00Seq\
+    \ / UnsupportedSlave01Seq / UnsupportedSlave7FSeq / CornerUnsupported*Seq): every\
+    \ unsupported-address transaction is the first transaction after a fresh _reset()\
+    \ \u2014 read_data is already 0x00 from reset, so the _check({'ack_error': 1,\
+    \ 'read_data': 0x00, ...}) are met by the reset state, not by the DUT's response\
+    \ semantics."
+  - "tb/CONTRACT.md:459-460: 'the directed/corner scenarios reset first and therefore\
+    \ stay green' \u2014 the bench's own contract acknowledges these tests cannot\
+    \ detect the documented defect."
+  - "reference_model.py / specification.md \xA74: the stale-read_data defect only\
+    \ manifests when a non-zero read_data value exists from a prior supported transaction;\
+    \ no scenario in the suite creates that pre-condition before an unsupported-address\
+    \ transaction."
+  likely_cause: The directed/corner scenarios were authored against reset-clean state;
+    the pre-condition needed to expose I2C_DISC_001 (a prior non-zero value in read_data)
+    is never established before the unsupported-address checks (inferred from sequence
+    body order).
+  investigation_targets:
+  - tb/sequences.py (UnsupportedSlave00Seq / UnsupportedSlave01Seq / UnsupportedSlave7FSeq
+    / CornerUnsupported*Seq)
+  - tb/test.py (I2C07UnsupportedSlave00Test / I2C08UnsupportedSlave01Test / I2C09UnsupportedSlave7FTest
+    / I2CCornerCaseTest)
+  recommended_action: "Add a directed scenario (or extend randomized gating) that\
+    \ performs a supported write+read leaving a non-zero value in read_data and then\
+    \ issues an unsupported-address transaction, asserting ack_error==1 and read_data==0x00\
+    \ at the done pulse per spec \xA74, so the vacuous post-reset checks become meaningful."
+  confidence: high
+authoritative_inputs:
+- specification
+- reference_model
+- verification_plan
+rtl_exposed_to_llm: false
+comparison:
+  previous_quality_score: 100.0
+  delta: 0.0
+analysis_summary:
+  overall_status: verification_weakness
+  tests_total: 16
+  tests_passed: 16
+  tests_failed: 0
+accepted: false
+changed_files: []
+analysis_report_path: /home/auralab/nwark/chia_sept7_for_multi_rtl_with_multi_llm/for_multiple_rtl_updation_generalized/generated/designs/i2c_benchmark/llm_verification_analysis_workspace/weakness_report.yaml
+decision_path: /home/auralab/nwark/chia_sept7_for_multi_rtl_with_multi_llm/for_multiple_rtl_updation_generalized/generated/designs/i2c_benchmark/results/verification_improvement/decisions/iteration_5.yaml
+iteration_status: no_change

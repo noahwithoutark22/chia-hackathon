@@ -1,0 +1,23 @@
+`timescale 1ns/1ps
+interface {{ spec.dut_name }}_if(input logic {{ spec.clock_signal }});
+  logic {{ spec.reset_signal }};
+{% for p in spec.transaction_inputs %}
+  logic {% if p.width > 1 %}[{{ p.width-1 }}:0] {% endif %}{{ p.signal }};
+{% endfor %}
+{% for p in spec.transaction_outputs %}
+  logic {% if p.width > 1 %}[{{ p.width-1 }}:0] {% endif %}{{ p.signal }};
+{% endfor %}
+  clocking driver_cb @(posedge {{ spec.clock_signal }});
+{% for p in spec.driver.inputs %}
+    output {{ p.signal }};
+{% endfor %}
+  endclocking
+  clocking monitor_cb @(posedge {{ spec.clock_signal }});
+{% for p in spec.transaction_inputs %}
+    input {{ p.signal }};
+{% endfor %}
+{% for p in spec.transaction_outputs %}
+    input {{ p.signal }};
+{% endfor %}
+  endclocking
+endinterface : {{ spec.dut_name }}_if

@@ -1,0 +1,634 @@
+dut:
+  name: aes128
+  file: benchmarks/aes_benchmark/aes128.sv
+  description: >
+    Transaction-level, iterative AES-128 single-block encryption core.
+    10-round implementation using SubBytes, ShiftRows, MixColumns, and
+    AddRoundKey operations with a 3-state FSM (IDLE, ROUND_RUN, FINISH).
+
+parameters: []
+
+clock_and_reset:
+  clock:
+    name: clk
+    type: posedge
+  reset:
+    name: rst_n
+    polarity: active-low
+    type: asynchronous
+    reset_value:
+      state_reg: "0"
+      round_key: "0"
+      round: 0
+      ciphertext: "0"
+      busy: 0
+      done: 0
+      state: IDLE
+
+ports:
+  inputs:
+    - name: clk
+      width: 1
+      type: logic
+    - name: rst_n
+      width: 1
+      type: logic
+    - name: start
+      width: 1
+      type: logic
+      description: Start signal accepted only while idle
+    - name: key
+      width: 128
+      type: logic
+      description: 128-bit AES key
+    - name: plaintext
+      width: 128
+      type: logic
+      description: 128-bit plaintext block
+  outputs:
+    - name: ciphertext
+      width: 128
+      type: logic
+      latency: 12
+      description: 128-bit encrypted output, valid when done pulses
+    - name: busy
+      width: 1
+      type: logic
+      description: High while an encryption transaction is active
+    - name: done
+      width: 1
+      type: logic
+      description: One-clock completion pulse when ciphertext is valid
+  inouts: []
+
+functional_behavior:
+  description: >
+    When start is accepted while the DUT is idle (busy=0), key and
+    plaintext are captured. The DUT performs AES-128 encryption:
+    initial AddRoundKey with round key 0, then 10 rounds each consisting
+    of SubBytes, ShiftRows, MixColumns (rounds 1 through 9 only), and
+    AddRoundKey. The final round (round 10) omits MixColumns. After
+    exactly 12 clock cycles from start acceptance, done pulses high for
+    exactly one clock and ciphertext holds the valid encrypted result.
+    Any changes to key or plaintext after start acceptance are ignored.
+  reset_behavior: >
+    Asynchronous active-low reset (rst_n) clears all internal state:
+    state_reg, round_key, and round are zeroed; ciphertext, busy, and
+    done are driven to zero; the FSM returns to IDLE.
+  reference_model:
+    language: python
+    file: benchmarks/aes_benchmark/aes_reference_model.py
+    function: encrypt_block
+    latency: 12
+
+directed_test_scenarios:
+  - id: nist_kat
+    name: NIST Known-Answer Test
+    priority: high
+    description: >
+      Verifies against the standard NIST AES-128 known-answer test vector.
+      Primary correctness validation.
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 5
+        - action: drive
+          signals:
+            start: 1
+            key: "0x000102030405060708090a0b0c0d0e0f"
+            plaintext: "0x00112233445566778899aabbccddeeff"
+        - action: wait_done
+    expected:
+      ciphertext: "0x69c4e0d86a7b0430d8cdb78070b4c55a"
+
+  - id: all_zeros
+    name: All-Zero Key and Plaintext
+    priority: high
+    description: >
+      Encrypts all-zero key and plaintext to exercise zero-valued
+      S-box inputs and key schedule paths.
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 5
+        - action: drive
+          signals:
+            start: 1
+            key: "0x00000000000000000000000000000000"
+            plaintext: "0x00000000000000000000000000000000"
+        - action: wait_done
+    expected:
+      ciphertext: "0x66e94bd4ef8a2c3b884cfa59ca342b2e"
+
+  - id: all_ones
+    name: All-One Key and Plaintext
+    priority: high
+    description: >
+      Encrypts all-one key and plaintext to exercise maximal-valued
+      S-box inputs and key schedule paths.
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 5
+        - action: drive
+          signals:
+            start: 1
+            key: "0xffffffffffffffffffffffffffffffff"
+            plaintext: "0xffffffffffffffffffffffffffffffff"
+        - action: wait_done
+    expected:
+      ciphertext: "0xbcbf217cb280cf30b2517052193ab979"
+
+  - id: alternating
+    name: Alternating Bit Patterns
+    priority: medium
+    description: >
+      Encrypts key of 0xAA.. and plaintext of 0x55.. to exercise
+      diverse S-box, ShiftRows, and MixColumns paths.
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 5
+        - action: drive
+          signals:
+            start: 1
+            key: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            plaintext: "0x55555555555555555555555555555555"
+        - action: wait_done
+    expected:
+      ciphertext: "0x5a7efe3965060f8f531935f9efb7bfc5"
+
+  - id: zero_key_nonzero_pt
+    name: Zero Key, Non-Zero Plaintext
+    priority: medium
+    description: >
+      Tests with a zero key and the NIST plaintext vector. Exercises
+      zero-key key schedule generation.
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 5
+        - action: drive
+          signals:
+            start: 1
+            key: "0x00000000000000000000000000000000"
+            plaintext: "0x00112233445566778899aabbccddeeff"
+        - action: wait_done
+    expected:
+      ciphertext: "0xc8a331ff8edd3db175e1545dbefb760b"
+
+  - id: nonzero_key_zero_pt
+    name: Non-Zero Key, Zero Plaintext
+    priority: medium
+    description: >
+      Tests with the NIST key and zero plaintext.
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 5
+        - action: drive
+          signals:
+            start: 1
+            key: "0x000102030405060708090a0b0c0d0e0f"
+            plaintext: "0x00000000000000000000000000000000"
+        - action: wait_done
+    expected:
+      ciphertext: "0xc6a13b37878f5b826f4f8162a1c8d879"
+
+  - id: input_change_while_busy
+    name: Input Changes While Busy
+    priority: high
+    description: >
+      Verifies that changes to key and plaintext after start acceptance
+      do not affect the ciphertext. Drives the NIST vector, then changes
+      inputs to different values while busy, and checks the ciphertext
+      matches only the original inputs.
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 5
+        - action: drive
+          signals:
+            start: 1
+            key: "0x000102030405060708090a0b0c0d0e0f"
+            plaintext: "0x00112233445566778899aabbccddeeff"
+        - action: drive
+          signals:
+            start: 0
+            key: "0xffffffffffffffffffffffffffffffff"
+            plaintext: "0x00000000000000000000000000000000"
+          cycles: 5
+          description: Change inputs while DUT is busy
+        - action: wait_done
+    expected:
+      ciphertext: "0x69c4e0d86a7b0430d8cdb78070b4c55a"
+
+  - id: repeated_transactions
+    name: Repeated Sequential Transactions
+    priority: medium
+    description: >
+      Runs two back-to-back transactions with different key/plaintext
+      pairs and verifies each produces the correct ciphertext independently.
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 5
+        - action: drive
+          signals:
+            start: 1
+            key: "0x000102030405060708090a0b0c0d0e0f"
+            plaintext: "0x00112233445566778899aabbccddeeff"
+        - action: wait_done
+        - action: drive
+          signals:
+            start: 1
+            key: "0xffffffffffffffffffffffffffffffff"
+            plaintext: "0x00000000000000000000000000000000"
+        - action: wait_done
+    expected:
+      first_ciphertext: "0x69c4e0d86a7b0430d8cdb78070b4c55a"
+      second_ciphertext: "0xa1f6258c877d5fcd8964484538bfc92c"
+
+  - id: done_pulse_width
+    name: Done Pulse Width Verification
+    priority: high
+    description: >
+      Verifies that done pulses for exactly one clock cycle and that
+      busy deasserts on the same clock as done.
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 5
+        - action: drive
+          signals:
+            start: 1
+            key: "0x000102030405060708090a0b0c0d0e0f"
+            plaintext: "0x00112233445566778899aabbccddeeff"
+        - action: wait_done
+    expected:
+      done_pulse_width_cycles: 1
+      busy_deasserts_with_done: true
+
+  - id: reset_during_idle
+    name: Reset During Idle
+    priority: medium
+    description: >
+      Applies reset while the DUT is idle, then verifies the DUT
+      recovers and performs a correct encryption afterward.
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 10
+        - action: wait
+          cycles: 5
+        - action: drive
+          signals:
+            start: 1
+            key: "0x000102030405060708090a0b0c0d0e0f"
+            plaintext: "0x00112233445566778899aabbccddeeff"
+        - action: wait_done
+    expected:
+      ciphertext: "0x69c4e0d86a7b0430d8cdb78070b4c55a"
+
+  - id: reset_mid_transaction
+    name: Reset During Encryption
+    priority: high
+    description: >
+      Asserts reset while the DUT is mid-encryption (busy=1) and verifies
+      that the DUT aborts the operation and returns to a clean idle state
+      with busy=0, done=0, and ciphertext=0.
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 5
+        - action: drive
+          signals:
+            start: 1
+            key: "0x000102030405060708090a0b0c0d0e0f"
+            plaintext: "0x00112233445566778899aabbccddeeff"
+        - action: wait
+          cycles: 5
+          description: Wait 5 cycles into encryption
+        - action: reset
+          cycles: 3
+        - action: wait
+          cycles: 3
+          description: Wait for reset to fully take effect
+    expected:
+      busy: 0
+      done: 0
+      ciphertext: "0x00000000000000000000000000000000"
+
+corner_cases:
+  - name: Single-Bit Key
+    description: >
+      Tests with only the least significant bit of the key set, exercising
+      sparse key schedule generation.
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 5
+        - action: drive
+          signals:
+            start: 1
+            key: "0x00000000000000000000000000000001"
+            plaintext: "0x00000000000000000000000000000000"
+        - action: wait_done
+    expected:
+      ciphertext: "0x0545aad56da2a97c3663d1432a3d1c84"
+
+  - name: Fast Re-Trigger After Done
+    description: >
+      Asserts start on the very next cycle after done pulses to verify
+      the FSM properly returns to IDLE and can immediately begin a new
+      transaction.
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 5
+        - action: drive
+          signals:
+            start: 1
+            key: "0x000102030405060708090a0b0c0d0e0f"
+            plaintext: "0x00112233445566778899aabbccddeeff"
+        - action: wait_done
+        - action: drive
+          signals:
+            start: 1
+            key: "0xffffffffffffffffffffffffffffffff"
+            plaintext: "0x00000000000000000000000000000000"
+        - action: wait_done
+    expected:
+      first_ciphertext: "0x69c4e0d86a7b0430d8cdb78070b4c55a"
+      second_ciphertext: "0xa1f6258c877d5fcd8964484538bfc92c"
+
+  - name: All Ones Key, Zero Plaintext
+    description: Tests all-one key with zero plaintext to exercise asymmetric paths.
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 5
+        - action: drive
+          signals:
+            start: 1
+            key: "0xffffffffffffffffffffffffffffffff"
+            plaintext: "0x00000000000000000000000000000000"
+        - action: wait_done
+    expected:
+      ciphertext: "0xa1f6258c877d5fcd8964484538bfc92c"
+
+  - name: Zero Key, All Ones Plaintext
+    description: Tests zero key with all-one plaintext.
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 5
+        - action: drive
+          signals:
+            start: 1
+            key: "0x00000000000000000000000000000000"
+            plaintext: "0xffffffffffffffffffffffffffffffff"
+        - action: wait_done
+    expected:
+      ciphertext: "0x3f5b8cc9ea855a0afa7347d23e8d664e"
+
+  - name: Start Ignored When Busy
+    description: >
+      Asserts start while the DUT is busy and verifies the second
+      start is ignored and the first transaction completes correctly.
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 5
+        - action: drive
+          signals:
+            start: 1
+            key: "0x000102030405060708090a0b0c0d0e0f"
+            plaintext: "0x00112233445566778899aabbccddeeff"
+        - action: drive
+          signals:
+            start: 1
+            key: "0xffffffffffffffffffffffffffffffff"
+            plaintext: "0x00000000000000000000000000000000"
+          cycles: 3
+          description: Re-assert start while busy
+        - action: wait_done
+    expected:
+      ciphertext: "0x69c4e0d86a7b0430d8cdb78070b4c55a"
+      note: Only the first transaction should complete; second start is ignored.
+
+randomized_testing_strategy:
+  description: >
+    Generate 1000 random 128-bit key/plaintext pairs and verify each
+    completed transaction against the Python reference model
+    encrypt_block() function. Randomly injects resets both during idle
+    and mid-transaction to verify robustness.
+  constraints:
+    - variable: key
+      range:
+        - "0x00000000000000000000000000000000"
+        - "0xffffffffffffffffffffffffffffffff"
+    - variable: plaintext
+      range:
+        - "0x00000000000000000000000000000000"
+        - "0xffffffffffffffffffffffffffffffff"
+  injection:
+    - type: reset_during_idle
+      frequency: "10%"
+      duration_cycles:
+        - 2
+        - 5
+      description: >
+        Randomly assert reset while the DUT is idle between transactions.
+    - type: reset_during_operation
+      frequency: "5%"
+      duration_cycles:
+        - 2
+        - 5
+      description: >
+        Randomly assert reset while the DUT is mid-encryption (busy=1).
+  pass_criteria: >
+    Each completed transaction (not aborted by reset) must produce a
+    ciphertext that exactly matches the Python reference model output
+    encrypt_block(key, plaintext). Any mismatch constitutes a
+    verification failure. After reset, the DUT must return to a clean
+    idle state with busy=0, done=0, and ciphertext=0.
+
+functional_coverage:
+  covergroups:
+    - name: cg_input_patterns
+      description: Coverage of key and plaintext input value ranges.
+      bins:
+        - name: bv_key_value
+          variable: key
+          bins:
+            - name: all_zeros
+              expression: "key == 0x00000000000000000000000000000000"
+            - name: all_ones
+              expression: "key == 0xffffffffffffffffffffffffffffffff"
+            - name: alternating_a
+              expression: "key == 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            - name: single_bit_lsb
+              expression: "key == 0x00000000000000000000000000000001"
+        - name: bv_plaintext_value
+          variable: plaintext
+          bins:
+            - name: all_zeros
+              expression: "plaintext == 0x00000000000000000000000000000000"
+            - name: all_ones
+              expression: "plaintext == 0xffffffffffffffffffffffffffffffff"
+            - name: alternating_5
+              expression: "plaintext == 0x55555555555555555555555555555555"
+            - name: nist_vector
+              expression: "plaintext == 0x00112233445566778899aabbccddeeff"
+      crosses:
+        - name: cross_key_plaintext
+          variables: ["key", "plaintext"]
+          description: >
+            Cross key value patterns with plaintext value patterns to
+            exercise diverse combinations of S-box inputs.
+
+    - name: cg_fsm_transitions
+      description: Coverage of FSM state transitions and busy behavior.
+      bins:
+        - name: bv_state
+          variable: state
+          bins:
+            - name: idle
+              expression: "state == IDLE"
+            - name: round_run
+              expression: "state == ROUND_RUN"
+            - name: finish
+              expression: "state == FINISH"
+      crosses:
+        - name: cross_state_busy
+          variables: ["state", "busy"]
+          description: >
+            Verify busy is low in IDLE and FINISH, high in ROUND_RUN.
+
+    - name: cg_reset_scenarios
+      description: Coverage of reset under different DUT states.
+      bins:
+        - name: bv_reset_during_idle
+          variable: rst_n
+          bins:
+            - name: reset_idle
+              expression: "rst_n == 0 && state == IDLE"
+        - name: bv_reset_during_operation
+          variable: rst_n
+          bins:
+            - name: reset_busy
+              expression: "rst_n == 0 && busy == 1"
+
+    - name: cg_done_behavior
+      description: Coverage of done pulse generation.
+      bins:
+        - name: bv_done_high
+          variable: done
+          bins:
+            - name: done_pulse
+              expression: "done == 1"
+
+scoreboard_reference_model_strategy:
+  type: reference_model_comparison
+  description: >
+    The scoreboard captures key and plaintext when start is accepted
+    (busy transitions from 0 to 1), calls the Python reference model
+    encrypt_block(key, plaintext), and holds the expected ciphertext
+    until done pulses. On done, the DUT ciphertext is compared byte-by-byte
+    against the expected result.
+  architecture:
+    - type: parallel_reference_model
+      description: >
+        Python encrypt_block() runs in parallel with the DUT. Inputs are
+        sampled at start acceptance, the reference result is computed
+        immediately and stored, and comparison occurs at done time.
+    - type: transaction_scorer
+      description: >
+        Each transaction is scored independently. The scoreboard tracks
+        the total number of transactions, matches, and mismatches.
+  pass_criteria: >
+    DUT ciphertext must exactly match the Python reference model output
+    for every completed (non-reset-aborted) transaction. Any single-byte
+    mismatch constitutes a verification failure.
+  error_reporting: >
+    On mismatch, report the transaction number, DUT ciphertext, expected
+    ciphertext, key, and plaintext in hexadecimal format.
+
+useful_assertions:
+  - name: done_single_pulse
+    description: done must deassert on the clock cycle after it pulses.
+    assertion: "done === 1 |=> done === 0"
+    severity: error
+
+  - name: busy_deasserts_with_done
+    description: busy must be low when done pulses.
+    assertion: "done === 1 |-> busy === 0"
+    severity: error
+
+  - name: busy_high_during_operation
+    description: >
+      busy must remain high continuously from the clock after start
+      acceptance until done pulses.
+    assertion: "$rose(busy) |=> busy throughout [*1:10]"
+    severity: error
+
+  - name: no_start_ignored_while_busy
+    description: >
+      When busy is high, a new start must not interrupt the ongoing
+      operation; busy must remain asserted.
+    assertion: "busy === 1 && $rose(start) |=> busy === 1"
+    severity: warning
+
+  - name: reset_clears_outputs
+    description: >
+      Within one clock of reset assertion, all outputs must be zero.
+    assertion: "$fell(rst_n) |-> ##1 busy === 0 && done === 0 && ciphertext === 0"
+    severity: error
+
+  - name: ciphertext_valid_when_done
+    description: ciphertext must contain no unknown bits when done pulses.
+    assertion: "done === 1 |-> !$isunknown(ciphertext)"
+    severity: error
+
+  - name: operation_latency
+    description: >
+      The done pulse must occur exactly 12 clock cycles after start
+      is sampled in the IDLE state.
+    assertion: "$rose(start && !busy) |-> ##12 done === 1"
+    severity: error
+
+  - name: busy_low_when_idle
+    description: busy must be 0 when the FSM is in IDLE state.
+    assertion: "state == IDLE |-> busy === 0"
+    severity: error
+
+discrepancies:
+  - id: DISC-001
+    severity: high
+    title: MixColumns incorrectly applied in the final AES round
+    rtl: >
+      The combinational block guards MixColumns skip with 'if (round ==
+      4'd10)', but the FSM transitions from ROUND_RUN to FINISH when
+      round equals 9. Since round never reaches 10 during ROUND_RUN,
+      the guard is dead code and MixColumns is applied in all 10
+      ROUND_RUN iterations, including the last one which corresponds
+      to AES round 10.
+    spec: >
+      AES-128 standard (and the specification in aes_spec.md) states
+      that round 10 performs SubBytes, ShiftRows, and AddRoundKey only,
+      with no MixColumns. The Python reference model encrypt_block()
+      correctly skips MixColumns when rnd == 10.
+    impact: >
+      The DUT produces incorrect ciphertext for all inputs. For the
+      NIST KAT vector, the DUT outputs 0xd961a18ca92dd978fb987b3ae7a8d9cd
+      instead of the correct 0x69c4e0d86a7b0430d8cdb78070b4c55a.
+    recommendation: >
+      Keep the ROUND_RUN-to-FINISH transition at round == 4'd9 so that
+      ROUND_RUN processes 10 iterations (round 0 through 9). In the
+      combinational block, change the MixColumns-skip guard from 'if
+      (round == 4'd10)' to 'if (round == 4'd9)' so that the last
+      ROUND_RUN iteration (round 9, corresponding to AES round 10)
+      performs SubBytes, ShiftRows, and AddRoundKey only, correctly
+      skipping MixColumns. This produces the correct NIST ciphertext
+      0x69c4e0d86a7b0430d8cdb78070b4c55a.

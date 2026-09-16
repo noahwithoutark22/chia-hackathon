@@ -1,0 +1,61 @@
+schema_version: '1.0'
+decision:
+  action: improve
+  weakness_id: W-SHARED-REF-MODEL
+  failure_class: masked_failure
+  failure_mechanism: duplicated_logic
+  source: mixed
+  confidence: high
+diagnosis:
+  observed_problem: The fifo_ordering assertion (check_fifo_ordering, assertions.py:386)
+    and the primary scoreboard predictor (scoreboard.py:169) both advance the identical
+    tb/ref_model.py module, so the 'defense-in-depth' ordering checker is not independent
+    of the primary checker. A defect in ref_model.step (queue management or dout assignment)
+    would be agreed on by both checkers and escape detection; the six other pin-level
+    assertions verify count/full/empty invariants but do not check dout data selection/ordering.
+  consequence: 'A reference-model logic error is masked: the scoreboard and the ordering
+    assertion would agree on the same wrong expected value, defeating the intended
+    independent checking layer and leaving a residual false-pass window on FIFO data
+    ordering.'
+candidate_interventions:
+- Add a new additive always-on checker in assertions.py that maintains an independently
+  coded FIFO model (list-based queue, explicit write-dropped-at-full / read-dropped-at-empty
+  acceptance rules, DIS-2/DIS-3 semantics) and compares expected latency-1 dout against
+  the DUT every cycle, while leaving check_fifo_ordering byte-for-byte unchanged.
+- "Replace check_fifo_ordering's shared-model call with an inline independent model\
+  \ (weakness report's literal recommendation) \u2014 not selected: conflicts with\
+  \ the frozen verification plan fifo_ordering definition ('per the reference model')\
+  \ and CONTRACT \xA712.2."
+- "Retry makefile parameter matrix for W-PARAM-EXERCISE \u2014 not selected: identical\
+  \ mechanism failed to produce changes in iterations 17 and 19; no new evidence."
+- "Add a driver opt-in no-idle back-to-back path (W-DRIVER-IDLE-WALL) \u2014 not selected:\
+  \ conflicts with the frozen CONTRACT \xA79.3 wall convention and carries the highest\
+  \ regression risk given W-DRIVER-TRY-NEXT-CRASH history."
+selected_intervention:
+  type: add_independent_ordering_checker
+  expected_effect:
+  - "check_fifo_ordering keeps using the shared reference model exactly as CONTRACT\
+    \ \xA712.2 and the plan specify, preserving the frozen contract."
+  - A separately coded list-based FIFO model inside assertions.py (no calls to tb/ref_model.py)
+    tracks accepted writes/reads per cycle and checks DUT dout (latency-1) and reset
+    state, providing an ordering/data-path oracle independent of the shared model.
+  - A future ref_model.step defect would surface as a disagreement between the independent
+    checker and the DUT/scoreboard instead of being silently shared.
+  - Purely additive, mirroring the accepted iteration-16 defense-in-depth pattern;
+    no existing checks weakened and no RTL/plan/spec/reference-model modification.
+regression_risks:
+- The independent model must encode the exact documented acceptance semantics (write
+  dropped at full even with simultaneous read, read dropped at empty, dout retention
+  on ignored read); an acceptance-rule or off-by-one mistake would falsely fail tests.
+- The new checker must sample in the same RisingEdge+ReadOnly phase as the existing
+  checkers; a sampling-phase mismatch would introduce cycle-offset false mismatches.
+- Existing metrics (coverage, scenario execution) and all 13 test pass/fail statuses
+  must remain unchanged since stimulus, coverage, and test classes are untouched.
+validation:
+- Run the full 13-test regression (all generation_manifest.yaml test classes via UVM_TESTNAME);
+  require 0 failures and unchanged scoreboard/assertion pass counts.
+- Confirm the assertions startup log reports 9 checker coroutines (8 existing + 1
+  new) and that the new checker is exercised across reset cycles and the randomized
+  test's reset injections.
+- Verify check_fifo_ordering and scoreboard call paths are untouched (diff limited
+  to an additive coroutine and its registration in assertions.py).

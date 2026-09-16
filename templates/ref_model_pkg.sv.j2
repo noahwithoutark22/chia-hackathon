@@ -1,0 +1,15 @@
+package chia_ref_model_pkg;
+  import "DPI-C" function void chia_ref_model_dpi(
+{% for i in range(8) %}    input longint unsigned arg{{ i }},{% endfor %}
+    input int unsigned argc,
+    output longint unsigned result0,
+    output longint unsigned result1
+  );
+
+  function automatic void chia_ref_model_call(input longint unsigned args[$], output longint unsigned result0, output longint unsigned result1);
+    longint unsigned a[8];
+    foreach (a[i]) a[i] = 0;
+    foreach (args[i]) if (i < 8) a[i] = args[i];
+    chia_ref_model_dpi(a[0],a[1],a[2],a[3],a[4],a[5],a[6],a[7],args.size(),result0,result1);
+  endfunction
+endpackage

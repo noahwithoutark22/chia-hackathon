@@ -1,0 +1,227 @@
+schema_version: '1.0'
+iteration: 11
+quality_score: 79.57
+metrics:
+  tests_total: 13
+  tests_passed: 12
+  tests_failed: 1
+  functional_coverage:
+    available: true
+    percentage: 87.5
+  planned_coverage_points: 7
+  generated_coverage_points: 7
+  planned_coverage_crosses: 5
+  generated_coverage_crosses: 5
+  python_assertions: 18
+  checker_coroutines: 1
+  test_classes: 13
+  sequences: 0
+  planned_assertions: 7
+  test_health_score: 92.31
+  coverage_quality_score: 87.5
+  assertion_quality_score: 100.0
+  scenario_quality_score: 0.0
+  scenario_coverage:
+    planned: 10
+    generated: 10
+    executed: 0
+    score: 0.0
+    planned_ids:
+    - TC001
+    - TC002
+    - TC003
+    - TC004
+    - TC005
+    - TC006
+    - TC007
+    - TC008
+    - TC009
+    - TC010
+    generated_ids:
+    - TC001
+    - TC002
+    - TC003
+    - TC004
+    - TC005
+    - TC006
+    - TC007
+    - TC008
+    - TC009
+    - TC010
+    executed_ids: []
+  parameter_coverage:
+    available: false
+    score: 100.0
+    planned: {}
+    observed: {}
+  tb_quality_score: 79.57
+weaknesses:
+- id: W-CORNER-TEST-CRASH
+  severity: critical
+  category: tb_timing_bug
+  title: ResetAtFullSeq crashes on ReadOnly-phase signal drive, aborting FifoCornerTest
+  affected_tests:
+  - FifoCornerTest
+  evidence:
+  - FifoCornerTest status=runtime_error, returncode=2, clean_exit=false
+  - 'Traceback: RuntimeError: Attempting settings a value during the ReadOnly phase
+    at sequences.py:112 (setimmediatevalue) called from sequences.py:791 (ResetAtFullSeq.body
+    calls _assert_reset)'
+  - Crash occurs at 2040ns in simulation, after ResetMidStreamSeq completes but before
+    DoutRetentionSeq starts
+  - "FifoCornerTest scoreboard_mismatches=0, assertion_failures=0, uvm_errors=0 \u2014\
+    \ the crash is a TB bug, not a DUT bug"
+  likely_cause: 'Inference: ResetAtFullSeq.body() calls _check_outputs(full=1, empty=0,
+    count=d) which internally awaits ReadOnly() to sample pins. Immediately after
+    _check_outputs returns, the sequence calls _assert_reset(), whose first action
+    is self.dut.rst_n.setimmediatevalue(0). At that point the coroutine is still executing
+    within cocotb''s ReadOnly phase (the event loop has not advanced to ReadWrite),
+    and cocotb 2.1.0 forbids signal writes during ReadOnly. All other sequences that
+    call _assert_reset() do so at the start of body() before any _check_outputs()
+    call, avoiding this conflict.'
+  investigation_targets:
+  - tb/sequences.py  (ResetAtFullSeq.body lines 781-804, _assert_reset lines 110-121,
+    _check_outputs lines 177-208)
+  recommended_action: 'Fix ResetAtFullSeq.body() to insert a cocotb phase transition
+    between _check_outputs() and _assert_reset(). Two options: (1) insert ''await
+    Timer(0)'' or ''await cocotb.triggers.ReadWrite()'' before calling _assert_reset(),
+    which advances the simulation past ReadOnly; or (2) restructure _assert_reset()
+    to await a FallingEdge or Timer(0) before driving rst_n. The same fix should be
+    applied defensively in _assert_reset() itself so no future sequence can hit this
+    invariant.'
+  confidence: high
+- id: W-CORNER-DOUT-RETENTION-UNVERIFIED
+  severity: high
+  category: incomplete_coverage
+  title: DoutRetentionSeq never executes because preceding ResetAtFullSeq crashes
+  affected_tests:
+  - FifoCornerTest
+  evidence:
+  - FifoCornerTest log shows crash at line 791 in ResetAtFullSeq.body, which is CORNER_SEQUENCES[8]
+  - DoutRetentionSeq is CORNER_SEQUENCES[9] and never starts (the for-loop in FifoCornerTest._run_scenario
+    aborts on the exception)
+  - The plan corner_cases entry 'dout_retention_after_ignored_read' maps to DoutRetentionSeq;
+    this scenario is never exercised
+  - TC004 (ReadUntilEmptySeq) does check dout retention as part of its sequence, but
+    DoutRetentionSeq additionally verifies that normal operation resumes correctly
+    after an ignored read, which TC004 does not cover
+  likely_cause: 'Inference: direct consequence of W-CORNER-TEST-CRASH. The sequential
+    for-loop in FifoCornerTest._run_scenario (test.py:314-320) does not catch exceptions
+    per sequence, so a crash in any sequence aborts the entire test.'
+  investigation_targets:
+  - tb/test.py  (FifoCornerTest._run_scenario lines 312-320)
+  - tb/sequences.py  (DoutRetentionSeq lines 807-834)
+  recommended_action: After fixing W-CORNER-TEST-CRASH, verify DoutRetentionSeq runs
+    successfully. Additionally, consider wrapping each corner-case sequence in a try/except
+    within FifoCornerTest._run_scenario so that one sequence's crash does not prevent
+    subsequent sequences from executing. Log failures per-sequence for visibility.
+  confidence: high
+- id: W-CORNER-SEQUENCES-LOST
+  severity: high
+  category: incomplete_coverage
+  title: All corner-case sequences after the crash point are lost, including ResetAtFullSeq
+    itself
+  affected_tests:
+  - FifoCornerTest
+  evidence:
+  - ResetAtFullSeq (reset_at_full corner case) crashes mid-execution, so its verification
+    of reset-at-full-occupancy is incomplete
+  - DoutRetentionSeq never starts
+  - Both the reset_at_full and dout_retention_after_ignored_read plan corner_cases
+    are unverified
+  - Previous corner-case sequences (WriteWhenFullSeq through ResetMidStreamSeq, indices
+    0-7) ran but their results are discarded because the test overall reports runtime_error
+  likely_cause: 'Inference: the FifoCornerTest._run_scenario method iterates CORNER_SEQUENCES
+    sequentially without per-sequence error isolation. The RuntimeError from ResetAtFullSeq
+    propagates up, failing the entire test before the remaining sequences can execute.'
+  investigation_targets:
+  - tb/test.py  (FifoCornerTest._run_scenario lines 312-320)
+  - tb/sequences.py  (CORNER_SEQUENCES list lines 1043-1054)
+  recommended_action: Wrap each sequence invocation in FifoCornerTest._run_scenario
+    with per-sequence exception handling so that one crash does not prevent subsequent
+    corner-case sequences from running. Log each sequence's pass/fail individually.
+    This ensures maximum corner-case coverage even when one sequence has a TB bug.
+  confidence: high
+- id: W-DRIVER-IDLE-WALL
+  severity: medium
+  category: stimulus_limitation
+  title: Driver inserts mandatory idle cycle between every two sequence items, preventing
+    truly back-to-back DUT operations
+  affected_tests:
+  - FifoBackToBackTest
+  - FifoRandomizedTest
+  - All directed tests
+  evidence:
+  - 'driver.py lines 109-127: after item_done(), _drive_idle() is called before the
+    next get_next_item(); this drives wr_en=0 rd_en=0 din=0 for at least one clock
+    cycle between consecutive items'
+  - 'driver.py docstring (lines 104-107) acknowledges: ''An idle cycle (wr_en=0, rd_en=0)
+    is driven before blocking for the next item, preserving CONTRACT 9.3''s declared
+    idle wall'''
+  - The DUT therefore never sees wr_en=1 on two consecutive rising edges, nor rd_en=1
+    on two consecutive rising edges, nor a write followed immediately by a read on
+    consecutive edges
+  - FifoBackToBackTest name implies back-to-back, but every pair of operations is
+    separated by an idle cycle at the DUT level
+  likely_cause: 'Inference: intentional design decision documented in driver.py and
+    CONTRACT.md 9.3, but it limits verification coverage. For a synchronous FIFO with
+    the given protocol idle cycles are semantic no-ops, so this does not create a
+    false-confidence issue for this specific DUT. However, it means the TB cannot
+    detect bugs that only manifest under truly zero-gap consecutive operations (e.g.,
+    internal pipeline timing issues).'
+  investigation_targets:
+  - tb/driver.py  (run_phase lines 93-127, especially the _drive_idle call after item_done)
+  recommended_action: Add a back-to-back mode to FifoDriver that, when enabled by
+    a ConfigDB flag, skips the idle cycle between consecutive items when the sequence
+    provides them rapidly. This would allow FifoBackToBackTest and FifoRandomizedTest
+    to exercise truly consecutive operations without idle gaps.
+  confidence: high
+- id: W-REF-MODEL-MUTABLE-STATE
+  severity: low
+  category: scoreboard_robustness
+  title: Reference model step() mutates its input state dict in place, creating implicit
+    coupling with scoreboard
+  affected_tests:
+  - All tests using the scoreboard
+  evidence:
+  - 'tb/ref_model.py step() lines 6-22: q = state[''queue''] obtains a reference to
+    the deque, then q.append() and q.popleft() mutate it in place'
+  - 'tb/scoreboard.py line 169-171: calls ref_model.step(self._state, ...) and uses
+    the returned state; because step mutates in place, self._state''s queue is modified
+    as a side effect'
+  - 'This works correctly for the current single-scoreboard architecture, but creates
+    a subtle invariant: the scoreboard MUST pass self._state directly and must not
+    create copies beforehand'
+  - If a future change introduces a second scoreboard or prediction path that passes
+    a copy of the state, the copy's queue would diverge from the original's, causing
+    silent prediction errors
+  likely_cause: 'Inference: the reference model is a direct copy of benchmarks/fifo/ref_model.py
+    per CONTRACT.md 11.1 and must not be modified. The mutation-in-place behavior
+    is by design in the original model. The scoreboard correctly accounts for this
+    by tracking the returned state reference.'
+  investigation_targets:
+  - tb/ref_model.py  (step function, lines 6-22)
+  - tb/scoreboard.py  (run_phase, _advance_and_check, lines 118-173)
+  recommended_action: No immediate fix required. Document the mutation-in-place invariant
+    explicitly in scoreboard.py comments (already partially done). If multi-scoreboard
+    or prediction-comparison separation is added later, the scoreboard should clone
+    the state before passing it to step().
+  confidence: medium
+authoritative_inputs:
+- specification
+- reference_model
+- verification_plan
+rtl_exposed_to_llm: false
+comparison:
+  previous_quality_score: 81.88
+  delta: -2.31
+analysis_summary:
+  overall_status: functional_failure
+  tests_total: 13
+  tests_passed: 12
+  tests_failed: 1
+changed_files:
+- coverage.py
+- sequences.py
+analysis_report_path: /home/auralab/nwark/chia_sept7_for_multi_rtl_with_multi_llm/for_multiple_rtl_updation_generalized/generated/designs/fifo/llm_verification_analysis_workspace/weakness_report.yaml
+accepted: false
