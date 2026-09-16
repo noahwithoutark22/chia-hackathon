@@ -7,29 +7,22 @@ flow until timing/DRC closure, subject to hard limits you set that it can
 never override.
 
 **First time on a machine that's never run this before?** You'll need Docker,
-local SSH, a `chia_env` conda environment with the `chia` package installed,
-the local Docker image built, and LLM provider auth configured -- everything
-below assumes all of that already exists.
+local SSH enabled (`chia` SSHes into itself even for a single-machine
+cluster), a `chia_env` conda environment with the `chia` package installed,
+the local Docker image built (`docker build -f Dockerfile.orfs-run -t
+chia-orfs-run:local .`), and LLM provider auth configured. Everything below
+assumes all of that already exists.
 
-`orfs-native-build/` (the vendored ORFS toolchain) is a git submodule pinned
-to the commit this was built and tested against. Initialize it, then apply
-the included patch, which fixes sky130hd LVS signoff (KLayout's deck shipped
-device-combination disabled and pointed at the wrong report call, and the
-platform CDL had two netlist-format issues KLayout's netlist reader rejects)
-so `make lvs` actually produces a usable result instead of erroring out or
-reporting a false verdict:
+`orfs-native-build/` (the vendored ORFS toolchain) is a git submodule, so
+clone with `--recurse-submodules` or initialize it after the fact:
 
 ```bash
-git submodule update --init orfs_loop/orfs-native-build
-cd orfs_loop
-git apply orfs-native-build.patch --directory=orfs-native-build
+git submodule update --init orfs-native-build
 ```
 
-`orfs_runs/bp-sky-gcd/` is a complete sample run kept as a reference for what
-a finished run's output looks like: `gcd` on sky130hs under `--objective
-area`, 40 flow runs across 6 iterations, all 6 closed, final core area
-5591.2. (sky130hs configures no KLayout DRC/LVS deck, so that run's signoff
-step reports "not supported" rather than a verdict -- see "Signoff" below.)
+Note the sky130hd LVS fixes described under "Signoff" below are a host-local
+patch to that checkout, not something the submodule pin carries -- they need
+reapplying after a fresh clone or reset of `orfs-native-build/`.
 
 ## How it fits together
 
@@ -126,9 +119,6 @@ client-timeout retry storm the original design hit.
   ported from open_pdks' `sky130_setup.tcl` (what OpenLane and Tiny Tapeout
   use for sky130 signoff), run as a **second opinion alongside** KLayout's
   LVS, never replacing it. See "Signoff" below.
-- **`orfs-native-build.patch`** -- the sky130hd LVS fixes to apply on top of
-  the pinned upstream ORFS checkout (see the top of this file).
-
 ## One-time setup
 
 ```bash
@@ -177,11 +167,11 @@ if you're curious how.)
 python3 orfs_gui.py   # then open http://127.0.0.1:8080
 ```
 
-`orfs_gui.py` is a FastAPI app that launches `orfs_loop.py` as a subprocess per
-run and polls its `tool_trace.log`/`summary.json` for live progress. If your
-shell session predates being added to the `docker` group, prefix the command
-with `sg docker -c "..."` or open a fresh terminal first -- otherwise every
-`docker exec` the GUI does will silently fail with a permission error.
+Runs the FastAPI dashboard app directly. If your shell session predates
+being added to the `docker` group, prefix this with `sg docker -c "..."`
+(see the troubleshooting entry below) -- otherwise just make sure
+`chia up cluster.yaml -y` has already been run in this same environment
+first.
 
 Everything the CLI does, without terminal juggling: pick a design and model
 from dropdowns, set iterations, lock tunables, hit **Start**, and watch it
@@ -589,22 +579,6 @@ cold start. A run's in-progress state up to the crash (`summaries/`,
 `reports/`, `gds/`, `ledger.json`) survives; only `summary.json` and signoff
 are lost, since those are written at the very end.
 
-**The LLM turn fails with `AttributeError: Can't get attribute
-'OpenCodeQueryResult' on <module 'chia.models.opencode'>`** right after a
-flow run returns cleanly. This is Ray failing to unpickle the object the
-`hello_opencode` container's `chia` package sent back, because your machine's
-own `chia` framework checkout (whatever `import chia` resolves to on
-`PYTHONPATH`) is older than whatever `chia` version is baked into the
-`ghcr.io/ucb-bar/chia-opencode:latest` image -- `hello_opencode` has no
-`pull_before_run: false` pin the way `hello_orfs` does, so `chia up` can
-silently fetch a newer container while your local `chia` checkout sits
-still. There is no way to pin the container back to match once this drifts
-more than about a week: the image's own build workflow retains only
-`:latest` plus recent `:build-<run-id>` tags, deleting the latter after 7
-days. The fix is updating your `chia` checkout forward (`git pull --ff-only
-origin main` wherever it lives, no reinstall needed if it's linked rather
-than `pip install`ed) rather than trying to roll the container back.
-
 **A `place` stage crashes with `[ERROR GPL-0301] Utilization exceeds 100%`.**
 `CELL_PAD_IN_SITES_GLOBAL_PLACEMENT` inflates each cell's effective footprint,
 so it can push placement utilization over 100% even when `CORE_UTILIZATION`
@@ -645,21 +619,21 @@ already-running session. Prefix the command with `sg docker -c "..."` or
 open a fresh terminal.
 
 **`make lvs` fails outright on sky130hd designs** (a parse error, not a
-mismatch verdict). You didn't apply `orfs-native-build.patch` -- see the top
-of this file. Upstream's `flow/platforms/sky130hd/cdl/sky130hd.cdl` has two
+mismatch verdict). The vendored
+`orfs-native-build/flow/platforms/sky130hd/cdl/sky130hd.cdl` has two upstream
 quirks KLayout's LVS netlist reader rejects: literal `short` values on 6
 tie-cell resistor lines (needs a numeric `0`), and a slash-delimited
 `net1 net2 ... / subcktname` format on 7 `X`-instance lines inside
-`macro_sparecell` (the reader counts the `/` as a spurious extra net). The
-same patch also fixes `sky130hd.lylvs`, which called DRC's `report()` instead
-of `report_lvs()` -- so it wrote no LVS database at all, and a mismatch could
-not be diagnosed from any artifact the flow kept -- and enables the device
-combination it shipped with disabled.
+`macro_sparecell` (the reader counts the `/` as a spurious extra net).
+`sky130hd.lylvs` needs two fixes of its own: it called DRC's `report()`
+instead of `report_lvs()` -- so it wrote no LVS database at all, and a
+mismatch could not be diagnosed from any artifact the flow kept -- and it
+shipped with device combination disabled.
 
-Note the patch applies to the `orfs-native-build/` checkout only. It is *not*
-in `chia-orfs-run`'s Docker image, which is built straight from public
-`openroad/orfs:latest` with nothing local baked in, so it needs reapplying
-after a fresh clone or reset of that submodule.
+All of these are hand-patched on this host's copy of `orfs-native-build/`.
+The patch is *not* in `chia-orfs-run`'s Docker image, which is built straight
+from public `openroad/orfs:latest` with nothing local baked in, so it needs
+reapplying after a fresh clone or reset of that submodule.
 
 **Even fully patched, sky130hd LVS reports a genuine `Netlists don't match`.**
 Measured on `riscv32i` (5687 cells): exactly 10 circuits fail, in three
