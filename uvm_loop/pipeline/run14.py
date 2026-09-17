@@ -1,6 +1,7 @@
 from pathlib import Path
 import ast
 import json
+import sys
 import subprocess
 import re
 import time
@@ -46,9 +47,110 @@ HOST_WORKSPACE = Path(__file__).resolve().parent.parent
 CONTAINER_WORKSPACE = "/workspace"
 
 
+LLM_MODELS_FILE = HOST_WORKSPACE / "config" / "llm_models.txt"
+LLM_MODEL_STATE = HOST_WORKSPACE / "generated" / "llm_model_state.json"
+LLM_MODEL_LOG = HOST_WORKSPACE / "generated" / "llm_model_usage.jsonl"
+LLM_RATE_LIMIT_COOLDOWN_S = int(os.environ.get("LLM_RATE_LIMIT_COOLDOWN_S", "3600"))
+_SELECTED_LLM_MODEL: str | None = None
+
+
+def _llm_model_candidates() -> list[str]:
+    if LLM_MODELS_FILE.exists():
+        models = [
+            line.split("#", 1)[0].strip()
+            for line in LLM_MODELS_FILE.read_text().splitlines()
+        ]
+        models = [m for m in models if m]
+        if models:
+            return models
+    return [os.environ.get("LLM_MODEL", "opencode/big-pickle")]
+
+
 def _load_llm_model() -> str:
-    """Resolve the configured LLM model for all run14 agents."""
-    return os.environ.get("LLM_MODEL", "opencode/big-pickle")
+    """Resolve the LLM model for this run14 process, skipping rate-limited ones."""
+    # One model per process: a rate-limited run exits, the supervisor restarts it,
+    # and the restart resumes from checkpoints on the next available model.
+    global _SELECTED_LLM_MODEL
+    if _SELECTED_LLM_MODEL:
+        return _SELECTED_LLM_MODEL
+    candidates = _llm_model_candidates()
+    state = json.loads(LLM_MODEL_STATE.read_text()) if LLM_MODEL_STATE.exists() else {}
+    cooldowns = state.get("cooldown_until", {})
+    now = time.time()
+    available = [m for m in candidates if cooldowns.get(m, 0) <= now]
+    current = state.get("current")
+    if current in available:
+        chosen = current
+    elif available:
+        chosen = available[0]
+    else:
+        chosen = min(candidates, key=lambda m: cooldowns.get(m, 0))
+    state["current"] = chosen
+    LLM_MODEL_STATE.parent.mkdir(parents=True, exist_ok=True)
+    LLM_MODEL_STATE.write_text(json.dumps(state, indent=2))
+    with LLM_MODEL_LOG.open("a") as fh:
+        fh.write(json.dumps({
+            "time": time.strftime("%Y-%m-%dT%H:%M:%S"),
+            "event": "selected",
+            "model": chosen,
+            "argv": sys.argv[1:],
+        }) + "\n")
+    print(f"LLM model selected: {chosen}")
+    _SELECTED_LLM_MODEL = chosen
+    return chosen
+
+
+_MODEL_UNAVAILABLE_MARKERS = (
+    "RateLimitError", "Rate limit exceeded",
+    # Provider/model itself broken or gone, not just throttled (observed live:
+    # opencode/nemotron-3-ultra-free returning a bare 404) -- retrying the
+    # same model would fail identically forever, so treat it the same as a
+    # rate limit: cool it down and let the next restart pick another model.
+    "InvalidRequestError", "Upstream request failed", "Provider returned error",
+    # See generate_candidate_plan(): a swallowed subprocess.TimeoutExpired across
+    # all internal retries comes back as success=False with no exception and empty
+    # result/stderr -- treat that silent stall the same as a rate limit.
+    "silent timeout, empty response",
+)
+
+
+def _record_llm_rate_limit(exc: BaseException) -> None:
+    text = f"{repr(exc)} {exc}"
+    if not any(marker in text for marker in _MODEL_UNAVAILABLE_MARKERS):
+        return
+    model = _SELECTED_LLM_MODEL or _load_llm_model()
+    state = json.loads(LLM_MODEL_STATE.read_text()) if LLM_MODEL_STATE.exists() else {}
+    until = time.time() + LLM_RATE_LIMIT_COOLDOWN_S
+    state.setdefault("cooldown_until", {})[model] = until
+    state["current"] = None
+    LLM_MODEL_STATE.write_text(json.dumps(state, indent=2))
+    with LLM_MODEL_LOG.open("a") as fh:
+        fh.write(json.dumps({
+            "time": time.strftime("%Y-%m-%dT%H:%M:%S"),
+            "event": "rate_limited",
+            "model": model,
+            "cooldown_until": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(until)),
+        }) + "\n")
+    print(f"LLM model {model} unavailable/rate-limited; cooling down for {LLM_RATE_LIMIT_COOLDOWN_S}s")
+
+
+def _raise_on_llm_failure(response, stage: str) -> None:
+    """Shared success=False handler for llm.prompt.chia_remote() call sites.
+
+    OpenCodeLLM.prompt() swallows subprocess.TimeoutExpired across all its own
+    retries and returns success=False with empty result/stderr instead of
+    raising (see generate_candidate_plan()). A generic error message here
+    would never match _MODEL_UNAVAILABLE_MARKERS, so the model never cools
+    down and every supervisor restart just re-picks the same dead model.
+    """
+    if response.success:
+        return
+    if not (response.stderr or "").strip() and not (response.result or "").strip():
+        raise RuntimeError(
+            f"OpenCode {stage} failed: silent timeout, empty response "
+            "(provider likely unavailable)"
+        )
+    raise RuntimeError(f"OpenCode {stage} failed:\n{response.stderr}")
 
 
 
@@ -429,6 +531,72 @@ DIAGNOSIS REQUIREMENTS:
 - Never modify RTL, specification, reference model, or verification plan.
 """
     return prompt
+
+
+_SCENARIO_LIST_KEYS = ("directed_test_scenarios", "corner_cases")
+_SCENARIO_CONTENT_KEYS = (
+    "description", "stimulus", "expected", "note", "priority", "id",
+)
+
+
+def _drop_empty_scenario_stubs(parsed: dict) -> tuple[dict, list[str]]:
+    """Remove scenario-list entries with no content beyond an empty/null name.
+
+    Returns the (possibly unchanged) plan and a list naming what was dropped,
+    e.g. "directed_test_scenarios[2]". An entry counts as a content-free stub
+    only when every other schema field is missing or empty -- a scenario with
+    a null/missing name but real stimulus/expected content is left alone and
+    still fails validation with its original, more informative error.
+    """
+    dropped: list[str] = []
+    pruned = dict(parsed)
+    for key in _SCENARIO_LIST_KEYS:
+        items = pruned.get(key)
+        if not isinstance(items, list):
+            continue
+        kept = []
+        for index, item in enumerate(items):
+            has_name = isinstance(item, dict) and bool(str(item.get("name") or "").strip())
+            has_other_content = isinstance(item, dict) and any(
+                item.get(field) not in (None, "", [], {})
+                for field in _SCENARIO_CONTENT_KEYS
+            )
+            if not has_name and not has_other_content:
+                dropped.append(f"{key}[{index}]")
+                continue
+            kept.append(item)
+        pruned[key] = kept
+    return pruned, dropped
+
+
+def ensure_directed_scenario_ids(plan_path: str | Path) -> str:
+    """Give every directed scenario a stable ID (derived from its name if missing)."""
+    # TestScenario.id is optional in the schema, but the manifest gate requires
+    # IDs; an LLM plan with `id: null` otherwise crash-loops Stage 4 integration.
+    plan_path = Path(plan_path)
+    plan = yaml.safe_load(plan_path.read_text()) or {}
+    scenarios = plan.get("directed_test_scenarios") or []
+    seen = {
+        str(s["id"]).strip() for s in scenarios
+        if isinstance(s, dict) and str(s.get("id") or "").strip()
+    }
+    filled = []
+    for s in scenarios:
+        if not isinstance(s, dict) or str(s.get("id") or "").strip():
+            continue
+        base = re.sub(r"[^A-Za-z0-9_]+", "_", str(s.get("name", ""))).strip("_") or "scenario"
+        candidate, n = base, 2
+        while candidate in seen:
+            candidate, n = f"{base}_{n}", n + 1
+        s["id"] = candidate
+        seen.add(candidate)
+        filled.append(candidate)
+    if filled:
+        plan_path.write_text(yaml.safe_dump(plan, sort_keys=False, allow_unicode=True))
+        print(f"⚠ Plan directed scenarios had no IDs; derived from names: {filled}")
+    return plan_path.read_text()
+
+
 def validate_scenario_manifest(plan_path: str | Path, tb_dir: str | Path) -> tuple[bool, list[str]]:
     """
     Validate the stable-ID mapping between the accepted verification plan
@@ -578,10 +746,19 @@ def validate_scenario_manifest(plan_path: str | Path, tb_dir: str | Path) -> tup
             planned_name = str(planned_entry.get("name", "")).strip()
             manifest_name = str(entry.get("name", "")).strip()
             if manifest_name != planned_name:
-                errors.append(
-                    f"{scenario_id}: manifest scenario name "
-                    f"{manifest_name!r} does not match plan name "
-                    f"{planned_name!r}."
+                # Cosmetic only -- id already matched above, which is what makes
+                # planned_entry authoritative. A generation stage legitimately
+                # writing a nicer human-readable name than the plan's own name
+                # field (e.g. a plan using slug-style names like "all_zero")
+                # must not fail the hard gate below: with all sub-stage
+                # checkpoints already marked done, "forcing regeneration" is a
+                # no-op, so treating this as fatal crash-loops every restart
+                # on the exact same mismatch (observed live on aes_benchmark,
+                # 2026-09-17). Warn instead of erroring.
+                print(
+                    f"  (note) {scenario_id}: manifest scenario name "
+                    f"{manifest_name!r} differs from plan name "
+                    f"{planned_name!r}; id match is authoritative, continuing."
                 )
 
         if not scenario_id:
@@ -1172,22 +1349,16 @@ def clean_yaml_response(text):
 
     # 3. If the LLM added prose before the YAML, locate the
     #    beginning of the YAML mapping.
-    yaml_keys = (
-        "verdict:",
-        "updates:",
-        "changes:",
-        "tb_update_plan:",
+    #    Anchor on line starts and include the version keys that precede
+    #    `verdict:` in the contracts, or unfenced replies lose that line.
+    match = re.search(
+        r"^(?:schema_version|version|verdict|updates|changes|tb_update_plan):",
+        text,
+        re.M,
     )
 
-    positions = [
-        text.find(key)
-        for key in yaml_keys
-        if text.find(key) != -1
-    ]
-
-    if positions:
-        start = min(positions)
-        text = text[start:].strip()
+    if match:
+        text = text[match.start():].strip()
 
     return text
 
@@ -1465,6 +1636,18 @@ Do not modify or create files.
     )
 
     if not response.success:
+
+        if not (response.stderr or "").strip() and not (response.result or "").strip():
+
+            # Chia's OpenCodeLLM.prompt() swallows subprocess.TimeoutExpired across
+            # all retries and returns success=False with empty result/stderr instead
+            # of raising -- no exception text for _record_llm_rate_limit to match on.
+            # Mark it explicitly so a silent provider stall still triggers a cooldown
+            # and model switch instead of looping on the same dead model forever.
+            raise RuntimeError(
+                "OpenCode generation failed: silent timeout, empty response "
+                "(provider likely unavailable)"
+            )
 
         raise RuntimeError(
 
@@ -1813,13 +1996,7 @@ more exhaustive, or more elaborate — that is not a defect.
 
     )
 
-    if not response.success:
-
-        raise RuntimeError(
-
-            f"OpenCode review failed:\n{response.stderr}"
-
-        )
+    _raise_on_llm_failure(response, "review")
 
     result = response.result
 
@@ -2086,6 +2263,9 @@ def ensure_valid_tb_update_plan_yaml(llm, text, max_attempts=5):
     """
     candidate = clean_yaml_response(text)
     last_error = None
+    raw_text = text
+    raw_dir = HOST_WORKSPACE / DESIGN_GENERATED_ROOT / "results" / "llm_raw"
+    stamp = time.strftime("%Y%m%d_%H%M%S")
 
     for attempt in range(max_attempts + 1):
         try:
@@ -2104,6 +2284,11 @@ def ensure_valid_tb_update_plan_yaml(llm, text, max_attempts=5):
             error = validation_result
 
         last_error = error
+        raw_dir.mkdir(parents=True, exist_ok=True)
+        (raw_dir / f"tb_update_plan_{stamp}_attempt{attempt}_rejected.txt").write_text(
+            f"# model: {_SELECTED_LLM_MODEL}\n# error: {error}\n"
+            f"# ---- raw response ----\n{raw_text}\n"
+        )
 
         if attempt >= max_attempts:
             break
@@ -2193,6 +2378,7 @@ Return ONLY the corrected tb_update_plan YAML.
                 "OpenCode TB diagnosis YAML repair returned an empty response."
             )
 
+        raw_text = repaired
         candidate = clean_yaml_response(repaired)
 
     raise RuntimeError(
@@ -3051,6 +3237,13 @@ def generate_and_validate_uvm(llm, bash, canonical_plan):
                 },
             )
             run_verification_improvement_loop(None, None, canonical_plan)
+            # Unlike the two resume-path callers (checkpointed-TB and
+            # non_actionable-diagnosis, above), this fresh-generation path
+            # used to `return` here without ever reaching RTL verification --
+            # a plateaued/complete improvement loop left rtl_verification_state.json
+            # untouched, and since run_forever.sh stops on exit 0, nothing else
+            # would ever call run_rtl_verification_loop() for this design.
+            run_rtl_verification_loop()
             return
 
         if final_analysis["verdict"] == "template_bug":
@@ -5515,7 +5708,7 @@ def main():
             print(f"  Plan:     {plan_path}")
             print(f"  RTL info: {rtl_info_path}")
 
-            canonical_plan = plan_path.read_text()
+            canonical_plan = ensure_directed_scenario_ids(plan_path)
 
             # If Stage 4 already produced a complete TB, it is persistent
             # state and must never be regenerated just because run8.py was
@@ -5706,11 +5899,34 @@ def main():
                     try:
                         accepted_plan = VerificationPlan.model_validate(parsed)
                     except Exception as exc:
-                        raise RuntimeError(
-                            "Reviewer accepted the plan, but it failed "
-                            "canonical VerificationPlan validation:\n"
-                            f"{exc}"
-                        ) from exc
+                        # A repair-loop edit can leave a content-free stub
+                        # entry behind (observed live: a directed_test_scenarios
+                        # entry that is only `{name: null}`, no description,
+                        # stimulus, or expected -- no scenario content to
+                        # salvage, so drop it rather than invent one). Retry
+                        # validation once; this is idempotent (a plan with no
+                        # such stubs is returned unchanged) and re-raises the
+                        # original error if that wasn't the actual problem.
+                        pruned, dropped = _drop_empty_scenario_stubs(parsed)
+                        if not dropped:
+                            raise RuntimeError(
+                                "Reviewer accepted the plan, but it failed "
+                                "canonical VerificationPlan validation:\n"
+                                f"{exc}"
+                            ) from exc
+                        print(
+                            f"\n⚠ Dropping {len(dropped)} content-free scenario "
+                            f"stub(s) from the accepted plan: {dropped}"
+                        )
+                        try:
+                            accepted_plan = VerificationPlan.model_validate(pruned)
+                        except Exception as exc2:
+                            raise RuntimeError(
+                                "Reviewer accepted the plan, but it failed "
+                                "canonical VerificationPlan validation even "
+                                f"after dropping empty stubs {dropped}:\n{exc2}"
+                            ) from exc2
+                        parsed = pruned
 
                     # Serialize the validated model, not the raw LLM YAML.
                     canonical_plan = yaml.safe_dump(
@@ -5725,6 +5941,7 @@ def main():
                     )
 
                     plan_path.write_text(canonical_plan)
+                    canonical_plan = ensure_directed_scenario_ids(plan_path)
 
                     print("\n✓ Verification plan accepted.")
                     print(f"✓ Final canonical plan saved to: {plan_path}")
@@ -5796,4 +6013,8 @@ def main():
 
 if __name__ == "__main__":
 
-    main()
+    try:
+        main()
+    except BaseException as exc:
+        _record_llm_rate_limit(exc)
+        raise

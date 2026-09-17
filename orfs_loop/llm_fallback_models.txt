@@ -1,0 +1,23 @@
+# Models orfs_loop.py falls back to, in order, when the --model LLM is rate-limited.
+# Free tiers only. A switch is sticky for the rest of the run and recorded in
+# tool_trace.log and summary.json (llm_models_used).
+#
+# nvidia3/nvidia4/nvidia5 are custom opencode providers (see
+# ~/.config/opencode/opencode.jsonc, also written into both opencode containers
+# at /home/ray/.config/opencode/opencode.jsonc) -- each is a DIFFERENT NVIDIA
+# build.nvidia.com API key/quota bucket from the original "nvidia" provider, so
+# they fail independently of each other and of "nvidia". Verified live 2026-09-17
+# with a PONG smoke test before being added here.
+nvidia/nvidia/nemotron-3-super-120b-a12b
+nvidia3/nvidia/nemotron-3-ultra-550b-a55b
+nvidia4/openai/gpt-oss-20b
+nvidia5/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning
+opencode/mimo-v2.5-free
+# opencode/nemotron-3-ultra-free -- removed 2026-09-17: provider returns a bare
+# 404 ("Upstream request failed") on every call, confirmed live via i2c_benchmark
+# (same OpenCode account/routing this pool draws from); not a rate limit.
+# nvidia2/google/gemma-4-31b-it -- excluded 2026-09-17: hangs past 120s on a
+# trivial smoke-test prompt (exit 124), confirmed twice.
+# nvidia6/google/diffusiongemma-26b-a4b-it -- excluded 2026-09-17: not smoke-tested
+# (diffusion-based LM, uncertain fit); provider/key wired in opencode.jsonc if
+# this needs enabling later.

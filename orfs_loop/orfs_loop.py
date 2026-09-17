@@ -347,6 +347,70 @@ class _Heartbeat:
 
 LLM_TRANSIENT_RETRIES = 3
 LLM_BACKOFF_SECONDS = 30
+FALLBACK_MODELS_FILE = REPO_ROOT / "llm_fallback_models.txt"
+
+
+_MODEL_UNAVAILABLE_MARKERS = (
+    "RateLimitError", "Rate limit exceeded",
+    # Provider/model itself broken or gone, not just throttled (observed live:
+    # opencode/nemotron-3-ultra-free returning a bare 404 via uvm_loop, same
+    # OpenCode account/routing this pool draws from) -- retrying the same
+    # model would fail identically forever, so switch away from it too.
+    "InvalidRequestError", "Upstream request failed", "Provider returned error",
+)
+
+
+def _is_rate_limited(exc_or_text) -> bool:
+    text = repr(exc_or_text) if isinstance(exc_or_text, BaseException) else str(exc_or_text)
+    return any(marker in text for marker in _MODEL_UNAVAILABLE_MARKERS)
+
+
+class _LLMPool:
+    """Ordered model fallback: `--model` first, then llm_fallback_models.txt.
+
+    Free-tier providers rate-limit long runs; on a rate limit the pool moves to
+    the next model and stays there (sticky) so one run doesn't flip-flop.
+    """
+
+    def __init__(self, primary: str, timeout_seconds: int):
+        models = [primary]
+        if FALLBACK_MODELS_FILE.exists():
+            for line in FALLBACK_MODELS_FILE.read_text().splitlines():
+                m = line.split("#", 1)[0].strip()
+                if m and m not in models:
+                    models.append(m)
+        self.models = models
+        self.index = 0
+        self.used = [primary]
+        self._timeout = timeout_seconds
+        self._llms: dict = {}
+        self.on_trace = None
+
+    @property
+    def model(self) -> str:
+        return self.models[self.index]
+
+    def current(self):
+        if self.model not in self._llms:
+            self._llms[self.model] = OpenCodeLLM(
+                model=self.model, timeout_seconds=self._timeout,
+                log_dir="/tmp", logging_name="orfs_closure",
+            )
+        return self._llms[self.model]
+
+    def advance(self, reason: str) -> bool:
+        if self.index + 1 >= len(self.models):
+            return False
+        old = self.model
+        self.index += 1
+        if self.model not in self.used:
+            self.used.append(self.model)
+        msg = f"LLM model {old} rate-limited ({reason[:160]}); switching to {self.model}"
+        print(f"  ({msg})")
+        if self.on_trace:
+            self.on_trace(f"\n[{datetime.datetime.now().isoformat()}] SYSTEM: {msg}\n" + "-" * 60 + "\n")
+        return True
+
 
 def _prompt_with_backoff(llm, prompt_text, on_trace):
     """Run one LLM turn, retrying transient provider failures with real backoff.
@@ -370,12 +434,31 @@ def _prompt_with_backoff(llm, prompt_text, on_trace):
     session and this class of error looks exactly like the kind of transient
     session-state hiccup the existing backoff message already describes.
     """
+    pool = llm if isinstance(llm, _LLMPool) else None
     result = None
-    for attempt in range(1, LLM_TRANSIENT_RETRIES + 1):
+    attempt = 0
+    while attempt < LLM_TRANSIENT_RETRIES:
+        attempt += 1
+        active = pool.current() if pool else llm
         try:
-            result = get(llm.prompt.chia_remote(llm, prompt_text, tools=[]))
+            result = get(active.prompt.chia_remote(active, prompt_text, tools=[]))
         except Exception as exc:
             result = SimpleNamespace(success=False, result=f"LLM call raised: {exc}")
+        if not result.success and pool:
+            result_text = getattr(result, "result", "") or ""
+            stderr_text = getattr(result, "stderr", "") or ""
+            # After chia's own internal retries exhaust on a subprocess timeout,
+            # it returns success=False with BOTH result and stderr empty --
+            # no exception, no message, nothing for a text match to catch.
+            # Observed live: 3 concurrent big-pickle calls each burned ~90min
+            # this way, and the empty result also carries no signal for pass 2
+            # to avoid retrying the same exhausted model. Treat a silently
+            # empty failure the same as a detected rate limit/unavailability.
+            silent_timeout = not result_text.strip() and not stderr_text.strip()
+            if (silent_timeout or _is_rate_limited(f"{result_text} {stderr_text}")) \
+                    and pool.advance("(silent timeout, empty result)" if silent_timeout else result_text):
+                attempt -= 1
+                continue
         if result.success or attempt == LLM_TRANSIENT_RETRIES:
             return result
         wait = LLM_BACKOFF_SECONDS * attempt
@@ -780,10 +863,10 @@ def run_closure_loop(
                 ))
             slot_paths_cache[slot] = paths
 
-    llm = OpenCodeLLM(
-        model=model, timeout_seconds=llm_timeout_seconds,
-        log_dir="/tmp", logging_name="orfs_closure",
-    )
+    llm = _LLMPool(model, llm_timeout_seconds)
+    llm.on_trace = _append_trace
+    if len(llm.models) > 1:
+        print(f"  LLM models (fallback order): {llm.models}")
 
     history: list = []          # every flow run, flat, in order
     iterations: list = []       # one record per iteration (the major unit)
@@ -1375,7 +1458,8 @@ def run_closure_loop(
         if batch_size > 1:
             prompt_text = _build_proposal_prompt(iteration, [])
             t0 = time.time()
-            futures = [llm.prompt.chia_remote(llm, prompt_text, tools=[])
+            active_llm = llm.current()
+            futures = [active_llm.prompt.chia_remote(active_llm, prompt_text, tools=[])
                        for _ in range(batch_size)]
             with _Heartbeat(f"Batch decisions ({batch_size} concurrent LLM calls, "
                             f"iteration {iteration})"):
@@ -1779,6 +1863,7 @@ def run_closure_loop(
         "run_dir": str(run_dir),
         "best_run": best["run"] if best else None,
         "final_objective_value": objective_target,
+        "llm_models_used": llm.used,
         "iterations": [{k: v for k, v in r.items() if k != "config"} for r in iterations],
     }
 
