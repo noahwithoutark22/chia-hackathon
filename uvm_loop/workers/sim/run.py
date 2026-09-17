@@ -418,6 +418,10 @@ TOPLEVEL_LANG ?= verilog
 # Verilator to generate V<top>.mk while Cocotb tries to build Vtop.mk.
 COMPILE_ARGS += --timing -Wno-fatal
 
+# Per-test DUT parameter overrides (-G...), passed as CHIA_DUT_PARAMS on the
+# make command line. Not EXTRA_ARGS: Cocotb also hands that to the sim binary.
+COMPILE_ARGS += $(CHIA_DUT_PARAMS)
+
 include {cocotb_makefiles / "Makefile.sim"}
 """
 
@@ -429,6 +433,28 @@ include {cocotb_makefiles / "Makefile.sim"}
 # ---------------------------------------------------------------------------
 # Cocotb / pyUVM execution
 # ---------------------------------------------------------------------------
+
+_TEST_BLOCK_RE = re.compile(
+    r"^\s*ifeq\s*\(\s*\$\((?:TEST|UVM_TESTNAME|TESTCASE)\)\s*,\s*([A-Za-z_]\w*)\s*\)(.*?)^\s*endif\b",
+    re.M | re.S,
+)
+_PARAM_OVERRIDE_RE = re.compile(r"(?<!\S)-G[A-Za-z_]\w*=[^\s#]+")
+
+
+def per_test_parameter_overrides(tb_dir: Path, test_name: str) -> list[str]:
+    """Verilator -G overrides the generated TB Makefile declares for one test."""
+    # The worker builds with its own launcher Makefile, so per-test DUT
+    # geometry declared in the generated TB Makefile is otherwise ignored and
+    # wide-parameter tests run against a default-parameter elaboration.
+    makefile = tb_dir / "Makefile"
+    if not makefile.is_file():
+        return []
+    overrides: list[str] = []
+    for name, body in _TEST_BLOCK_RE.findall(makefile.read_text(errors="replace")):
+        if name == test_name:
+            overrides.extend(_PARAM_OVERRIDE_RE.findall(body))
+    return list(dict.fromkeys(overrides))
+
 
 def run_cocotb_test(
     makefile: Path,
@@ -478,7 +504,14 @@ def run_cocotb_test(
     # clean and persistent.
     import hashlib
     rtl_key = hashlib.sha256(str(rtl.resolve()).encode("utf-8")).hexdigest()[:12]
-    build_dir = sim_dir / "build" / rtl_key
+    parameter_overrides = per_test_parameter_overrides(tb_dir, test_name)
+    if parameter_overrides:
+        params_key = hashlib.sha256(
+            " ".join(sorted(parameter_overrides)).encode("utf-8")
+        ).hexdigest()[:8]
+        build_dir = sim_dir / "build" / f"{rtl_key}_{params_key}"
+    else:
+        build_dir = sim_dir / "build" / rtl_key
     results_file = sim_dir / f"{test_name}.xml"
 
     build_dir.mkdir(parents=True, exist_ok=True)
@@ -616,6 +649,8 @@ def run_cocotb_test(
         "COCOTB_HDL_TIMEPRECISION=1ps",
         "BUILD_ARGS=-j 4",
     ]
+    if parameter_overrides:
+        cmd.append(f"CHIA_DUT_PARAMS={' '.join(parameter_overrides)}")
 
     # Keep the worker-side subprocess timeout slightly larger than the GNU
     # timeout so the timeout command can perform its TERM/KILL sequence.
@@ -712,6 +747,7 @@ def run_cocotb_test(
         "command": cmd,
         "test_name": test_name,
         "test_module": test_module,
+        "dut_parameter_overrides": parameter_overrides,
         "results_file": str(results_file),
         "results_file_exists": results_file.exists(),
     }

@@ -1,0 +1,101 @@
+# Combined cluster for rtl_to_gds.py: uvm_loop workers + orfs_loop workers on one
+# Ray head, so both stages run without swapping clusters.
+#
+#   export CHIA_PROJECT_ROOT=<repo>/uvm_loop     # mounted at /workspace
+#   export CHIA_ORFS_REPO=<repo>/orfs_loop       # needs orfs-native-build/ checked out
+#   chia up rtl_to_gds/cluster.yaml -y
+#
+# Container names match the per-loop cluster.yaml files. chia reuses an existing
+# container of the same name without re-applying mounts, so containers created by
+# the old configs (notably chia-opencode-$USER-0 and chia-rtl/sim) must be removed
+# once (`docker rm -f <name>`) before the first `chia up` of this file.
+
+provider:
+    head_ip: "127.0.0.1"
+
+auth:
+    ssh_user: ${USER}
+    ssh_private_key: ~/.ssh/id_ed25519   # comment out if key is in ssh-agent
+
+available_node_types:
+    hello_verilator:
+        resources: {"verilator_run": 1}
+        num_workers: 1
+        compatible_ips: ["127.0.0.1"]
+        docker:
+            image: "ghcr.io/ucb-bar/chia-verilator-run:latest"
+            container_name: "chia-verilator-${USER}"
+            run_options:
+                - --ulimit nofile=65536:65536
+                - --shm-size=10.24gb
+
+    # Shared LLM worker: uvm_loop requests opencode_tools, orfs_loop opencode_creds.
+    # num_workers: 2 -- run14.py's FORCE_SCENARIO_MANIFEST_REGEN=True makes every
+    # invocation call create_agent() (needs opencode_tools) regardless of checkpoint
+    # state, so two designs' UVM stages running at once fully serialize on 1 worker.
+    hello_opencode:
+        resources: {"opencode_creds": 1, "opencode_tools": 1}
+        num_workers: 2
+        compatible_ips: ["127.0.0.1"]
+        worker_setup_commands: ["source ~/.bashrc"]
+        docker:
+            image: "ghcr.io/ucb-bar/chia-opencode:latest"
+            container_name: "chia-opencode-${USER}"
+            run_options:
+                - --shm-size=4gb
+                - -v ${CHIA_PROJECT_ROOT}:/workspace
+                - -v ${CHIA_ORFS_REPO}:/home/ray/chia-orfs
+                - -e PYTHONPATH=/home/ray/chia-orfs
+                - -v ${HOME}/.local/share/opencode/auth.json:/home/ray/.local/share/opencode/auth.json:ro
+                - -e LLM_MODEL=${LLM_MODEL}
+                - -e GOOGLE_GENERATIVE_AI_API_KEY=${GOOGLE_GENERATIVE_AI_API_KEY}
+
+    hello_rtl:
+        resources: {"rtl_extract": 1}
+        num_workers: 1
+        compatible_ips: ["127.0.0.1"]
+        docker:
+            image: "chia-rtl-worker:local"
+            container_name: "chia-rtl-${USER}"
+            pull_before_run: false
+            run_options:
+                - --shm-size=2gb
+                - -v ${CHIA_PROJECT_ROOT}:/workspace
+
+    hello_sim:
+        resources: {"sim_worker": 1}
+        num_workers: 1
+        compatible_ips: ["127.0.0.1"]
+        docker:
+            image: "chia-sim-worker:chia-local"
+            container_name: "chia-sim-${USER}"
+            pull_before_run: false
+            run_options:
+                - --ulimit nofile=65536:65536
+                - -v ${CHIA_PROJECT_ROOT}:/workspace
+
+    hello_orfs:
+        resources: {"orfs_run": 1}
+        num_workers: 6
+        compatible_ips: ["127.0.0.1"]
+        worker_setup_commands: ["source ~/.bashrc", "export USER=root", "export TMPDIR=/tmp"]
+        docker:
+            image: "chia-orfs-run:local"
+            container_name: "chia-orfs-${USER}"
+            pull_before_run: false
+            run_options:
+                - --shm-size=10.24gb
+                - -v ${CHIA_ORFS_REPO}/orfs-native-build:/root/OpenROAD-flow-scripts
+                - -v ${CHIA_ORFS_REPO}:/root/chia-orfs
+                - -e PYTHONPATH=/root/chia-orfs
+
+head_env_commands: ["source ~/.bashrc && conda activate chia_env"]
+head_setup_commands: ["source ~/.bashrc && conda activate chia_env"]
+head_start_ray_commands:
+    - "source ~/.bashrc && conda activate chia_env && ray stop"
+    - "source ~/.bashrc && conda activate chia_env && \
+        ray start --head --port=6379 \
+        --include-dashboard=True --dashboard-agent-listen-port=0"
+worker_start_ray_commands:
+    - "ray stop"
+    - "ray start --address=$RAY_HEAD_IP:6379 --dashboard-agent-listen-port=0"
