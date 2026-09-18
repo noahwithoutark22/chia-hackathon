@@ -26,34 +26,17 @@ git -C orfs_loop/orfs-native-build apply ../orfs-native-build.patch   # restores
 
 ### 2. LLM provider credentials
 
-Every LLM call goes through `opencode`, configured via two files **outside this repo** (per-machine, never commit these):
+Every LLM call goes through `opencode`, configured via two files **outside this repo** (per-machine, never commit these). Templates with placeholder keys are in `templates/` — see `templates/README.md` for the copy-and-edit steps:
 
-- `~/.local/share/opencode/auth.json` — one entry per provider, e.g.:
-  ```json
-  {
-    "opencode": { "type": "api", "key": "<opencode key>" },
-    "nvidia":   { "type": "api", "key": "<build.nvidia.com API key>" }
-  }
+- `~/.local/share/opencode/auth.json` (from `templates/opencode_auth.json.example`) — keys for opencode's built-in providers (`opencode`, `nvidia`, and other opencode-catalog providers like the free `opencode/big-pickle`, `opencode/mimo-v2.5-free` all pick up their key from here automatically by provider name).
+
+- `~/.config/opencode/opencode.jsonc` (from `templates/opencode.jsonc.example`) — **extra NVIDIA models / extra quota buckets** (recommended — a single free-tier key rate-limits fast). Custom providers here do *not* pick up `auth.json` keys automatically; each needs its own key inlined in `options.apiKey`. Don't hand-edit this beyond an initial test — once the cluster is up, add providers with:
+  ```bash
+  uvm_loop/scripts/add_llm_provider.sh <base_url> <api_key> <model_name> [slug]
   ```
-  The built-in `nvidia` provider (and other opencode-catalog providers like the free `opencode/big-pickle`, `opencode/mimo-v2.5-free`) picks up its key from `auth.json` automatically by provider name.
+  This registers the provider, copies the file into every running opencode container (it isn't bind-mounted from the host, so a host-only edit never reaches a container), smoke-tests it live, and only adds it to the fallback list below on success.
 
-- **Extra NVIDIA models / extra quota buckets** (recommended — a single free-tier key rate-limits fast). Register additional custom providers in `~/.config/opencode/opencode.jsonc`, each pointed at `https://integrate.api.nvidia.com/v1` with **its own API key inlined in `options.apiKey`** (custom providers do *not* pick up `auth.json` keys automatically — only opencode's built-in provider IDs do):
-  ```jsonc
-  {
-    "$schema": "https://opencode.ai/config.json",
-    "provider": {
-      "nvidia2": {
-        "npm": "@ai-sdk/openai-compatible",
-        "options": { "baseURL": "https://integrate.api.nvidia.com/v1", "apiKey": "<key 2>" },
-        "models": { "<nvidia-catalog-model-id>": {} }
-      }
-    }
-  }
-  ```
-  Reference such a model as `nvidia2/<nvidia-catalog-model-id>` in the loops' `--model` flags / fallback lists below. **If you run inside Docker workers** (as both loops do), this file isn't bind-mounted from the host by default — `docker cp` it into each opencode container at `/home/ray/.config/opencode/opencode.jsonc` after the cluster is up, or add a bind mount for it in `cluster.yaml`.
-  Smoke-test any new provider/model before relying on it: `opencode run --model nvidia2/<model-id> "reply PONG"` (run this inside the opencode container, not just the host — the two can resolve paths/config differently).
-
-- Both loops have a fallback-model list (`uvm_loop/config/llm_models.txt`, `orfs_loop/llm_fallback_models.txt`) tried in order when the current model rate-limits, errors, or times out. Comment out any model you've confirmed doesn't work for your account, and put your fastest/most reliable models first.
+- Both loops have a fallback-model list (`uvm_loop/config/llm_models.txt`, `orfs_loop/llm_fallback_models.txt`) tried in order when the current model rate-limits, errors, or times out. Comment out any model you've confirmed doesn't work for your account, and put your fastest/most reliable models first. `add_llm_provider.sh` maintains `uvm_loop/config/llm_models.txt` for you; `orfs_loop/llm_fallback_models.txt` still needs manual edits.
 
 ### 3. Run a loop
 
