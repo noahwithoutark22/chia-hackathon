@@ -1,0 +1,35 @@
+// Template for ~/.config/opencode/opencode.jsonc -- extra NVIDIA (or any
+// OpenAI-compatible) providers/models, each with its OWN API key so it
+// fails independently under load instead of sharing one quota bucket.
+//
+// DO NOT rely on this to add providers by hand. Use instead:
+//   uvm_loop/scripts/add_llm_provider.sh <base_url> <api_key> <model_name> [slug]
+// It registers the provider here, copies the file into every running
+// opencode worker container (this path is NOT bind-mounted from the host,
+// unlike auth.json -- edits made only here never reach a running
+// container), smoke-tests it live, and only then adds it to
+// uvm_loop/config/llm_models.txt so it's actually used.
+//
+// This file exists as a reference for what add_llm_provider.sh writes, and
+// as a manual fallback if you ever need to edit it by hand.
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    // One block per extra key/model. "nvidia" itself (no suffix) is a
+    // built-in opencode provider ID and reads its key from auth.json
+    // automatically -- it does NOT go here. Every custom slug below
+    // needs its key inlined in options.apiKey; auth.json's per-provider
+    // key injection only applies to opencode's built-in provider IDs.
+    "nvidia2": {
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "baseURL": "https://integrate.api.nvidia.com/v1",
+        "apiKey": "REPLACE_WITH_YOUR_BUILD_NVIDIA_COM_API_KEY"
+      },
+      "models": { "REPLACE_WITH_A_MODEL_ID_FROM_BUILD_NVIDIA_COM": {} }
+    }
+
+    // Add more "nvidiaN": { ... } blocks here for each additional key,
+    // or just run add_llm_provider.sh and let it pick the next free slot.
+  }
+}

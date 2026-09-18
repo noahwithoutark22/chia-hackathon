@@ -175,6 +175,18 @@ make pipeline BENCHMARK=fifo
 
 ## Verifying Your Own RTL
 
+**The one-command path** (spec + reference model + RTL -> UVM verification
+-> place-and-route -> signed-off GDS): see `scripts/run_full_flow.sh` at the
+repo root. It does everything below (benchmark directory, design YAML) plus
+runs the whole `rtl_to_gds.py` flow under the model-fallback supervisor:
+
+```bash
+scripts/run_full_flow.sh my_fifo path/to/my_fifo.sv path/to/spec.md path/to/ref_model.py
+```
+
+The steps below are what it automates, useful if you want to run only the
+UVM stage, or need more control than the script's env-var overrides give.
+
 **1. Create a benchmark directory:**
 
 ```text
@@ -280,6 +292,21 @@ is the only point a different model actually gets picked. ORFS's
 doesn't share this fallback mechanism.
 
 **Adding a new model/key:**
+
+```bash
+uvm_loop/scripts/add_llm_provider.sh <base_url> <api_key> <model_name> [slug]
+```
+
+Does all 4 steps below in one shot: picks the next free `nvidiaN` slot (or
+use `slug` to name it explicitly), registers it in `opencode.jsonc`, syncs
+it to every running opencode container, smoke-tests it live, and only adds
+it to `config/llm_models.txt` if the smoke test passes. This exists because
+doing this by hand across 3 files (host config + 2 containers) is exactly
+the kind of thing that's easy to get subtly wrong under time pressure —
+wrong slot number, a container missed, or an untested model landing
+straight in the live fallback list.
+
+The manual steps it automates, if you need to do one by hand:
 
 1. Register it as a custom `opencode` provider in
    `~/.config/opencode/opencode.jsonc`:
