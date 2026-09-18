@@ -4553,8 +4553,137 @@ Malformed document:
     raise RuntimeError(f"Unable to produce a valid RTL repair decision after {max_attempts} attempts: {last_error}")
 
 
-def build_rtl_failure_analysis_prompt(workspace, retry_context=None):
+# Outcomes that mean "this iteration's diagnosis did not lead to a fix" --
+# worth warning a later iteration about so it doesn't re-derive the same
+# wrong theory from scratch. "accepted" is deliberately excluded: an
+# accepted candidate is already reflected in the current accepted RTL
+# snapshot, so there's nothing further to warn about.
+_RTL_HISTORY_UNRESOLVED_RESULTS = {
+    "rejected", "no_change", "non_actionable", "template_bug",
+    "ungrounded_reference",
+}
+
+
+def format_prior_iterations_context(history, current_iteration):
+    """Summarize earlier same-run RTL-repair attempts that did NOT resolve
+    the failure, for inclusion in a later iteration's diagnosis prompt.
+
+    Without this, each iteration's analysis workspace is rebuilt from
+    scratch with no memory of previous attempts (see
+    build_rtl_failure_analysis_prompt) -- a diagnosis can re-derive and
+    re-propose the exact same ungrounded theory every iteration, since
+    nothing tells it that theory was already tried and didn't help.
+    """
+    prior = [
+        entry for entry in history
+        if isinstance(entry, dict)
+        and entry.get("iteration") is not None
+        and entry["iteration"] < current_iteration
+        and entry.get("result") in _RTL_HISTORY_UNRESOLVED_RESULTS
+    ]
+    if not prior:
+        return ""
+
+    lines = [
+        f"- Iteration {entry['iteration']} ({entry['result']}): "
+        f"{str(entry.get('root_cause', '')).strip() or '(no root_cause recorded)'}"
+        for entry in prior
+    ]
+    return (
+        "PRIOR ATTEMPTS IN THIS SAME VERIFICATION RUN (none of these fixed "
+        "the failure):\n" + "\n".join(lines) + "\n\n"
+        "These are provided so you do not repeat a diagnosis that already "
+        "failed to fix the problem. Before citing any specific line number "
+        "or line content as evidence, re-read rtl.sv directly in this "
+        "workspace and quote only what is actually there -- do not assume "
+        "a previous iteration's description of the file is still accurate "
+        "(it may have been wrong, or the file may differ from what an "
+        "earlier attempt claimed)."
+    )
+
+
+# Two alternative phrasings observed in practice:
+#   "replace/change [the X] `old` [at line N] with/to `new`"
+#   "... from `old` to `new` ..."
+# Anchoring the second pattern on "from ... to" (rather than reusing the
+# first pattern's "replace/change" prefix) matters: a sentence like
+# "change the assignment inside `if (round == 4'd9)` branch from `done
+# <= 1'b0;` to `done <= 1'b1;`" has an unrelated quoted span (the
+# condition) between "change" and the actual old/new pair, which would
+# otherwise be mismatched as the "old" text.
+_RTL_CHANGE_PAIR_RES = [
+    re.compile(
+        r"""
+        (?:replace|change)\s+               # replace/change ...
+        (?:(?:the|line)\b[^`"]*?)?          # optional "the X" / "line 152" filler
+        [`"]([^`"]+)[`"]                    # old text, quoted
+        [^`"]*?                             # optional filler, e.g. " at line 152 "
+        \s+(?:with|to)\s+                   # with/to
+        [`"]([^`"]+)[`"]                    # new text, quoted
+        """,
+        re.IGNORECASE | re.VERBOSE,
+    ),
+    re.compile(
+        r"""
+        \bfrom\s+
+        [`"]([^`"]+)[`"]                    # old text, quoted
+        \s+to\s+
+        [`"]([^`"]+)[`"]                    # new text, quoted
+        """,
+        re.IGNORECASE | re.VERBOSE,
+    ),
+]
+
+
+def _normalize_rtl_snippet(text):
+    # Strip an optional leading "NNN:" line-number prefix (seen in some
+    # decisions, e.g. "152:             done <= 1'b1;") and collapse
+    # whitespace so formatting differences don't cause false mismatches.
+    text = re.sub(r"^\s*\d+\s*:\s*", "", text.strip())
+    return " ".join(text.split())
+
+
+def find_ungrounded_rtl_changes(decision, current_rtl_text):
+    """Check whether a repair decision's cited "old" snippets actually
+    appear in the current RTL, before spending a repair-apply LLM call and
+    a full simulation on it.
+
+    Deliberately conservative: only flags an instruction when it matches
+    one of the "replace/change X with/to Y" phrasings this pipeline's
+    decisions consistently use (see build_rtl_repair_prompt's examples in
+    practice) AND the quoted old text is genuinely absent. An instruction
+    that doesn't match the pattern is skipped, never treated as a problem
+    -- false negatives are fine here, false positives would block valid
+    repairs phrased slightly differently.
+    """
+    normalized_current = " ".join(current_rtl_text.split())
+    problems = []
+    for change in decision.get("changes") or []:
+        if not isinstance(change, dict) or change.get("action") not in {"modify", "delete"}:
+            continue
+        if str(change.get("file", "")).strip() not in {"rtl.sv", "", None}:
+            continue
+        for instruction in change.get("instructions") or []:
+            if not isinstance(instruction, str):
+                continue
+            seen_pairs = set()
+            for pattern in _RTL_CHANGE_PAIR_RES:
+                for old_snippet, _new_snippet in pattern.findall(instruction):
+                    if old_snippet in seen_pairs:
+                        continue
+                    seen_pairs.add(old_snippet)
+                    old_norm = _normalize_rtl_snippet(old_snippet)
+                    if old_norm and old_norm not in normalized_current:
+                        problems.append(
+                            f'cited old text {old_snippet!r} was not found in the '
+                            f'current rtl.sv (instruction: {instruction!r})'
+                        )
+    return problems
+
+
+def build_rtl_failure_analysis_prompt(workspace, retry_context=None, prior_iterations_context=None):
     retry_context = retry_context or ""
+    prior_iterations_context = prior_iterations_context or ""
     retry_section = ""
     if retry_context.strip():
         retry_section = f"""
@@ -4582,6 +4711,9 @@ RETRY RULES:
 - Do NOT treat previous failed repair attempts as proof that the RTL is
   unrepairable.
 """
+    prior_section = ""
+    if prior_iterations_context.strip():
+        prior_section = f"\n\n{prior_iterations_context}"
     return f"""
 You are the RTL verification failure-analysis LLM.
 
@@ -4596,7 +4728,7 @@ Work ONLY in the current workspace. The workspace contains:
 Unlike the TB-improvement loop, RTL is intentionally visible to you here.
 The purpose of this stage is to determine whether the observed failure is
 actually caused by the RTL, and if so, identify the smallest RTL repair.
-{retry_section}
+{retry_section}{prior_section}
 IMPORTANT:
 - The cocotb + pyuvm TB is FROZEN. Do not propose TB changes.
 - Do not modify the specification, reference model, verification plan, or TB.
@@ -4925,6 +5057,10 @@ def run_rtl_verification_loop():
         )
         shutil.copy2(result_path, analysis_workspace / "simulation_result.json")
 
+        prior_iterations_context = format_prior_iterations_context(
+            load_history(), iteration
+        )
+
         analysis_llm, analysis_bash = create_improvement_agent(
             str(analysis_workspace),
             retries=LLM_RETRIES,
@@ -4933,7 +5069,10 @@ def run_rtl_verification_loop():
             response = get(
                 analysis_llm.prompt.chia_remote(
                     analysis_llm,
-                    build_rtl_failure_analysis_prompt(analysis_workspace),
+                    build_rtl_failure_analysis_prompt(
+                        analysis_workspace,
+                        prior_iterations_context=prior_iterations_context,
+                    ),
                     tools=[analysis_bash],
                 )
             )
@@ -5107,6 +5246,7 @@ def run_rtl_verification_loop():
                             build_rtl_failure_analysis_prompt(
                                 retry_workspace,
                                 retry_context=retry_context,
+                                prior_iterations_context=prior_iterations_context,
                             ),
                             tools=[retry_bash],
                         )
@@ -5328,6 +5468,50 @@ def run_rtl_verification_loop():
                 "RTL repair analysis classified the failure as a "
                 "template/toolchain bug."
             )
+
+        # ---------------------------------------------------------
+        # Grounding check — before spending a repair-apply LLM call and a
+        # full simulation, verify the decision's cited "old" RTL text
+        # actually exists in the current accepted RTL. A decision built on
+        # a hallucinated read of the file (e.g. citing a line's content
+        # that isn't really there) cannot produce a meaningful repair, and
+        # letting it through wastes an entire apply+simulate cycle to
+        # discover that. Conservative by design: only flags instructions
+        # matching the "replace/change X with/to Y" phrasing this pipeline
+        # consistently uses; anything else is left to the normal
+        # apply+simulate+reject path.
+        # ---------------------------------------------------------
+        ungrounded = find_ungrounded_rtl_changes(
+            decision, accepted_snapshot.read_text()
+        )
+        if ungrounded:
+            print("\n✗ RTL repair decision is not grounded in the current RTL:")
+            for problem in ungrounded:
+                print(f"  - {problem}")
+            append_history(
+                {
+                    "iteration": iteration,
+                    "result": "ungrounded_reference",
+                    "root_cause": decision["root_cause"],
+                    "confidence": decision["confidence"],
+                    "decision_path": str(decision_path),
+                    "ungrounded_problems": ungrounded,
+                    "accepted_rtl": str(accepted_snapshot),
+                    "original_rtl": str(original_rtl_path),
+                    "original_rtl_modified": False,
+                }
+            )
+            save_state(
+                status="ready",
+                current_iteration=None,
+                next_iteration=iteration + 1,
+                verified=False,
+                stop_reason="ungrounded_reference",
+                accepted_rtl=str(accepted_snapshot),
+                original_rtl=str(original_rtl_path),
+                original_rtl_modified=False,
+            )
+            continue
 
         # ---------------------------------------------------------
         # RTL repair candidate — only the isolated copy may be edited.
