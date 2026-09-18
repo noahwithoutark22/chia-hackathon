@@ -15,22 +15,30 @@ CHIA consists of **two independent LLM-driven loops** — `uvm_loop/` (RTL verif
 - Enough disk: a single design's ORFS run can produce hundreds of MB of build artifacts under `orfs_runs/`; `generated/designs/` on the UVM side is much smaller.
 - No GPU required.
 
-### 1. Clone and get submodules
+### 1. Clone and run `startup.sh`
 
 ```bash
 git clone https://github.com/noahwithoutark22/chia-hackathon.git
 cd chia-hackathon
-git submodule update --init orfs_loop/orfs-native-build
-git -C orfs_loop/orfs-native-build apply ../orfs-native-build.patch   # restores local sky130hd LVS/CDL fixes
+./startup.sh
 ```
 
-### 2. LLM provider credentials
+`startup.sh` checks prerequisites (`docker`, `chia`, `ray`), initializes the
+ORFS submodule and its local sky130hd LVS/CDL patch, and creates
+`~/.local/share/opencode/auth.json` and `~/.config/opencode/opencode.jsonc`
+from the templates in `templates/` — with placeholder keys, not real ones.
+It never overwrites a file that already exists, and is safe to re-run.
 
-Every LLM call goes through `opencode`, configured via two files **outside this repo** (per-machine, never commit these). Templates with placeholder keys are in `templates/` — see `templates/README.md` for the copy-and-edit steps:
+### 2. Fill in your LLM provider credentials
 
-- `~/.local/share/opencode/auth.json` (from `templates/opencode_auth.json.example`) — keys for opencode's built-in providers (`opencode`, `nvidia`, and other opencode-catalog providers like the free `opencode/big-pickle`, `opencode/mimo-v2.5-free` all pick up their key from here automatically by provider name).
+The two files `startup.sh` created still have `REPLACE_WITH_...`
+placeholders — edit them with real keys before running anything. See
+`templates/README.md` for the copy this came from if you need to redo it
+by hand.
 
-- `~/.config/opencode/opencode.jsonc` (from `templates/opencode.jsonc.example`) — **extra NVIDIA models / extra quota buckets** (recommended — a single free-tier key rate-limits fast). Custom providers here do *not* pick up `auth.json` keys automatically; each needs its own key inlined in `options.apiKey`. Don't hand-edit this beyond an initial test — once the cluster is up, add providers with:
+- `~/.local/share/opencode/auth.json` — keys for opencode's built-in providers (`opencode`, `nvidia`, and other opencode-catalog providers like the free `opencode/big-pickle`, `opencode/mimo-v2.5-free` all pick up their key from here automatically by provider name).
+
+- `~/.config/opencode/opencode.jsonc` — **extra NVIDIA models / extra quota buckets** (recommended — a single free-tier key rate-limits fast). Custom providers here do *not* pick up `auth.json` keys automatically; each needs its own key inlined in `options.apiKey`. Don't hand-edit this beyond an initial test — once the cluster is up, add providers with:
   ```bash
   uvm_loop/scripts/add_llm_provider.sh <base_url> <api_key> <model_name> [slug]
   ```
