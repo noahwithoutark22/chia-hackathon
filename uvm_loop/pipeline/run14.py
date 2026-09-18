@@ -3246,6 +3246,19 @@ MANDATORY SCENARIO-MANIFEST RULES:
   substitute for IDs.
 - The manifest must agree with the `SCENARIO_ID` declared by each
   directed sequence.
+- The `scenarios` list is EXCLUSIVELY for `directed_test_scenarios`
+  entries. `corner_cases` and `randomized_testing_strategy` are
+  SEPARATE plan sections with their own IDs (e.g. `cc1`, `rand1`) --
+  their generated tests/sequences must still exist and be runnable
+  (referenced in `test_classes`), but their IDs must NEVER appear as
+  `scenarios` entries. The deterministic validator rejects any
+  `scenarios` entry whose `id` is not in `directed_test_scenarios` as
+  an "undeclared scenario ID" and fails the whole stage -- this has
+  been the single most common cause of this stage failing to complete.
+  Before finishing, check every `scenarios[].id` against
+  `directed_test_scenarios[].id` in verification_plan.yaml and delete
+  any entry that is not an exact match (including any corner_case or
+  randomized-test entry you may have added).
 
 Do not list the reference model, driver, monitor, scoreboard, coverage,
 or any other generated Python file in compile_files — those are not HDL
