@@ -2920,6 +2920,65 @@ Work in /workspace.
 
 {HARD_CONSTRAINTS}
 
+## CRITICAL DIRECTED TEST ↔ SEQUENCE CONTRACT
+
+The deterministic `validate_scenario_manifest()` validator performs
+static AST-based validation of the generated Python code.
+
+For EVERY directed scenario in the verification plan, the generated
+test class MUST explicitly reference its mapped sequence class.
+
+For a manifest entry such as:
+
+  id: reset_basic
+  sequence: ResetBasicSequence
+  test: TestResetBasic
+
+the generated test class MUST have this form:
+
+  class TestResetBasic(Sha256SingleSequenceTest):
+      def get_sequence_class(self):
+          return ResetBasicSequence
+
+IMPORTANT:
+- `ResetBasicSequence` MUST be an actual Python class symbol.
+- Do NOT use only:
+      SEQUENCE_NAME = "reset_basic"
+- Do NOT use only:
+      run_sequence("reset_basic")
+- Do NOT use only:
+      ALL_SEQUENCES["reset_basic"]
+- Do NOT hide the sequence association entirely inside a base class.
+- The test class itself must contain an explicit
+  `get_sequence_class()` method whose return value is the mapped
+  sequence class symbol.
+- The return value must NOT be a string.
+- The sequence class must still declare:
+      SCENARIO_ID = "reset_basic"
+- The manifest `sequence` field must contain the exact Python class
+  name returned by `get_sequence_class()`.
+- The manifest `test` field must contain the exact generated test
+  class name.
+
+Generate this explicit relationship for every directed scenario.
+
+The reason this explicit method is required is that the deterministic
+validator does not execute generated Python. It verifies the
+test-to-sequence relationship statically through the Python AST.
+
+Example:
+
+  class TestKnownAnswerAbc(Sha256SingleSequenceTest):
+      def get_sequence_class(self):
+          return KnownAnswerAbcSequence
+
+This explicit class-symbol reference is REQUIRED even if a registry
+or SEQUENCE_NAME mechanism would be functionally equivalent.
+
+Before finishing Stage 4 integration, inspect every directed test
+class and verify that its `get_sequence_class()` returns the exact
+sequence class named in the manifest.
+
 Start by running `ls -la /workspace/{TB_DIR_REL}` (and inspect files as
 needed) to see everything the previous five stages already wrote:
 transaction class, sequencer/driver/sequences, monitor/agent,
