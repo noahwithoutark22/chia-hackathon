@@ -511,8 +511,9 @@ def _build_diagnosis_prompt(diagnosis_workspace: Path, tb_attempt: int) -> str:
 
 DIAGNOSIS REQUIREMENTS:
 - The generated TB under {container_tb} is the ONLY TB source you may inspect.
-- The RTL is unavailable and must remain unavailable. Never infer DUT correctness
-  from the observed implementation.
+- The RTL is unavailable and must remain unavailable. Never inspect, reconstruct,
+  infer, or propose changes to the DUT RTL.
+- Never infer DUT correctness from the observed implementation.
 - Inspect the actual traceback and the generated source file/function/line named
   by the failure. Reproduce or trace the failure in the generated TB when practical.
 - A Python exception, non-zero process exit, uncaught runtime error, or clean_exit=false
@@ -521,14 +522,78 @@ DIAGNOSIS REQUIREMENTS:
   into shared generated infrastructure, strongly prefer a generated-TB diagnosis.
 - Do NOT classify a test as a DUT functional failure when the TB crashed before
   scoreboard comparison, assertions, or other meaningful checking could complete.
-- Distinguish: generation_bug, template_bug, and non_actionable using evidence.
+
+VERILATOR COMPILATION FAILURES:
+- A Verilator compilation failure is NOT automatically a template_bug.
+- First determine, using only the available diagnostic evidence, whether the failure
+  is attributable to:
+    1. the generated TB,
+    2. shared verification/simulation infrastructure or templates, or
+    3. the DUT/RTL.
+- If the failure evidence explicitly points to an RTL/DUT source file or indicates
+  that the DUT failed to compile before meaningful TB execution, DO NOT classify it
+  as generation_bug or template_bug.
+- An RTL/DUT compilation failure during TB validation must be classified as
+  non_actionable because the TB diagnosis stage is RTL-blind and cannot safely
+  establish a TB repair.
+- For an RTL/DUT compilation failure, changes MUST be [].
+- NEVER propose, describe, or request a modification to an RTL/DUT file as part of
+  a TB repair plan.
+- If the compilation failure points to a generated TB file and the failure mechanism
+  is concretely identifiable, classify it as generation_bug and provide the exact
+  generated TB file and minimal repair instructions.
+- If the compilation failure points to shared verification infrastructure, simulator
+  configuration, or a common verification template, classify it as template_bug.
+- A template_bug means the shared infrastructure is defective; it MUST NOT contain
+  per-generation repair changes.
+- If the available evidence cannot reliably distinguish an RTL/DUT failure from a
+  TB or infrastructure failure, classify it as non_actionable and set changes: [].
+- Never speculate about the contents or correctness of an unavailable RTL file.
+
+DECISION RULES:
+- Distinguish generation_bug, template_bug, and non_actionable using concrete evidence.
+- generation_bug:
+    The failure is specific to this generated verification environment and can be
+    repaired by modifying generated TB files.
+- template_bug:
+    The failure is caused by shared verification infrastructure, simulation
+    configuration, or a common TB/template defect rather than this generated TB.
+- non_actionable:
+    The failure cannot be safely attributed to a repairable generated-TB defect
+    using the available evidence. This includes RTL/DUT compilation failures and
+    ambiguous failures where the TB-specific cause cannot be established.
+
+CHANGE SAFETY:
 - For generation_bug, root_cause.summary and root_cause.evidence MUST identify the
   concrete failure mechanism, generated file, and affected execution/checking state.
 - Include the exact generated-TB file(s) to repair and minimal instructions.
+- For template_bug, changes MUST be [].
+- For non_actionable, changes MUST be [].
+- Every proposed change for generation_bug MUST target a file inside the generated
+  TB under {container_tb}.
+- NEVER propose a change to the RTL/DUT, including .v, .sv, .vh, or .svh source files.
+- Never use a generated-TB repair to compensate for, hide, bypass, or work around an
+  RTL/DUT compilation failure.
 - Never recommend deleting/weakening assertions, removing scoreboard/reference-model
   checks, disabling coverage, skipping tests, changing expected values, suppressing
   exceptions, or changing stimulus solely to avoid the observed failure.
 - Never modify RTL, specification, reference model, or verification plan.
+
+EVIDENCE REQUIREMENT:
+- Do not infer the root cause merely from the fact that Verilator failed.
+- Base the verdict on the concrete traceback, compiler diagnostic, generated-TB source,
+  and execution state available to you.
+- If the evidence identifies only an RTL/DUT compilation failure, report that the TB
+  could not be meaningfully validated and classify it as non_actionable.
+- If no generated-TB-specific repair can be justified from the evidence, do not invent one.
+
+OUTPUT CONSISTENCY:
+- verdict: template_bug MUST have changes: [].
+- verdict: non_actionable MUST have changes: [].
+- verdict: generation_bug may contain changes, but every changed file MUST be a
+  generated-TB file.
+- The verdict and proposed changes MUST be mutually consistent.
+- Do not output an RTL file in changes under any circumstances.
 """
     return prompt
 
