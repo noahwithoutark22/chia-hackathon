@@ -1,0 +1,44 @@
+# Copyright (c) 2026 CHIA Open Source
+# SPDX-License-Identifier: Apache-2.0
+
+top_module: hamming_encoder
+top_file: benchmarks/hamming_encoder_benchmark_corrupted/hamming_encoder.sv
+compile_files:
+  - benchmarks/hamming_encoder_benchmark_corrupted/hamming_encoder.sv
+test_classes:
+  - TestAllZerosInput
+  - TestAllOnesInput
+  - TestAlternating1010
+  - TestAlternating0101
+  - TestSingleBitSetLSB
+  - TestSingleBitSetMSB
+  - TestMaximumInputValue
+  - TestMinimumInputValue
+  - TestPowerOfTwoDataPattern
+  - TestRandomized
+python_test_module: test_top
+scenarios:
+  - id: '1'
+    name: all_zeros_input
+    sequence: SeqAllZerosInput
+    test: TestAllZerosInput
+  - id: '2'
+    name: all_ones_input
+    sequence: SeqAllOnesInput
+    test: TestAllOnesInput
+  - id: '3'
+    name: alternating_1010
+    sequence: SeqAlternating1010
+    test: TestAlternating1010
+  - id: '4'
+    name: alternating_0101
+    sequence: SeqAlternating0101
+    test: TestAlternating0101
+  - id: '5'
+    name: single_bit_set_lsb
+    sequence: SeqSingleBitSetLSB
+    test: TestSingleBitSetLSB
+  - id: '6'
+    name: single_bit_set_msb
+    sequence: SeqSingleBitSetMSB
+    test: TestSingleBitSetMSB

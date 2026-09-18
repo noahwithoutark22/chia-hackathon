@@ -243,6 +243,83 @@ Logs: `generated/designs/<design>/results/verification_improvement/logs/`
 
 ---
 
+## Multi-Model LLM Fallback
+
+Long verification runs make hundreds of LLM calls. A single free-tier
+provider — `opencode/big-pickle` in particular — is a **shared pool across
+every free-tier opencode-zen-gateway user**, not a private per-account
+quota. That means a manual one-off prompt in your terminal can succeed at
+the exact same time a pipeline run gets `429 Too Many Requests`: the
+pipeline is making far more concurrent, back-to-back requests than a single
+interactive test, so it's much more likely to land when the shared pool is
+saturated. To keep a run from stalling for good on one rate limit, `run14`
+picks its model from an ordered fallback list instead of a single
+hard-coded provider.
+
+**How it works:**
+
+| File | Role |
+|---|---|
+| `config/llm_models.txt` | Ordered list of `provider/model` candidates, one per line. `#`-comments document why any model is excluded (hangs, 404s, etc.). |
+| `generated/llm_model_state.json` | Persisted state: `"current"` (the model in use) and `"cooldown_until"` (a per-model UNIX timestamp map). Safe to hand-edit — delete `"current"` or clear an entry's cooldown to force a re-pick. |
+| `generated/llm_model_usage.jsonl` | Append-only log of every model selection, for auditing which model produced which run. |
+
+On each `run14` startup, `_load_llm_model()` (`pipeline/run14.py`) picks
+`state["current"]` if it isn't in cooldown, otherwise the first candidate
+in `llm_models.txt` that isn't cooled down. On a rate limit or provider
+error, the current model's cooldown is set (`LLM_RATE_LIMIT_COOLDOWN_S`,
+default 1 hour) and the process exits non-zero.
+
+**This is why fallback only actually engages under the supervisor.** A
+bare `python3 -m pipeline.run14` process reads the model once at startup
+and keeps it for its whole lifetime — a rate limit just kills the run. The
+supervisor (`./run_forever.sh`, or `rtl_to_gds.py --uvm-supervised N`)
+restarts on non-zero exit, and each restart re-reads the state file, which
+is the only point a different model actually gets picked. ORFS's
+`orfs_loop.py` takes a simpler, single-shot `--model` flag instead — it
+doesn't share this fallback mechanism.
+
+**Adding a new model/key:**
+
+1. Register it as a custom `opencode` provider in
+   `~/.config/opencode/opencode.jsonc`:
+   ```jsonc
+   "nvidiaN": {
+     "npm": "@ai-sdk/openai-compatible",
+     "options": {
+       "baseURL": "https://integrate.api.nvidia.com/v1",
+       "apiKey": "nvapi-..."
+     },
+     "models": { "<vendor>/<model-name>": {} }
+   }
+   ```
+   (`options.apiKey` is required for a *custom* provider — `auth.json`'s
+   per-provider key injection only applies to opencode's built-in provider
+   IDs like `"nvidia"`, not ones you add yourself.)
+2. Copy the updated config into every opencode worker container — this
+   path is **not** bind-mounted from the host (unlike `auth.json`), so
+   edits need to be pushed explicitly:
+   ```bash
+   docker cp ~/.config/opencode/opencode.jsonc <container>:/home/ray/.config/opencode/opencode.jsonc
+   ```
+   Redo this if a container is ever recreated.
+3. Smoke-test before trusting it in an unattended run:
+   ```bash
+   docker exec <container> opencode run -m nvidiaN/<vendor>/<model-name> "reply with exactly: PONG"
+   ```
+   Give it a generous timeout (60-90s) — some models are slow on a cold
+   first call but fine afterward; don't exclude on a single timeout, retry
+   once. Only exclude a model that hangs or errors *repeatedly*.
+4. Add the verified `provider/model` line to `config/llm_models.txt`, with
+   a comment noting when/how it was verified. Excluded candidates stay in
+   `opencode.jsonc` (commented out of the fallback list, not deleted) so
+   they can be re-tested later without re-registering.
+
+Current pool composition and exclusions are documented in the comment
+block at the top of `config/llm_models.txt`.
+
+---
+
 ## Command Reference
 
 | Task | Command |

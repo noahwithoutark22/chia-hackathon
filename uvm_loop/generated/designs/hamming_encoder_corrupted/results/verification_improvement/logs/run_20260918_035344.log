@@ -1,0 +1,160 @@
+==============================================================================
+Starting run14
+Time          : 2026-09-18T03:53:44+05:30
+Project       : /home/auralab/Desktop/chia-hackathon/uvm_loop
+Design config : pipeline/designs/hamming_encoder_corrupted.yaml
+Design        : hamming_encoder_corrupted
+Max iterations: 25
+Run log       : /home/auralab/Desktop/chia-hackathon/uvm_loop/generated/designs/hamming_encoder_corrupted/results/verification_improvement/logs/run_20260918_035344.log
+==============================================================================
+
+=========================================================
+ CHIA verification run: hamming_encoder_corrupted
+=========================================================
+  RTL:          benchmarks/hamming_encoder_benchmark_corrupted/hamming_encoder.sv
+  Specification:benchmarks/hamming_encoder_benchmark_corrupted/hamming_spec.md
+  Reference:    benchmarks/hamming_encoder_benchmark_corrupted/hamming_reference_model.py
+  Generated TB: generated/designs/hamming_encoder_corrupted/tb
+  Plan:         generated/designs/hamming_encoder_corrupted/plans/verification_plan.yaml
+2026-09-18 03:53:44,663	INFO worker.py:1810 -- Connecting to existing Ray cluster at address: 172.16.36.158:6379...
+2026-09-18 03:53:44,687	INFO worker.py:2004 -- Connected to Ray cluster. View the dashboard at [1m[32m127.0.0.1:8265 [39m[22m
+/home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/ray/_private/worker.py:2052: FutureWarning: Tip: In future versions of Ray, Ray will no longer override accelerator visible devices env var if num_gpus=0 or num_gpus=None (default). To enable this behavior and turn off this error message, set RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
+  warnings.warn(
+/home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/pydantic_settings/sources/utils.py:47: IncompleteFieldDefinitionWarning: Field 'lifespan' has an incomplete definition: its annotation contains an unresolved forward reference, so settings sources may fail to correctly resolve its value. Call `model_rebuild()` on the model where the field is defined, once all the referenced types are defined.
+  warnings.warn(
+[36m(_ToolServerActor pid=46392)[0m INFO:     Started server process [46392]
+[36m(_ToolServerActor pid=46392)[0m INFO:     Waiting for application startup.
+[36m(_ToolServerActor pid=46392)[0m INFO:     Application startup complete.
+[36m(_ToolServerActor pid=46392)[0m INFO:     Uvicorn running on http://172.16.36.158:8000 (Press CTRL+C to quit)
+verification_workspace started at 172.16.36.158:8000 on node 7b5863162596c2d84329017be9217a5acaeae67090cfa47d23662307
+LLM model selected: nvidia/nvidia/nemotron-3-super-120b-a12b
+OpenCodeLLM is experimental: only exercised by unit tests so far, not validated in production.
+
+✓ Found existing rtl_info.json — skipping RTL extraction.
+  RTL info: /home/auralab/Desktop/chia-hackathon/uvm_loop/generated/designs/hamming_encoder_corrupted/rtl/rtl_info.json
+
+✓ Found existing candidate verification plan — skipping generation and resuming at review.
+  Candidate: /home/auralab/Desktop/chia-hackathon/uvm_loop/generated/designs/hamming_encoder_corrupted/plans/candidate_verification_plan.yaml
+
+[3/4] Reviewing verification plan (attempt 1)...
+[36m(_ToolServerActor pid=46392)[0m INFO:     172.16.36.158:55722 - "POST /verification_workspace/mcp HTTP/1.1" 200 OK
+[36m(_ToolServerActor pid=46392)[0m INFO:     172.16.36.158:55722 - "POST /verification_workspace/mcp HTTP/1.1" 202 Accepted
+[36m(_ToolServerActor pid=46392)[0m INFO:     172.16.36.158:55722 - "GET /verification_workspace/mcp HTTP/1.1" 200 OK
+[36m(_ToolServerActor pid=46392)[0m INFO:     172.16.36.158:55736 - "POST /verification_workspace/mcp HTTP/1.1" 200 OK
+
+===== REVIEW =====
+ISSUES_FOUND
+The candidate verification plan contains the following genuine, material defects:
+
+1. Incorrect DUT file path: The plan specifies the DUT file as `generated/designs/hamming_encoder_corrupted/rtl/hamming_encoder.sv`, but this file does not exist. The actual RTL is located at `benchmarks/hamming_encoder_benchmark_corrupted/hamming_encoder.sv`. The `generated/designs/hamming_encoder_corrupted/rtl/` directory only contains `rtl_info.json`.
+
+2. Incorrect expected values in directed test scenarios:
+   - `all_ones_input`: The expected codeword `72'hFFF_FFFF_FFFF_FFFF_FFFF_FFFF` contains 23 hex digits (92 bits) when underscores are removed, but the DUT output is 72 bits (18 hex digits). The correct value from the reference model is `72'hFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF` (18 f's).
+   - `alternating_1010`: The expected codeword `72'haa5_555_555_aaa_aa5_5a5` does not match the reference model output for input `64'haaaaaaaaaaaaaaaa`. The correct value is `72'haa5_555_5555_aaaa_55a5`.
+   - `alternating_0101`: The expected codeword `72'h55A_AAA_AAA_AA5_55A_A5A` does not match the reference model output for input `64'h5555555555555555`. The correct value is `72'h55A_AAA_AAAA_5555_AA5A`.
+
+These defects would cause a testbench generated from this plan to fail due to file not found errors and incorrect expected values, leading to false verification failures.
+
+✗ Verification plan rejected.
+
+Repairing candidate plan...
+Repair attempt 1/5...
+Updated candidate saved to: /home/auralab/Desktop/chia-hackathon/uvm_loop/generated/designs/hamming_encoder_corrupted/plans/candidate_verification_plan.yaml
+
+[3/4] Reviewing verification plan (attempt 2)...
+[36m(_ToolServerActor pid=46392)[0m INFO:     172.16.36.158:49868 - "POST /verification_workspace/mcp HTTP/1.1" 200 OK
+[36m(_ToolServerActor pid=46392)[0m INFO:     172.16.36.158:49868 - "POST /verification_workspace/mcp HTTP/1.1" 202 Accepted
+[36m(_ToolServerActor pid=46392)[0m INFO:     172.16.36.158:49868 - "GET /verification_workspace/mcp HTTP/1.1" 200 OK
+[36m(_ToolServerActor pid=46392)[0m INFO:     172.16.36.158:49876 - "POST /verification_workspace/mcp HTTP/1.1" 200 OK
+
+===== REVIEW =====
+ISSUES_FOUND
+- The overall_parity_even coverage bin in functional_coverage is incorrect: it computes the XOR of only bits 0-7 of codeword (via `(codeword ^ (codeword>>1) ^ ... ^ (codeword>>7)) & 1`) instead of the XOR of all 72 bits.
+- The hamming_p4_parity_even coverage bin is incorrect: it includes extra bits (40-43, 48-51, 56-59, 64-67) in the XOR expression, whereas the correct P4 parity check covers positions {4,5,6,7,12,13,14,15,20,21,22,23,28,29,30,31,36,37,38,39,44,45,46,47,52,53,54,55,60,61,62,63,68,69,70,71}.
+- The hamming_p8_parity_even coverage bin is incorrect: it includes extra bits (32-39, 48-55, 64-71) in the XOR expression, whereas the correct P8 parity check covers positions {8,9,10,11,12,13,14,15,24,25,26,27,28,29,30,31,40,41,42,43,44,45,46,47,56,57,58,59,60,61,62,63}.
+- The hamming_p16_parity_even coverage bin is incorrect: it includes extra bits (32-47, 64-71) in the XOR expression, whereas the correct P16 parity check covers positions {16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63}.
+
+✗ Verification plan rejected.
+
+Repairing candidate plan...
+Repair attempt 2/5...
+Updated candidate saved to: /home/auralab/Desktop/chia-hackathon/uvm_loop/generated/designs/hamming_encoder_corrupted/plans/candidate_verification_plan.yaml
+
+[3/4] Reviewing verification plan (attempt 3)...
+[36m(_ToolServerActor pid=46392)[0m INFO:     172.16.36.158:39352 - "POST /verification_workspace/mcp HTTP/1.1" 200 OK
+[36m(_ToolServerActor pid=46392)[0m INFO:     172.16.36.158:39352 - "POST /verification_workspace/mcp HTTP/1.1" 202 Accepted
+[36m(_ToolServerActor pid=46392)[0m INFO:     172.16.36.158:39352 - "GET /verification_workspace/mcp HTTP/1.1" 200 OK
+[36m(_ToolServerActor pid=46392)[0m INFO:     172.16.36.158:39360 - "POST /verification_workspace/mcp HTTP/1.1" 200 OK
+
+===== REVIEW =====
+NO_ISSUES
+[36m(_ToolServerActor pid=46392)[0m INFO:     Shutting down
+Traceback (most recent call last):
+  File "/home/auralab/Desktop/chia-hackathon/uvm_loop/pipeline/run14.py", line 5900, in main
+    accepted_plan = VerificationPlan.model_validate(parsed)
+  File "/home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/pydantic/main.py", line 716, in model_validate
+    return cls.__pydantic_validator__.validate_python(
+pydantic_core._pydantic_core.ValidationError: 7 validation errors for VerificationPlan
+directed_test_scenarios.0.id
+  Input should be a valid string [type=string_type, input_value=1, input_type=int]
+    For further information visit https://errors.pydantic.dev/2.12/v/string_type
+directed_test_scenarios.1.id
+  Input should be a valid string [type=string_type, input_value=2, input_type=int]
+    For further information visit https://errors.pydantic.dev/2.12/v/string_type
+directed_test_scenarios.2.id
+  Input should be a valid string [type=string_type, input_value=3, input_type=int]
+    For further information visit https://errors.pydantic.dev/2.12/v/string_type
+directed_test_scenarios.3.id
+  Input should be a valid string [type=string_type, input_value=4, input_type=int]
+    For further information visit https://errors.pydantic.dev/2.12/v/string_type
+directed_test_scenarios.4.id
+  Input should be a valid string [type=string_type, input_value=5, input_type=int]
+    For further information visit https://errors.pydantic.dev/2.12/v/string_type
+directed_test_scenarios.5.id
+  Input should be a valid string [type=string_type, input_value=6, input_type=int]
+    For further information visit https://errors.pydantic.dev/2.12/v/string_type
+scoreboard_reference_model_strategy.error_reporting
+  Input should be a valid string [type=string_type, input_value={'description': 'Errors a...d bit-wise difference.'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/string_type
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/auralab/miniconda3/envs/chia_env/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/home/auralab/miniconda3/envs/chia_env/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "/home/auralab/Desktop/chia-hackathon/uvm_loop/pipeline/run14.py", line 6017, in <module>
+    main()
+  File "/home/auralab/Desktop/chia-hackathon/uvm_loop/pipeline/run14.py", line 5912, in main
+    raise RuntimeError(
+RuntimeError: Reviewer accepted the plan, but it failed canonical VerificationPlan validation:
+7 validation errors for VerificationPlan
+directed_test_scenarios.0.id
+  Input should be a valid string [type=string_type, input_value=1, input_type=int]
+    For further information visit https://errors.pydantic.dev/2.12/v/string_type
+directed_test_scenarios.1.id
+  Input should be a valid string [type=string_type, input_value=2, input_type=int]
+    For further information visit https://errors.pydantic.dev/2.12/v/string_type
+directed_test_scenarios.2.id
+  Input should be a valid string [type=string_type, input_value=3, input_type=int]
+    For further information visit https://errors.pydantic.dev/2.12/v/string_type
+directed_test_scenarios.3.id
+  Input should be a valid string [type=string_type, input_value=4, input_type=int]
+    For further information visit https://errors.pydantic.dev/2.12/v/string_type
+directed_test_scenarios.4.id
+  Input should be a valid string [type=string_type, input_value=5, input_type=int]
+    For further information visit https://errors.pydantic.dev/2.12/v/string_type
+directed_test_scenarios.5.id
+  Input should be a valid string [type=string_type, input_value=6, input_type=int]
+    For further information visit https://errors.pydantic.dev/2.12/v/string_type
+scoreboard_reference_model_strategy.error_reporting
+  Input should be a valid string [type=string_type, input_value={'description': 'Errors a...d bit-wise difference.'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/string_type
+------------------------------------------------------------------------------
+run14 exit status: 1
+Time: 2026-09-18T04:07:14+05:30
+Status: PROCESS FAILURE
+Supervisor: restarting after 10s.
+------------------------------------------------------------------------------
+
