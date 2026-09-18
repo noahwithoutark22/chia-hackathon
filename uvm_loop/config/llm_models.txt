@@ -2,17 +2,22 @@
 # current model cools down (LLM_RATE_LIMIT_COOLDOWN_S, default 1 h) and the
 # supervisor restart resumes on the next one.
 #
-# nvidia2/nvidia3/nvidia4/nvidia5/nvidia6 are custom opencode providers (see
+# nvidia2..nvidia9 are custom opencode providers (see
 # ~/.config/opencode/opencode.jsonc, also written into both opencode containers
 # at /home/ray/.config/opencode/opencode.jsonc) -- each is a DIFFERENT NVIDIA
 # build.nvidia.com API key/quota bucket from the original "nvidia" provider, so
-# they fail independently of each other and of "nvidia". Verified live 2026-09-17
-# with a PONG smoke test before being added here.
+# they fail independently of each other and of "nvidia". Verified live
+# 2026-09-17 (2026-09-18 for nvidia7/8/9) with a PONG smoke test before being
+# added here. nvidia9 was slow on its first call (90s, timed out at 60s) but
+# succeeded on retry -- not treated as a hang like nvidia2/gemma below.
 nvidia/nvidia/nemotron-3-super-120b-a12b
 nvidia3/nvidia/nemotron-3-ultra-550b-a55b
 nvidia4/openai/gpt-oss-20b
+nvidia7/openai/gpt-oss-20b
 nvidia5/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning
 nvidia/nvidia/nemotron-3-ultra-550b-a55b
+nvidia8/google/gemma-4-31b-it
+nvidia9/mistralai/mistral-nemotron
 opencode/big-pickle
 opencode/mimo-v2.5-free
 # opencode/nemotron-3-ultra-free -- removed 2026-09-17: provider returns a bare

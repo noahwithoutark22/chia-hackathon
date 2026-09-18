@@ -1,0 +1,15 @@
+# model: nvidia3/nvidia/nemotron-3-ultra-550b-a55b
+# error: Invalid YAML: while scanning an alias
+  in "<unicode string>", line 3, column 1:
+    **Root Cause**: The `check_codew ... 
+    ^
+expected alphabetic or numeric character, but found '*'
+  in "<unicode string>", line 3, column 2:
+    **Root Cause**: The `check_codewo ... 
+     ^
+# ---- raw response ----
+I've created the diagnosis and repair plan. The root cause is clear:
+
+**Root Cause**: The `check_codeword` method in `sequences.py` (line 44) directly calls `.integer` on the DUT's codeword output without handling `ValueError` from unresolved bits (x/z). The corrupted RTL (per DISCREPANCY_003 in the verification plan) leaves `codeword[10]` unassigned, producing x/z in simulation. The monitor and scoreboard both properly catch `ValueError`, but the sequence's inline check does not, causing an unhandled Python exception that crashes all tests before scoreboard comparison can occur.
+
+**Fix**: Add try/except handling in `check_codeword` to match the pattern used in monitor.py and scoreboard.py.
