@@ -18,7 +18,7 @@ CHIA consists of **two independent LLM-driven loops** — `uvm_loop/` (RTL verif
 ### 1. Clone and get submodules
 
 ```bash
-git clone <this-repo-url> chia-hackathon
+git clone https://github.com/noahwithoutark22/chia-hackathon.git
 cd chia-hackathon
 git submodule update --init orfs_loop/orfs-native-build
 git -C orfs_loop/orfs-native-build apply ../orfs-native-build.patch   # restores local sky130hd LVS/CDL fixes
