@@ -39,6 +39,98 @@ def log(msg: str) -> None:
     print(f"[rtl_to_gds] {msg}", flush=True)
 
 
+# ------------------------------------------------------------- log collection
+
+def start_console_tee(log_path: Path) -> subprocess.Popen:
+    """Duplicate this process's stdout/stderr into `log_path` from here on.
+
+    Redirects the real OS file descriptors (not just sys.stdout), via a
+    `tee` child fed through a pipe, so output from subprocess.call'd children
+    (run_uvm_stage, run_orfs_stage) is captured too, not just this script's
+    own print()/log() calls. tee's own stdout stays attached to whatever this
+    process inherited, so the console still sees everything live; it's the
+    pipe write-end this process's fd 1/2 get pointed at.
+    """
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    tee = subprocess.Popen(["tee", "-a", str(log_path)], stdin=subprocess.PIPE)
+    os.dup2(tee.stdin.fileno(), sys.stdout.fileno())
+    os.dup2(tee.stdin.fileno(), sys.stderr.fileno())
+    return tee
+
+
+def stop_console_tee(tee: subprocess.Popen | None) -> None:
+    if tee is None:
+        return
+    sys.stdout.flush()
+    sys.stderr.flush()
+    try:
+        tee.stdin.close()
+        tee.wait(timeout=10)
+    except Exception:
+        pass
+
+
+# Log-like files worth pulling into one place; explicitly excludes physical-
+# design artifacts (GDS/DEF/LEF/CDL/ODB/build trees) which are large and are
+# not logs -- they stay where ORFS/uvm_loop already put them.
+_LOG_COLLECT_EXTENSIONS = {".log", ".json", ".yaml", ".yml", ".rpt", ".txt", ".done"}
+_LOG_COLLECT_EXCLUDE_DIRS = {".chia_sim", "objects", "__pycache__", "tb", "src", "verified_rtl"}
+
+
+def _copy_logs_from(src_root: Path, dest_root: Path) -> list[str]:
+    """Copy every log-like file under src_root into dest_root, preserving its
+    relative path. Best-effort: a file that fails to copy is skipped rather
+    than failing the whole run -- this is convenience aggregation, not a
+    source of truth (the originals are left in place, untouched).
+    """
+    copied = []
+    if not src_root.is_dir():
+        return copied
+    for path in src_root.rglob("*"):
+        if not path.is_file() or path.suffix.lower() not in _LOG_COLLECT_EXTENSIONS:
+            continue
+        rel = path.relative_to(src_root)
+        if _LOG_COLLECT_EXCLUDE_DIRS & set(rel.parts[:-1]):
+            continue
+        dest = dest_root / rel
+        try:
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(path, dest)
+            copied.append(str(rel))
+        except OSError:
+            continue
+    return copied
+
+
+def collect_run_logs(logs_dir: Path, uvm_dir: Path, cfg: dict,
+                     run_dir: Path | None, result: dict) -> Path:
+    """Gather every log/report/state file this exact run produced -- UVM
+    verification and ORFS closure -- into one directory, so nothing has to be
+    hunted down across uvm_loop/generated/designs/<design>/ and
+    <orfs_repo>/orfs_runs/<run>/ separately afterwards.
+    """
+    logs_dir.mkdir(parents=True, exist_ok=True)
+
+    name = cfg["name"]
+    output_parent = str(cfg.get("output_parent", "generated/designs")).rstrip("/")
+    gen_root = uvm_dir / output_parent / name
+
+    uvm_copied = _copy_logs_from(gen_root, logs_dir / "uvm")
+    orfs_copied = _copy_logs_from(run_dir, logs_dir / "orfs") if run_dir else []
+
+    (logs_dir / "manifest.json").write_text(json.dumps({
+        "generated_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "design": name,
+        "uvm_source": str(gen_root),
+        "orfs_source": str(run_dir) if run_dir else None,
+        "uvm_files_collected": len(uvm_copied),
+        "orfs_files_collected": len(orfs_copied),
+    }, indent=2))
+    (logs_dir / "rtl_to_gds.json").write_text(json.dumps(result, indent=2, default=str))
+    log(f"Collected {len(uvm_copied) + len(orfs_copied)} log files into {logs_dir}")
+    return logs_dir
+
+
 # ---------------------------------------------------------------- stage 1: UVM
 
 def resolve_design_config(arg: str, uvm_dir: Path) -> Path:
@@ -417,6 +509,13 @@ def parse_args(argv: list[str]):
     ap.add_argument("--skip-preflight", action="store_true")
     ap.add_argument("--result-json", type=Path, default=None,
                     help="Also write the run record (stage timings, handoff, ORFS outcome) here")
+    ap.add_argument("--logs-dir", type=Path, default=None,
+                    help="Collect every log/report/state file from this run here once it "
+                         "finishes (default: <result-json's dir>/logs, or "
+                         "<orfs-repo>/orfs_runs/<design>-logs-<ts> if --result-json is not "
+                         "given). Also tees this run's full console output there live.")
+    ap.add_argument("--no-logs-collect", action="store_true",
+                    help="Disable log collection and the console tee entirely")
     args = ap.parse_args(argv)
     return args, orfs_extra
 
@@ -428,6 +527,12 @@ def main(argv: list[str] | None = None) -> int:
 
     stages: dict[str, dict] = {}
     result: dict = {"argv": sys.argv, "stages": stages}
+    # Set before the try block so finish() (reachable from the except clause
+    # too) never NameErrors if something fails before these are computed,
+    # e.g. an unresolvable --design-config.
+    cfg: dict = {}
+    logs_dir: Path | None = None
+    tee: subprocess.Popen | None = None
 
     def timed(name, fn, *a):
         start = time.time()
@@ -442,14 +547,31 @@ def main(argv: list[str] | None = None) -> int:
         if args.result_json:
             args.result_json.parent.mkdir(parents=True, exist_ok=True)
             args.result_json.write_text(json.dumps(result, indent=2, default=str))
-        run_dir = result.get("orfs_run_dir")
-        if run_dir and Path(run_dir).is_dir():
-            (Path(run_dir) / "rtl_to_gds.json").write_text(json.dumps(result, indent=2, default=str))
+        run_dir_str = result.get("orfs_run_dir")
+        run_dir = Path(run_dir_str) if run_dir_str else None
+        if run_dir and run_dir.is_dir():
+            (run_dir / "rtl_to_gds.json").write_text(json.dumps(result, indent=2, default=str))
+        if not args.no_logs_collect and logs_dir is not None and cfg:
+            try:
+                collect_run_logs(logs_dir, uvm_dir, cfg, run_dir, result)
+            except Exception as exc:  # best-effort: never fail a run over log collection
+                log(f"WARNING: log collection failed: {exc}")
+        stop_console_tee(tee)
         return rc
 
     try:
         design_config = resolve_design_config(args.design_config, uvm_dir)
         cfg = yaml.safe_load(design_config.read_text())
+
+        if args.logs_dir:
+            logs_dir = args.logs_dir.resolve()
+        elif args.result_json:
+            logs_dir = args.result_json.resolve().parent / "logs"
+        else:
+            logs_dir = orfs_repo / "orfs_runs" / f"{cfg['name']}-logs-{int(time.time())}"
+        if not args.no_logs_collect:
+            tee = start_console_tee(logs_dir / "console.log")
+            log(f"Logs for this run will be collected under {logs_dir}")
 
         run_uvm = not args.skip_uvm
         if not args.skip_preflight:
