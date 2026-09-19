@@ -291,7 +291,6 @@ MAX_REPAIR_ATTEMPTS = 5
 MAX_TB_REPAIR_ATTEMPTS = 5
 MAX_RTL_REPAIR_ATTEMPTS = int(os.environ.get("MAX_RTL_REPAIR_ATTEMPTS", "5"))
 MAX_RTL_VERIFICATION_ITERATIONS = int(os.environ.get("MAX_RTL_VERIFICATION_ITERATIONS", "10"))
-RTL_MIN_SCORE_DELTA = float(os.environ.get("RTL_IMPROVEMENT_MIN_DELTA", "1.0"))
 
 # A non_actionable RTL diagnosis means that the LLM could not yet establish
 # enough evidence for a grounded repair decision.  It is retryable, but only
@@ -5075,10 +5074,17 @@ def run_rtl_verification_loop():
     under ``generated/designs/<design>/rtl_verification/accepted/`` and every
     simulation uses either that accepted snapshot or an isolated candidate.
     A candidate that passes is promoted immediately and completes verification.
-    A failing candidate is promoted only when its deterministic verification
-    quality score improves over the currently accepted RTL by at least
-    ``RTL_MIN_SCORE_DELTA``. This allows iterative RTL repair while preventing
-    regressions. The benchmark RTL is never modified.
+    A failing candidate is promoted whenever it does not regress the
+    deterministic verification quality score versus the currently accepted
+    RTL (score stays the same or improves). This allows incremental RTL
+    repair across iterations - a candidate that fixes a real bug but leaves
+    the score unchanged (because other, still-unfixed bugs mask the effect)
+    is kept rather than discarded, so the LLM is not forced to rediscover
+    the same bug from scratch on the next iteration. Cross-iteration history
+    (``rtl_repair_history.json``) is fed back into the diagnosis prompt so
+    the LLM knows what has already been tried. A candidate is only rejected
+    when it actually makes the quality score worse. The benchmark RTL is
+    never modified.
     """
     tb_dir = TB_DIR
     plan_path = HOST_WORKSPACE / PLAN
@@ -5945,9 +5951,9 @@ def run_rtl_verification_loop():
         print(f"Candidate score report: {candidate_score_path}")
 
         candidate_passed = candidate_analysis.get("verdict") == "pass"
-        score_improved = candidate_score >= (baseline_score + RTL_MIN_SCORE_DELTA)
+        non_regression = candidate_score >= baseline_score
 
-        if candidate_passed or score_improved:
+        if candidate_passed or non_regression:
             # Promotion occurs only between generated snapshots.
             promote_candidate(candidate_snapshot)
 
@@ -5955,7 +5961,7 @@ def run_rtl_verification_loop():
                 acceptance_reason = "passed_all_required_tests"
                 next_status = "verified"
             else:
-                acceptance_reason = "quality_score_improved"
+                acceptance_reason = "no_regression"
                 next_status = "ready"
 
             append_history(
@@ -5970,7 +5976,6 @@ def run_rtl_verification_loop():
                     "baseline_quality_score": baseline_score,
                     "candidate_quality_score": candidate_score,
                     "score_delta": candidate_score - baseline_score,
-                    "required_score_delta": RTL_MIN_SCORE_DELTA,
                     "baseline_tests_failed": baseline_failed,
                     "candidate_tests_failed": candidate_failed,
                     "accepted_rtl": str(accepted_snapshot),
@@ -6029,13 +6034,12 @@ def run_rtl_verification_loop():
                 original_rtl_modified=False,
             )
             print(
-                f"\n✓ RTL repair accepted as an intermediate improvement at "
+                f"\n✓ RTL repair accepted (no regression) at "
                 f"iteration {iteration}."
                 f" Score: {baseline_score:.2f} -> {candidate_score:.2f} "
-                f"(Δ={candidate_score - baseline_score:.2f}; "
-                f"required ≥ {RTL_MIN_SCORE_DELTA:.2f})."
+                f"(Δ={candidate_score - baseline_score:.2f})."
             )
-            print("  Continuing from the improved accepted RTL on the next iteration.")
+            print("  Continuing from the updated accepted RTL on the next iteration.")
             print("✓ Original benchmark RTL was not modified.")
             continue
 
@@ -6053,7 +6057,6 @@ def run_rtl_verification_loop():
                 "baseline_quality_score": baseline_score,
                 "candidate_quality_score": candidate_score,
                 "score_delta": candidate_score - baseline_score,
-                "required_score_delta": RTL_MIN_SCORE_DELTA,
                 "baseline_tests_failed": baseline_failed,
                 "candidate_tests_failed": candidate_failed,
                 "accepted_rtl": str(accepted_snapshot),
@@ -6073,12 +6076,11 @@ def run_rtl_verification_loop():
         )
         print(
             f"\n✗ RTL repair rejected at iteration {iteration}; "
-            "candidate neither passed nor improved the accepted RTL enough."
+            "candidate regressed the accepted RTL's quality score."
         )
         print(
             f"  Score: {baseline_score:.2f} -> {candidate_score:.2f} "
-            f"(Δ={candidate_score - baseline_score:.2f}; "
-            f"required ≥ {RTL_MIN_SCORE_DELTA:.2f})."
+            f"(Δ={candidate_score - baseline_score:.2f})."
         )
         print("✓ Original benchmark RTL was not modified.")
 
