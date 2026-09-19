@@ -111,6 +111,16 @@ _MODEL_UNAVAILABLE_MARKERS = (
     # all internal retries comes back as success=False with no exception and empty
     # result/stderr -- treat that silent stall the same as a rate limit.
     "silent timeout, empty response",
+    # Observed live 2026-09-18 on nvidia4/openai/gpt-oss-20b: the model
+    # repeatedly emits a malformed tool-call header ("unexpected tokens
+    # remaining in message header"), burning all 5 of opencode's internal
+    # retries on effectively every long/complex agentic stage (e.g. UVM
+    # integration) without ever completing -- 30+ consecutive run14
+    # restarts all re-selected the same model and hit the identical
+    # failure, since this error text previously matched none of the
+    # markers above and so never cooled the model down. Treat it the same
+    # as a rate limit so a restart tries a genuinely different model.
+    "unexpected tokens remaining in message header",
 )
 
 
@@ -486,6 +496,73 @@ def _validate_verification_integrity(before: dict, after: dict, changed_files: l
     return not errors, errors
 
 
+def _load_json_list_history(path: Path) -> list:
+    """Generic reader for a JSON-array history file. Missing/corrupt -> []."""
+    if not path.exists():
+        return []
+    try:
+        data = json.loads(path.read_text())
+    except (json.JSONDecodeError, OSError):
+        return []
+    return data if isinstance(data, list) else []
+
+
+def _append_json_list_history(path: Path, entry: dict) -> list:
+    """Generic appender for a JSON-array history file, written atomically."""
+    history = _load_json_list_history(path)
+    history.append(entry)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(json.dumps(history, indent=2, sort_keys=True))
+    os.replace(tmp, path)
+    return history
+
+
+def _format_prior_tb_attempts_context(current_attempt: int) -> str:
+    """Summarize earlier same-design TB-diagnosis/repair attempts for the
+    next diagnosis prompt, read directly from the tb_update_plan_iteration_*.yaml
+    artifacts each attempt already writes (no separate history file needed).
+
+    Without this, each diagnosis attempt only sees the current simulation
+    result and can re-derive a diagnosis/fix that an earlier attempt already
+    tried and that did not resolve the failure -- the same cross-iteration
+    blindness fixed for the RTL-repair loop (see
+    format_prior_iterations_context below).
+    """
+    results_dir = HOST_WORKSPACE / DESIGN_GENERATED_ROOT / "results"
+    lines = []
+    for i in range(current_attempt):
+        plan_path = results_dir / f"tb_update_plan_iteration_{i}.yaml"
+        if not plan_path.exists():
+            continue
+        try:
+            prior_plan = yaml.safe_load(plan_path.read_text()) or {}
+        except yaml.YAMLError:
+            continue
+        if not isinstance(prior_plan, dict):
+            continue
+        verdict = prior_plan.get("verdict", "unknown")
+        root_cause = str((prior_plan.get("root_cause") or {}).get("summary", "")).strip()
+        changed_files = sorted({
+            str(c.get("file")) for c in (prior_plan.get("changes") or [])
+            if isinstance(c, dict) and c.get("file")
+        })
+        suffix = f" [changed: {', '.join(changed_files)}]" if changed_files else ""
+        lines.append(f"- Attempt {i} ({verdict}): {root_cause or '(no root_cause recorded)'}{suffix}")
+
+    if not lines:
+        return ""
+
+    return (
+        "PRIOR TB-DIAGNOSIS ATTEMPTS FOR THIS SAME GENERATED TB (the "
+        "simulation still failed after each of these):\n" + "\n".join(lines) + "\n\n"
+        "These are provided so you do not repeat a diagnosis or fix that "
+        "already failed to resolve the failure. Before citing any file or "
+        "line content as evidence, re-read the current generated TB and "
+        "simulation_result.json directly in this workspace -- do not assume "
+        "a previous attempt's description of the TB is still accurate."
+    )
+
+
 def _build_diagnosis_prompt(diagnosis_workspace: Path, tb_attempt: int) -> str:
     """Use the sanitized TB for deterministic scanning and its container path for the LLM."""
     host_tb = diagnosis_workspace / "tb"
@@ -507,8 +584,12 @@ def _build_diagnosis_prompt(diagnosis_workspace: Path, tb_attempt: int) -> str:
         update_plan_path=container_plan,
     )
     prompt = prompt.replace(str(host_tb), container_tb)
-    prompt += f"""
 
+    prior_context = _format_prior_tb_attempts_context(tb_attempt)
+    prior_section = f"\n\n{prior_context}" if prior_context else ""
+
+    prompt += f"""
+{prior_section}
 DIAGNOSIS REQUIREMENTS:
 - The generated TB under {container_tb} is the ONLY TB source you may inspect.
 - The RTL is unavailable and must remain unavailable. Never inspect, reconstruct,
@@ -2081,8 +2162,41 @@ more exhaustive, or more elaborate — that is not a defect.
 
 # =========================================================
 
-def repair_candidate_plan(llm, bash, candidate, review, yaml_error=None):
+def format_prior_plan_reviews_context(history, current_attempt):
+    """Summarize earlier same-run plan-review findings that did NOT get the
+    candidate accepted, for inclusion in a later repair attempt's prompt.
+
+    Without this, each repair only sees the single most-recent review, so a
+    fix applied on attempt N can silently regress an issue an earlier
+    review (attempt < N) already flagged and that this repair pass
+    re-introduces -- the repair LLM has no way to know that happened.
+    """
+    prior = [
+        entry for entry in history
+        if isinstance(entry, dict)
+        and entry.get("attempt") is not None
+        and entry["attempt"] < current_attempt
+    ]
+    if not prior:
+        return ""
+    blocks = [
+        f"--- Attempt {entry['attempt']} review ---\n{str(entry.get('review', '')).strip()}"
+        for entry in prior
+    ]
+    return (
+        "PRIOR REVIEW FINDINGS IN THIS SAME RUN (the candidate was rejected "
+        "each time):\n\n" + "\n\n".join(blocks) + "\n\n"
+        "These are provided so your edit does not resolve the latest finding "
+        "by reintroducing a problem an earlier review already flagged. Check "
+        "your fix against every prior finding above, not just the latest "
+        "one, before returning the plan."
+    )
+
+
+def repair_candidate_plan(llm, bash, candidate, review, yaml_error=None, prior_reviews_context=""):
     """Repair the existing candidate using reviewer findings only."""
+
+    prior_section = f"\n\n{prior_reviews_context}" if prior_reviews_context.strip() else ""
 
     prompt = f"""
 You are a verification-plan editor.
@@ -2103,6 +2217,7 @@ Preserve all correct content and the existing YAML structure.
 ---BEGIN REVIEW FINDINGS---
 {review}
 ---END REVIEW FINDINGS---
+{prior_section}
 
 ---BEGIN PREVIOUS YAML ERROR---
 {yaml_error or "None"}
@@ -2625,9 +2740,22 @@ Do NOT add text before or after the YAML.
 # Shared, compact constraint block used by every cocotb+pyuvm
 # generation stage below (kept short and separate so it isn't
 # re-deriving conventions from a giant prompt each time).
+#
+# This MUST be a function, not a module-level f-string constant: it
+# embeds {TB_DIR_REL}, and a module-level f-string is evaluated once at
+# import time -- before configure_design() (called from main(), much
+# later) has overwritten TB_DIR_REL/DESIGN_NAME from the actual
+# --design-config argument. A frozen constant here silently told every
+# generation stage, for every design ever run, to write its files under
+# the hardcoded default design's tb dir ("adder", the module-level
+# default at DESIGN_NAME's definition) instead of the real one --
+# confirmed live: the coverage_assertions and integration stages for
+# aes128_benchmark_corrupted wrote generated/designs/adder/tb/{coverage,
+# assertions}.py instead of aes128_benchmark_corrupted's own tb dir.
 # =========================================================
 
-HARD_CONSTRAINTS = f"""
+def _hard_constraints() -> str:
+    return f"""
 COCOTB + PYUVM COMPATIBILITY REQUIREMENTS (HARD, apply to every file you write):
 - The testbench is implemented entirely in Python using cocotb + pyuvm.
   Do NOT generate any SystemVerilog UVM code: no SystemVerilog
@@ -2754,7 +2882,7 @@ Establish the foundation every later stage will build on:
      (and any helper object) between components
    - clock and reset signal names and reset polarity/type
 
-{HARD_CONSTRAINTS}
+{_hard_constraints()}
 
 ## RELEVANT VERIFICATION PLAN SECTIONS
 {plan_bits}
@@ -2801,7 +2929,7 @@ root /workspace/{DESIGN_GENERATED_ROOT} for all generated artifacts.
 
 {consult_contract()}
 
-{HARD_CONSTRAINTS}
+{_hard_constraints()}
 
 Generate the pyuvm sequencer (`uvm_sequencer`), driver (`uvm_driver`),
 and sequences (`uvm_sequence` subclasses — directed, corner-case, and
@@ -2859,7 +2987,7 @@ Work in /workspace.
 
 {consult_contract()}
 
-{HARD_CONSTRAINTS}
+{_hard_constraints()}
 
 Generate the pyuvm monitor (`uvm_monitor`) and agent (`uvm_agent`,
 encapsulating driver/sequencer from the previous stage and this stage's
@@ -2896,7 +3024,7 @@ Work in /workspace.
 
 {consult_contract()}
 
-{HARD_CONSTRAINTS}
+{_hard_constraints()}
 
 Generate the scoreboard (`uvm_scoreboard`) and its reference-model
 integration, following:
@@ -2943,7 +3071,7 @@ Work in /workspace.
 
 {consult_contract()}
 
-{HARD_CONSTRAINTS}
+{_hard_constraints()}
 
 Generate functional coverage and assertions per:
 
@@ -2983,7 +3111,7 @@ Work in /workspace.
 
 {consult_contract()}
 
-{HARD_CONSTRAINTS}
+{_hard_constraints()}
 
 ## CRITICAL DIRECTED TEST ↔ SEQUENCE CONTRACT
 
@@ -3118,6 +3246,19 @@ MANDATORY SCENARIO-MANIFEST RULES:
   substitute for IDs.
 - The manifest must agree with the `SCENARIO_ID` declared by each
   directed sequence.
+- The `scenarios` list is EXCLUSIVELY for `directed_test_scenarios`
+  entries. `corner_cases` and `randomized_testing_strategy` are
+  SEPARATE plan sections with their own IDs (e.g. `cc1`, `rand1`) --
+  their generated tests/sequences must still exist and be runnable
+  (referenced in `test_classes`), but their IDs must NEVER appear as
+  `scenarios` entries. The deterministic validator rejects any
+  `scenarios` entry whose `id` is not in `directed_test_scenarios` as
+  an "undeclared scenario ID" and fails the whole stage -- this has
+  been the single most common cause of this stage failing to complete.
+  Before finishing, check every `scenarios[].id` against
+  `directed_test_scenarios[].id` in verification_plan.yaml and delete
+  any entry that is not an exact match (including any corner_case or
+  randomized-test entry you may have added).
 
 Do not list the reference model, driver, monitor, scoreboard, coverage,
 or any other generated Python file in compile_files — those are not HDL
@@ -3196,11 +3337,20 @@ def generate_and_validate_uvm(llm, bash, canonical_plan):
     print("\n[4/4] Generating cocotb+pyuvm environment (staged)...")
 
     # If a previously generated TB exists but its scenario manifest is
-    # inconsistent with the accepted plan, preserve all earlier generated
-    # components and rerun only the integration stage that owns the manifest.
-    # This avoids unnecessary LLM regeneration while preventing an invalid
-    # manifest from being carried into simulation.
-    if TB_DIR.is_dir() and (TB_DIR / "generation_manifest.yaml").is_file():
+    # missing or inconsistent with the accepted plan, preserve all earlier
+    # generated components and rerun only the integration stage that owns
+    # the manifest. This avoids unnecessary LLM regeneration while
+    # preventing an invalid (or entirely absent) manifest from being
+    # carried into simulation.
+    #
+    # Deliberately not gated on the manifest file existing: if the
+    # 'integration' LLM stage ran, got marked done, but never actually
+    # wrote generation_manifest.yaml, every restart used to skip straight
+    # past this guard (file doesn't exist -> condition False), then hit
+    # the hard gate below with the same "not found" error every time --
+    # an unrecoverable crash-loop. validate_scenario_manifest() already
+    # treats a missing manifest as invalid, so it alone is sufficient.
+    if TB_DIR.is_dir():
         manifest_valid, manifest_errors = validate_scenario_manifest(PLAN, TB_DIR)
         if not manifest_valid:
             print("\n⚠ Existing scenario manifest is invalid; "
@@ -6160,6 +6310,7 @@ def main():
             # =================================================
 
             repair_yaml_error = None
+            plan_review_history_path = candidate_path.parent / "plan_review_history.json"
 
             for attempt in range(MAX_REPAIR_ATTEMPTS + 1):
 
@@ -6204,6 +6355,7 @@ def main():
                     # The LLM YAML is only an intermediate representation.
                     # Validate it against the canonical VerificationPlan
                     # before promoting it to the downstream artifact.
+                    schema_validation_error = None
                     try:
                         accepted_plan = VerificationPlan.model_validate(parsed)
                     except Exception as exc:
@@ -6216,25 +6368,100 @@ def main():
                         # such stubs is returned unchanged) and re-raises the
                         # original error if that wasn't the actual problem.
                         pruned, dropped = _drop_empty_scenario_stubs(parsed)
-                        if not dropped:
-                            raise RuntimeError(
+                        if dropped:
+                            print(
+                                f"\n⚠ Dropping {len(dropped)} content-free scenario "
+                                f"stub(s) from the accepted plan: {dropped}"
+                            )
+                            try:
+                                accepted_plan = VerificationPlan.model_validate(pruned)
+                                parsed = pruned
+                            except Exception as exc2:
+                                schema_validation_error = (
+                                    "Reviewer accepted the plan, but it failed "
+                                    "canonical VerificationPlan validation even "
+                                    f"after dropping empty stubs {dropped}:\n{exc2}"
+                                )
+                        else:
+                            schema_validation_error = (
                                 "Reviewer accepted the plan, but it failed "
                                 "canonical VerificationPlan validation:\n"
                                 f"{exc}"
-                            ) from exc
+                            )
+
+                    if schema_validation_error is not None:
+                        # The reviewer only checks semantics, not schema
+                        # shape -- it approved a plan the LLM generator got
+                        # wrong in a way stub-dropping can't fix (e.g. a
+                        # bool where a string is required, an int where a
+                        # list is required). Previously this raised
+                        # immediately and crashed run14 outright: since the
+                        # on-disk candidate is unchanged, a supervisor
+                        # restart resumes review on the SAME candidate, the
+                        # reviewer is very likely to say "no_issues" again,
+                        # and validation fails identically -- an infinite
+                        # crash-loop. Feed the validation error back into
+                        # the same repair budget/history used for semantic
+                        # rejections instead, so the LLM coerces the types
+                        # and the loop keeps making progress.
                         print(
-                            f"\n⚠ Dropping {len(dropped)} content-free scenario "
-                            f"stub(s) from the accepted plan: {dropped}"
+                            f"\n✗ Verification plan rejected (schema "
+                            f"validation): {schema_validation_error}"
                         )
-                        try:
-                            accepted_plan = VerificationPlan.model_validate(pruned)
-                        except Exception as exc2:
+
+                        plan_review_history = _append_json_list_history(
+                            plan_review_history_path,
+                            {"attempt": attempt + 1, "review": schema_validation_error},
+                        )
+
+                        if attempt >= MAX_REPAIR_ATTEMPTS:
                             raise RuntimeError(
-                                "Reviewer accepted the plan, but it failed "
-                                "canonical VerificationPlan validation even "
-                                f"after dropping empty stubs {dropped}:\n{exc2}"
-                            ) from exc2
-                        parsed = pruned
+                                "\nVerification plan repeatedly passed semantic "
+                                "review but failed canonical VerificationPlan "
+                                "schema validation.\n\n"
+                                "The candidate has NOT been promoted to "
+                                "verification_plan.yaml.\n\n"
+                                f"Candidate remains available at:\n"
+                                f"{candidate_path}\n\n"
+                                f"Final validation error:\n{schema_validation_error}"
+                            )
+
+                        print("\nRepairing candidate plan for schema validation...")
+                        print(
+                            f"Repair attempt {attempt + 1}/"
+                            f"{MAX_REPAIR_ATTEMPTS}..."
+                        )
+
+                        prior_reviews_context = format_prior_plan_reviews_context(
+                            plan_review_history, attempt + 1
+                        )
+
+                        raw_repaired_candidate = repair_candidate_plan(
+                            llm,
+                            bash,
+                            candidate,
+                            (
+                                "The plan passed semantic review but failed "
+                                "strict schema validation against the "
+                                "canonical VerificationPlan model. Fix ONLY "
+                                "the type/shape mismatches identified below; "
+                                "do not otherwise change the plan's content "
+                                "or meaning:\n\n" + schema_validation_error
+                            ),
+                            repair_yaml_error,
+                            prior_reviews_context=prior_reviews_context,
+                        )
+
+                        candidate = ensure_valid_yaml(
+                            llm,
+                            raw_repaired_candidate,
+                            "schema repair",
+                            max_attempts=5,
+                        )
+                        repair_yaml_error = None
+                        candidate_path.write_text(candidate)
+                        print(f"Updated candidate saved to: {candidate_path}")
+                        continue
 
                     # Serialize the validated model, not the raw LLM YAML.
                     canonical_plan = yaml.safe_dump(
@@ -6267,6 +6494,11 @@ def main():
 
                 print("\n✗ Verification plan rejected.")
 
+                plan_review_history = _append_json_list_history(
+                    plan_review_history_path,
+                    {"attempt": attempt + 1, "review": review},
+                )
+
                 if attempt >= MAX_REPAIR_ATTEMPTS:
 
                     raise RuntimeError(
@@ -6285,12 +6517,17 @@ def main():
                     f"{MAX_REPAIR_ATTEMPTS}..."
                 )
 
+                prior_reviews_context = format_prior_plan_reviews_context(
+                    plan_review_history, attempt + 1
+                )
+
                 raw_repaired_candidate = repair_candidate_plan(
                     llm,
                     bash,
                     candidate,
                     review,
                     repair_yaml_error,
+                    prior_reviews_context=prior_reviews_context,
                 )
 
                 candidate = ensure_valid_yaml(
