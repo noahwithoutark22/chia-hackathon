@@ -2881,6 +2881,23 @@ COCOTB + PYUVM COMPATIBILITY REQUIREMENTS (HARD, apply to every file you write):
   no SV covergroups, no SVA. The only SystemVerilog in this project is
   the DUT RTL itself, which already exists and must NOT be modified or
   duplicated.
+- HARD VERSION CONSTRAINT: the generated verification environment MUST
+  be compatible with **Cocotb 2.1.0**. Treat `cocotb==2.1.0` as the
+  target runtime version for every generated Python file.
+- Use only documented/public APIs available in Cocotb 2.1.0. Do NOT use
+  private, internal, removed, deprecated, or version-specific APIs from
+  other Cocotb releases.
+- NEVER import `ModifiableObject` from `cocotb.handle`. Do not generate
+  code that assumes `ModifiableObject` is present in `cocotb.handle`.
+  When typing or accessing DUT handles, use public Cocotb 2.1.0 APIs and
+  normal handle/value operations instead.
+- Do not mix Cocotb APIs from different major versions. If an API is
+  uncertain, prefer the documented Cocotb 2.1.0 API rather than guessing
+  or copying an example written for another release.
+- Before finishing a stage, review every `cocotb.*` import introduced by
+  that stage and ensure that the imported symbol is part of the public
+  Cocotb 2.1.0 API. A generated testbench with an unresolved Cocotb import
+  is invalid even if its Python syntax is otherwise correct.
 - Target cocotb's async/await coroutine style (`async def`,
   `cocotb.start_soon`, and triggers such as `RisingEdge`, `FallingEdge`,
   `ClockCycles`, `Timer`, `Combine` from `cocotb.triggers`) together with
@@ -2915,6 +2932,12 @@ COCOTB + PYUVM COMPATIBILITY REQUIREMENTS (HARD, apply to every file you write):
 - Write all generated files under /workspace/{TB_DIR_REL}, as Python
   modules (.py) plus the build/run configuration described in the
   integration stage.
+- The final generated environment must remain self-consistent with
+  Cocotb 2.1.0: imports, coroutine/trigger usage, DUT-handle access,
+  and simulator integration must all be compatible with that version.
+- Do not leave a known-incompatible or legacy Cocotb import for a later
+  stage to discover. If you encounter one, replace it with the documented
+  Cocotb 2.1.0-compatible API without weakening verification.
 - Do not modify the RTL, specification, reference model, or generated
   plan.
 
@@ -3416,6 +3439,25 @@ MANDATORY SCENARIO-MANIFEST RULES:
 Do not list the reference model, driver, monitor, scoreboard, coverage,
 or any other generated Python file in compile_files — those are not HDL
 sources and must not be passed to the simulator.
+
+FINAL COCOTB 2.1.0 COMPATIBILITY AUDIT (MANDATORY):
+Before the final consistency pass, inspect ALL generated Python files
+under /workspace/{TB_DIR_REL} and verify:
+
+- Every `cocotb.*` import uses a public API available in Cocotb 2.1.0.
+- There is NO import of `ModifiableObject` from `cocotb.handle`.
+- There are no imports copied from examples targeting another Cocotb
+  major version.
+- All coroutine and trigger usage follows the Cocotb 2.1.0 async API.
+- DUT handles are accessed through public Cocotb APIs; do not rely on
+  private handle implementation details.
+- If the environment provides Cocotb at runtime, run a lightweight
+  import/version check (for example, `python -c "import cocotb; print(cocotb.__version__)"`)
+  and confirm it reports 2.1.0. Do not change the installed environment
+  from this prompt; only make the generated TB compatible with it.
+- If any incompatibility is found, fix the generated TB and repeat the
+  audit. Do not remove tests, assertions, scoreboards, coverage, or
+  exception handling merely to make the import succeed.
 
 FINAL CONSISTENCY PASS (do this after assembling everything):
 Inspect ALL generated files together for:
