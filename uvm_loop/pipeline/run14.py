@@ -6721,12 +6721,30 @@ def main():
                             prior_reviews_context=prior_reviews_context,
                         )
 
-                        candidate = ensure_valid_yaml(
-                            llm,
-                            raw_repaired_candidate,
-                            "schema repair",
-                            max_attempts=5,
-                        )
+                        try:
+                            candidate = ensure_valid_yaml(
+                                llm,
+                                raw_repaired_candidate,
+                                "schema repair",
+                                max_attempts=5,
+                            )
+                        except RuntimeError as exc:
+                            # Syntax-repair exhausted its own 5 attempts on
+                            # this repair output. Don't let that crash the
+                            # whole process: fold it into this loop's own
+                            # attempt budget instead, same as an ordinary
+                            # rejected/failed repair. `candidate` still
+                            # holds the last known-good YAML (never
+                            # overwritten on failure), so the next attempt
+                            # retries repair from a valid starting point.
+                            print(
+                                f"\n⚠ Schema-repair YAML unusable after "
+                                f"syntax-repair exhausted: {exc}\n"
+                                "  Retrying repair from the last valid "
+                                "candidate instead of crashing."
+                            )
+                            repair_yaml_error = str(exc)
+                            continue
                         repair_yaml_error = None
                         candidate_path.write_text(candidate)
                         print(f"Updated candidate saved to: {candidate_path}")
@@ -6799,12 +6817,27 @@ def main():
                     prior_reviews_context=prior_reviews_context,
                 )
 
-                candidate = ensure_valid_yaml(
-                    llm,
-                    raw_repaired_candidate,
-                    "semantic repair",
-                    max_attempts=5,
-                )
+                try:
+                    candidate = ensure_valid_yaml(
+                        llm,
+                        raw_repaired_candidate,
+                        "semantic repair",
+                        max_attempts=5,
+                    )
+                except RuntimeError as exc:
+                    # Same crash-loop shape as the schema-repair site above:
+                    # don't let syntax-repair exhaustion on this repair
+                    # attempt's output crash the whole process. Fold it
+                    # into this loop's own attempt budget instead.
+                    # `candidate` still holds the last known-good YAML.
+                    print(
+                        f"\n⚠ Semantic-repair YAML unusable after "
+                        f"syntax-repair exhausted: {exc}\n"
+                        "  Retrying repair from the last valid candidate "
+                        "instead of crashing."
+                    )
+                    repair_yaml_error = str(exc)
+                    continue
 
                 repair_yaml_error = None
 
