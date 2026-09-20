@@ -422,6 +422,23 @@ def _validate_generated_tb_static(tb_dir: str | Path) -> tuple[bool, list[str]]:
     if not python_files:
         errors.append("Generated TB contains no Python source files.")
 
+    # The sim worker always loads the cocotb entry point as TB_TEST_MODULE
+    # ("test_top"), regardless of what MODULE the generated CONTRACT.md or
+    # Makefile declares. A TB that used a different module/file name
+    # compiles fine and passes every other check here, then fails at
+    # actual simulation time with "Generated Cocotb entry point missing" —
+    # and since that failure surfaces well after this stage's checkpoint
+    # is written, the pipeline would otherwise re-skip regeneration and
+    # crash-loop on every supervisor restart. Catch the mismatch here,
+    # before the checkpoint is written, so generation is retried instead.
+    entry_point = root / f"{TB_TEST_MODULE}.py"
+    if not entry_point.is_file():
+        errors.append(
+            f"Generated TB is missing the required cocotb entry point "
+            f"{entry_point.name} (TB_TEST_MODULE={TB_TEST_MODULE!r}). "
+            "The sim worker only ever loads this exact module name."
+        )
+
     for path in python_files:
         try:
             compile(path.read_text(encoding="utf-8"), str(path), "exec")
@@ -3181,9 +3198,14 @@ Now assemble the complete environment:
   the assertion checker coroutines from stage 5
 - test classes (`uvm_test` subclasses) per the plan's
   directed/corner/randomized scenarios
-- a top-level Python cocotb entry point (e.g.
-  `{TB_DIR_REL}/test_top.py`) containing one or a small number of
-  `@cocotb.test()` coroutines that:
+- a top-level Python cocotb entry point at the EXACT, non-negotiable
+  path `{TB_DIR_REL}/{TB_TEST_MODULE}.py` — the sim worker only ever
+  loads a module literally named `{TB_TEST_MODULE}`, so any other
+  filename (e.g. `tb_top.py`, `<design>_top.py`) will build and pass
+  static checks but then fail every actual simulation run with
+  "Generated Cocotb entry point missing". Do not invent or rename this
+  module. It must contain a small number of `@cocotb.test()`
+  coroutines that:
   - read which UVM test class to run from an environment variable
     (e.g. `os.environ.get("UVM_TESTNAME", ...)`), mirroring how SV UVM
     is normally driven by `+UVM_TESTNAME`
@@ -3193,11 +3215,11 @@ Now assemble the complete environment:
   - are wrapped by the watchdog described in HARD_CONSTRAINTS
 - build/run configuration for the cocotb flow MUST use a cocotb
   `Makefile` with `SIM = verilator`, `TOPLEVEL = <top module>`,
-  `MODULE = <top-level python test module, without .py>`,
-  and `VERILOG_SOURCES` pointing only at the DUT RTL file(s).
-  Do not use `cocotb.runner` or `get_runner`. There is no generated
-  SystemVerilog to compile — only the existing DUT RTL is passed to
-  the simulator as an HDL source.
+  `MODULE = {TB_TEST_MODULE}` (this exact value — not the design name,
+  not any other descriptive name), and `VERILOG_SOURCES` pointing only
+  at the DUT RTL file(s). Do not use `cocotb.runner` or `get_runner`.
+  There is no generated SystemVerilog to compile — only the existing
+  DUT RTL is passed to the simulator as an HDL source.
 
 ## UVM CAPABILITIES
 {capabilities}
@@ -3356,6 +3378,21 @@ def generate_and_validate_uvm(llm, bash, canonical_plan):
                   "forcing UVM integration regeneration.")
             for error in manifest_errors:
                 print(f"  - {error}")
+            clear_stage("uvm_integration")
+
+        # Same crash-loop shape as the manifest case above: if the
+        # 'integration' stage ran and got marked done but wrote its cocotb
+        # entry point under some other module name (e.g. the LLM followed
+        # a Makefile MODULE it invented instead of TB_TEST_MODULE), every
+        # restart skips straight past this stage, then fails deep in
+        # simulation with "Generated Cocotb entry point missing" forever.
+        # Detect it here and force regeneration instead.
+        elif not (TB_DIR / f"{TB_TEST_MODULE}.py").is_file():
+            print(
+                f"\n⚠ Existing generated TB is missing the required cocotb "
+                f"entry point {TB_TEST_MODULE}.py; forcing UVM integration "
+                "regeneration."
+            )
             clear_stage("uvm_integration")
 
     capabilities = (HOST_WORKSPACE / "uvm_generator/capabilities.yaml").read_text()
