@@ -422,6 +422,23 @@ def _validate_generated_tb_static(tb_dir: str | Path) -> tuple[bool, list[str]]:
     if not python_files:
         errors.append("Generated TB contains no Python source files.")
 
+    # The sim worker always loads the cocotb entry point as TB_TEST_MODULE
+    # ("test_top"), regardless of what MODULE the generated CONTRACT.md or
+    # Makefile declares. A TB that used a different module/file name
+    # compiles fine and passes every other check here, then fails at
+    # actual simulation time with "Generated Cocotb entry point missing" —
+    # and since that failure surfaces well after this stage's checkpoint
+    # is written, the pipeline would otherwise re-skip regeneration and
+    # crash-loop on every supervisor restart. Catch the mismatch here,
+    # before the checkpoint is written, so generation is retried instead.
+    entry_point = root / f"{TB_TEST_MODULE}.py"
+    if not entry_point.is_file():
+        errors.append(
+            f"Generated TB is missing the required cocotb entry point "
+            f"{entry_point.name} (TB_TEST_MODULE={TB_TEST_MODULE!r}). "
+            "The sim worker only ever loads this exact module name."
+        )
+
     for path in python_files:
         try:
             compile(path.read_text(encoding="utf-8"), str(path), "exec")
@@ -3181,9 +3198,14 @@ Now assemble the complete environment:
   the assertion checker coroutines from stage 5
 - test classes (`uvm_test` subclasses) per the plan's
   directed/corner/randomized scenarios
-- a top-level Python cocotb entry point (e.g.
-  `{TB_DIR_REL}/test_top.py`) containing one or a small number of
-  `@cocotb.test()` coroutines that:
+- a top-level Python cocotb entry point at the EXACT, non-negotiable
+  path `{TB_DIR_REL}/{TB_TEST_MODULE}.py` — the sim worker only ever
+  loads a module literally named `{TB_TEST_MODULE}`, so any other
+  filename (e.g. `tb_top.py`, `<design>_top.py`) will build and pass
+  static checks but then fail every actual simulation run with
+  "Generated Cocotb entry point missing". Do not invent or rename this
+  module. It must contain a small number of `@cocotb.test()`
+  coroutines that:
   - read which UVM test class to run from an environment variable
     (e.g. `os.environ.get("UVM_TESTNAME", ...)`), mirroring how SV UVM
     is normally driven by `+UVM_TESTNAME`
@@ -3193,11 +3215,11 @@ Now assemble the complete environment:
   - are wrapped by the watchdog described in HARD_CONSTRAINTS
 - build/run configuration for the cocotb flow MUST use a cocotb
   `Makefile` with `SIM = verilator`, `TOPLEVEL = <top module>`,
-  `MODULE = <top-level python test module, without .py>`,
-  and `VERILOG_SOURCES` pointing only at the DUT RTL file(s).
-  Do not use `cocotb.runner` or `get_runner`. There is no generated
-  SystemVerilog to compile — only the existing DUT RTL is passed to
-  the simulator as an HDL source.
+  `MODULE = {TB_TEST_MODULE}` (this exact value — not the design name,
+  not any other descriptive name), and `VERILOG_SOURCES` pointing only
+  at the DUT RTL file(s). Do not use `cocotb.runner` or `get_runner`.
+  There is no generated SystemVerilog to compile — only the existing
+  DUT RTL is passed to the simulator as an HDL source.
 
 ## UVM CAPABILITIES
 {capabilities}
@@ -3356,6 +3378,21 @@ def generate_and_validate_uvm(llm, bash, canonical_plan):
                   "forcing UVM integration regeneration.")
             for error in manifest_errors:
                 print(f"  - {error}")
+            clear_stage("uvm_integration")
+
+        # Same crash-loop shape as the manifest case above: if the
+        # 'integration' stage ran and got marked done but wrote its cocotb
+        # entry point under some other module name (e.g. the LLM followed
+        # a Makefile MODULE it invented instead of TB_TEST_MODULE), every
+        # restart skips straight past this stage, then fails deep in
+        # simulation with "Generated Cocotb entry point missing" forever.
+        # Detect it here and force regeneration instead.
+        elif not (TB_DIR / f"{TB_TEST_MODULE}.py").is_file():
+            print(
+                f"\n⚠ Existing generated TB is missing the required cocotb "
+                f"entry point {TB_TEST_MODULE}.py; forcing UVM integration "
+                "regeneration."
+            )
             clear_stage("uvm_integration")
 
     capabilities = (HOST_WORKSPACE / "uvm_generator/capabilities.yaml").read_text()
@@ -5238,6 +5275,15 @@ def run_rtl_verification_loop():
 
         shutil.copy2(result_path, iteration_dir / "simulation_result.json")
         analysis = analyze_results(str(result_path))
+        # If this iteration's simulation never produced functional test
+        # evidence (the TB failed to build/run at all), no LLM decision —
+        # however schema-valid — is grounded enough to declare the RTL
+        # correct. Force any such "no_repair" claim through the existing
+        # non_actionable retry path instead of accepting it as completion.
+        no_functional_evidence = analysis.get("detail", {}).get("status") in {
+            "validation_error",
+            "build_failure",
+        }
         (iteration_dir / "verification_result.yaml").write_text(
             yaml.safe_dump(analysis, sort_keys=False)
         )
@@ -5386,6 +5432,17 @@ def run_rtl_verification_loop():
         print(yaml.safe_dump(decision, sort_keys=False))
 
         action = decision["action"]
+
+        if action == "no_repair" and no_functional_evidence:
+            print(
+                "\n⚠ RTL repair decision was 'no_repair', but this "
+                "iteration's simulation never produced functional test "
+                f"evidence (status={analysis.get('detail', {}).get('status')!r}) "
+                "— treating as non_actionable instead of accepting "
+                "completion."
+            )
+            action = "non_actionable"
+            decision["action"] = "non_actionable"
 
         if action == "no_repair":
             append_history(
@@ -5586,6 +5643,18 @@ def run_rtl_verification_loop():
                 action = retry_decision["action"]
                 decision = retry_decision
                 decision_path = retry_decision_path
+
+                if action == "no_repair" and no_functional_evidence:
+                    print(
+                        "\n⚠ RTL repair retry decision was 'no_repair', but "
+                        "this iteration's simulation never produced "
+                        "functional test evidence (status="
+                        f"{analysis.get('detail', {}).get('status')!r}) — "
+                        "treating as non_actionable instead of accepting "
+                        "completion."
+                    )
+                    action = "non_actionable"
+                    decision["action"] = "non_actionable"
 
                 if action != "non_actionable":
                     retry_succeeded = True
@@ -6233,75 +6302,68 @@ def main():
 
             # -------------------------------------------------
             # Stage 2: Generate (or resume) candidate plan
+            #
+            # ensure_valid_yaml() only retries *syntax* repair (asking the
+            # LLM to fix its own malformed YAML). That's the wrong tool for
+            # a structural failure like "missing required top-level field:
+            # ports" or "Plan must be a YAML mapping" -- repeatedly asking
+            # to "fix the syntax" of content that is structurally wrong
+            # predictably keeps failing the same way, and ensure_valid_yaml
+            # hard-raises after 5 such attempts with nothing here to catch
+            # it, crashing the whole process. Wrap both the resume and the
+            # fresh-generation paths in an outer loop that, on that
+            # RuntimeError, discards the bad candidate and asks for an
+            # entirely fresh one via generate_candidate_plan() instead of
+            # retrying syntax-repair on content that was never going to
+            # syntax-repair its way to valid.
             # -------------------------------------------------
-            if candidate_path.exists():
-
-                print(
-                    "\n✓ Found existing candidate verification plan — "
-                    f"skipping generation and resuming at review.\n"
-                    f"  Candidate: {candidate_path}"
-                )
-
-                candidate = ensure_valid_yaml(
-                    llm,
-                    candidate_path.read_text(),
-                    "resumed candidate",
-                    max_attempts=5,
-                )
-
-                candidate_path.write_text(candidate)
-
-            else:
-
-                print("\n[2/4] Generating verification plan...")
-
-                raw_candidate = generate_candidate_plan(
-
-                    llm,
-
-                    bash,
-
-                )
-
-                candidate = ensure_valid_yaml(
-
-                    llm,
-
-                    raw_candidate,
-
-                    "candidate generation",
-
-                    max_attempts=5,
-
-                )
-
-                print("\n✓ Candidate verification plan generated.")
-
-                candidate_path.parent.mkdir(
-
-                    parents=True,
-
-                    exist_ok=True,
-
-                )
-
-                candidate = clean_yaml_response(
-
-                    candidate
-
-                )
-
-                candidate_path.write_text(
-
-                    candidate
-
-                )
-
-                print(
-
-                    f"✓ Candidate saved to: {candidate_path}"
-
-                )
+            MAX_CANDIDATE_REGEN_ATTEMPTS = 3
+            candidate = None
+            for regen_attempt in range(1, MAX_CANDIDATE_REGEN_ATTEMPTS + 1):
+                try:
+                    if candidate_path.exists():
+                        print(
+                            "\n✓ Found existing candidate verification plan — "
+                            f"skipping generation and resuming at review.\n"
+                            f"  Candidate: {candidate_path}"
+                        )
+                        candidate = ensure_valid_yaml(
+                            llm,
+                            candidate_path.read_text(),
+                            "resumed candidate",
+                            max_attempts=5,
+                        )
+                        candidate_path.write_text(candidate)
+                    else:
+                        print(
+                            f"\n[2/4] Generating verification plan "
+                            f"(attempt {regen_attempt}/{MAX_CANDIDATE_REGEN_ATTEMPTS})..."
+                        )
+                        raw_candidate = generate_candidate_plan(llm, bash)
+                        candidate = ensure_valid_yaml(
+                            llm,
+                            raw_candidate,
+                            "candidate generation",
+                            max_attempts=5,
+                        )
+                        print("\n✓ Candidate verification plan generated.")
+                        candidate_path.parent.mkdir(parents=True, exist_ok=True)
+                        candidate = clean_yaml_response(candidate)
+                        candidate_path.write_text(candidate)
+                        print(f"✓ Candidate saved to: {candidate_path}")
+                    break
+                except RuntimeError as exc:
+                    if regen_attempt >= MAX_CANDIDATE_REGEN_ATTEMPTS:
+                        raise
+                    print(
+                        f"\n⚠ Candidate plan structurally invalid on attempt "
+                        f"{regen_attempt}/{MAX_CANDIDATE_REGEN_ATTEMPTS} "
+                        f"(syntax-repair exhausted): {exc}\n"
+                        "  Discarding it and generating a fresh candidate "
+                        "from scratch instead of crashing."
+                    )
+                    if candidate_path.exists():
+                        candidate_path.unlink()
 
             # =================================================
 
