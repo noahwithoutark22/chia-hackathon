@@ -5238,6 +5238,15 @@ def run_rtl_verification_loop():
 
         shutil.copy2(result_path, iteration_dir / "simulation_result.json")
         analysis = analyze_results(str(result_path))
+        # If this iteration's simulation never produced functional test
+        # evidence (the TB failed to build/run at all), no LLM decision —
+        # however schema-valid — is grounded enough to declare the RTL
+        # correct. Force any such "no_repair" claim through the existing
+        # non_actionable retry path instead of accepting it as completion.
+        no_functional_evidence = analysis.get("detail", {}).get("status") in {
+            "validation_error",
+            "build_failure",
+        }
         (iteration_dir / "verification_result.yaml").write_text(
             yaml.safe_dump(analysis, sort_keys=False)
         )
@@ -5386,6 +5395,17 @@ def run_rtl_verification_loop():
         print(yaml.safe_dump(decision, sort_keys=False))
 
         action = decision["action"]
+
+        if action == "no_repair" and no_functional_evidence:
+            print(
+                "\n⚠ RTL repair decision was 'no_repair', but this "
+                "iteration's simulation never produced functional test "
+                f"evidence (status={analysis.get('detail', {}).get('status')!r}) "
+                "— treating as non_actionable instead of accepting "
+                "completion."
+            )
+            action = "non_actionable"
+            decision["action"] = "non_actionable"
 
         if action == "no_repair":
             append_history(
@@ -5586,6 +5606,18 @@ def run_rtl_verification_loop():
                 action = retry_decision["action"]
                 decision = retry_decision
                 decision_path = retry_decision_path
+
+                if action == "no_repair" and no_functional_evidence:
+                    print(
+                        "\n⚠ RTL repair retry decision was 'no_repair', but "
+                        "this iteration's simulation never produced "
+                        "functional test evidence (status="
+                        f"{analysis.get('detail', {}).get('status')!r}) — "
+                        "treating as non_actionable instead of accepting "
+                        "completion."
+                    )
+                    action = "non_actionable"
+                    decision["action"] = "non_actionable"
 
                 if action != "non_actionable":
                     retry_succeeded = True
@@ -6233,75 +6265,68 @@ def main():
 
             # -------------------------------------------------
             # Stage 2: Generate (or resume) candidate plan
+            #
+            # ensure_valid_yaml() only retries *syntax* repair (asking the
+            # LLM to fix its own malformed YAML). That's the wrong tool for
+            # a structural failure like "missing required top-level field:
+            # ports" or "Plan must be a YAML mapping" -- repeatedly asking
+            # to "fix the syntax" of content that is structurally wrong
+            # predictably keeps failing the same way, and ensure_valid_yaml
+            # hard-raises after 5 such attempts with nothing here to catch
+            # it, crashing the whole process. Wrap both the resume and the
+            # fresh-generation paths in an outer loop that, on that
+            # RuntimeError, discards the bad candidate and asks for an
+            # entirely fresh one via generate_candidate_plan() instead of
+            # retrying syntax-repair on content that was never going to
+            # syntax-repair its way to valid.
             # -------------------------------------------------
-            if candidate_path.exists():
-
-                print(
-                    "\n✓ Found existing candidate verification plan — "
-                    f"skipping generation and resuming at review.\n"
-                    f"  Candidate: {candidate_path}"
-                )
-
-                candidate = ensure_valid_yaml(
-                    llm,
-                    candidate_path.read_text(),
-                    "resumed candidate",
-                    max_attempts=5,
-                )
-
-                candidate_path.write_text(candidate)
-
-            else:
-
-                print("\n[2/4] Generating verification plan...")
-
-                raw_candidate = generate_candidate_plan(
-
-                    llm,
-
-                    bash,
-
-                )
-
-                candidate = ensure_valid_yaml(
-
-                    llm,
-
-                    raw_candidate,
-
-                    "candidate generation",
-
-                    max_attempts=5,
-
-                )
-
-                print("\n✓ Candidate verification plan generated.")
-
-                candidate_path.parent.mkdir(
-
-                    parents=True,
-
-                    exist_ok=True,
-
-                )
-
-                candidate = clean_yaml_response(
-
-                    candidate
-
-                )
-
-                candidate_path.write_text(
-
-                    candidate
-
-                )
-
-                print(
-
-                    f"✓ Candidate saved to: {candidate_path}"
-
-                )
+            MAX_CANDIDATE_REGEN_ATTEMPTS = 3
+            candidate = None
+            for regen_attempt in range(1, MAX_CANDIDATE_REGEN_ATTEMPTS + 1):
+                try:
+                    if candidate_path.exists():
+                        print(
+                            "\n✓ Found existing candidate verification plan — "
+                            f"skipping generation and resuming at review.\n"
+                            f"  Candidate: {candidate_path}"
+                        )
+                        candidate = ensure_valid_yaml(
+                            llm,
+                            candidate_path.read_text(),
+                            "resumed candidate",
+                            max_attempts=5,
+                        )
+                        candidate_path.write_text(candidate)
+                    else:
+                        print(
+                            f"\n[2/4] Generating verification plan "
+                            f"(attempt {regen_attempt}/{MAX_CANDIDATE_REGEN_ATTEMPTS})..."
+                        )
+                        raw_candidate = generate_candidate_plan(llm, bash)
+                        candidate = ensure_valid_yaml(
+                            llm,
+                            raw_candidate,
+                            "candidate generation",
+                            max_attempts=5,
+                        )
+                        print("\n✓ Candidate verification plan generated.")
+                        candidate_path.parent.mkdir(parents=True, exist_ok=True)
+                        candidate = clean_yaml_response(candidate)
+                        candidate_path.write_text(candidate)
+                        print(f"✓ Candidate saved to: {candidate_path}")
+                    break
+                except RuntimeError as exc:
+                    if regen_attempt >= MAX_CANDIDATE_REGEN_ATTEMPTS:
+                        raise
+                    print(
+                        f"\n⚠ Candidate plan structurally invalid on attempt "
+                        f"{regen_attempt}/{MAX_CANDIDATE_REGEN_ATTEMPTS} "
+                        f"(syntax-repair exhausted): {exc}\n"
+                        "  Discarding it and generating a fresh candidate "
+                        "from scratch instead of crashing."
+                    )
+                    if candidate_path.exists():
+                        candidate_path.unlink()
 
             # =================================================
 
