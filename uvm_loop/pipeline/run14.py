@@ -422,23 +422,6 @@ def _validate_generated_tb_static(tb_dir: str | Path) -> tuple[bool, list[str]]:
     if not python_files:
         errors.append("Generated TB contains no Python source files.")
 
-    # The sim worker always loads the cocotb entry point as TB_TEST_MODULE
-    # ("test_top"), regardless of what MODULE the generated CONTRACT.md or
-    # Makefile declares. A TB that used a different module/file name
-    # compiles fine and passes every other check here, then fails at
-    # actual simulation time with "Generated Cocotb entry point missing" —
-    # and since that failure surfaces well after this stage's checkpoint
-    # is written, the pipeline would otherwise re-skip regeneration and
-    # crash-loop on every supervisor restart. Catch the mismatch here,
-    # before the checkpoint is written, so generation is retried instead.
-    entry_point = root / f"{TB_TEST_MODULE}.py"
-    if not entry_point.is_file():
-        errors.append(
-            f"Generated TB is missing the required cocotb entry point "
-            f"{entry_point.name} (TB_TEST_MODULE={TB_TEST_MODULE!r}). "
-            "The sim worker only ever loads this exact module name."
-        )
-
     for path in python_files:
         try:
             compile(path.read_text(encoding="utf-8"), str(path), "exec")
@@ -1617,6 +1600,113 @@ For example:
 ## CANONICAL VerificationPlan JSON SCHEMA
 {canonical_schema}
 
+## MINIMAL WORKED EXAMPLE (structure only — invent nothing from this
+## example itself; every field's VALUE must come from the real source
+## files below)
+
+dut:
+  name: example_dut
+  file: example_dut.sv
+  description: One-line description of what the DUT does.
+parameters:
+  - name: WIDTH
+    default: 8
+    description: Data width in bits.
+    test_values: [1, 8, 32]
+clock_and_reset:
+  clock:
+    name: clk
+    type: posedge
+  reset:
+    name: rst_n
+    polarity: active-low
+    type: asynchronous
+    reset_value: {{}}
+ports:
+  inputs:
+    - name: a
+      width: 8
+      description: Operand A.
+  outputs:
+    - name: y
+      width: 8
+      description: Result.
+  inouts: []
+functional_behavior:
+  description: What the DUT does end to end.
+  reset_behavior: What every output is immediately after reset.
+directed_test_scenarios:
+  - id: basic_add
+    name: Basic addition
+    priority: high
+    stimulus:
+      sequence:
+        - action: reset
+        - action: drive
+          signals: {{a: 1}}
+          cycles: 1
+    expected: {{y: 1}}
+corner_cases:
+  - name: max_value_overflow
+    description: Inputs at the maximum representable value.
+    expected: Defined overflow behavior per spec.
+randomized_testing_strategy:
+  description: Randomize operand values across the legal range.
+  constraints:
+    - variable: a
+      range: [0, 255]
+  pass_criteria: Scoreboard reports zero mismatches.
+functional_coverage:
+  covergroups:
+    - name: operand_cg
+      bins:
+        - name: a_bins
+          variable: a
+          bins:
+            - name: zero
+              range: [0, 0]
+scoreboard_reference_model_strategy:
+  description: Compare DUT output against the reference model every cycle
+    a valid result is produced.
+  pass_criteria: Exact match, zero tolerance.
+useful_assertions:
+  - name: y_stable_when_idle
+    description: y must not change when no operation is active.
+    severity: error
+discrepancies: []
+
+## COMMON MISTAKES THAT BREAK THE DOWNSTREAM GENERATOR — avoid every one
+- `stimulus` is NEVER a bare list of `{{signal: value}}` dicts. It is
+  always `{{sequence: [ {{action: ..., signals: {{...}}, cycles: N}}, ... ]}}`
+  — a mapping with a `sequence` key, whose items are StimulusStep objects
+  with an `action` field. A plain string step (e.g. `- reset`) is also
+  accepted and becomes `{{action: reset}}` automatically, but only inside
+  that `sequence` list, never as a bare top-level list.
+- `ports` is a MAPPING with exactly the three keys `inputs`, `outputs`,
+  `inouts` — never a flat list of ports with a `direction` field.
+- `clock_and_reset.reset.polarity` must be exactly `active-low` or
+  `active-high` (with the hyphen) — not `active_low`, `low`, or `0`.
+- `clock_and_reset.reset.type` must be exactly one of `asynchronous`,
+  `synchronous`, `asynchronous_assert_synchronous_deassert` — not
+  `async`/`sync`.
+- Every `directed_test_scenarios` entry needs a top-level `id` (a short,
+  stable, lowercase_snake_case string). The downstream cocotb generator
+  and the assertion/coverage stages reference scenarios BY this exact id
+  — an entry with no `id`, or an `id` that changes between stages, breaks
+  the generated environment.
+- `functional_coverage.covergroups[].bins` are `CoverageVariable` objects
+  (`{{name, variable, bins: [CoverageBin, ...]}}`), which is one level
+  deeper than it looks: the group's own `bins` list holds variables, and
+  each variable has its OWN nested `bins` list of `{{name, range}}` or
+  `{{name, expression}}` value bins. Do not collapse these two levels.
+- `randomized_testing_strategy.constraints[]` are `{{variable, range}}`
+  objects, not raw expressions or strings.
+- `discrepancies[]` entries need `id`, `severity`, and `title` at minimum
+  — `severity` should be a short word (`low`/`medium`/`high`/`critical`),
+  not a sentence.
+- Do not wrap the whole document in a top-level key (e.g. `plan:` or
+  `verification_plan:`). The fields above (`dut`, `parameters`, ... )
+  are top-level.
 
 Use the Bash tool to inspect ALL FOUR source files:
 
@@ -1772,6 +1862,18 @@ exhaustive or maximally elaborate — a smaller, unambiguous,
 fully-consistent plan is preferred over a larger plan that
 
 reaches for extra coverage at the cost of precision.
+
+## BEFORE YOU ANSWER — self-check every line
+- Did you actually read all four source files with Bash, not guess from
+  their filenames?
+- Is `ports` a mapping with `inputs`/`outputs`/`inouts`, not a list?
+- Does every `directed_test_scenarios` entry have an `id`?
+- Is `stimulus` always `{{sequence: [...]}}`, never a bare list?
+- Is `reset.polarity` exactly `active-low` or `active-high`?
+- Did you invent any port, parameter, signal, clock, or reset that is
+  not actually in the RTL? If yes, remove it.
+- Did you silently adopt an incorrect RTL behavior as "expected" instead
+  of recording a discrepancy? If yes, fix it.
 
 Return ONLY valid YAML.
 
@@ -2815,6 +2917,36 @@ COCOTB + PYUVM COMPATIBILITY REQUIREMENTS (HARD, apply to every file you write):
   integration stage.
 - Do not modify the RTL, specification, reference model, or generated
   plan.
+
+COMMON MISTAKES THAT BREAK SIMULATION (avoid every one):
+- Reading a DUT signal with `dut.sig.value` gives a cocotb `LogicArray`
+  (or `BinaryValue`), not a plain Python int. Comparing it directly to
+  an int with `==` mostly works when the value is fully 0/1, but
+  formatting it, using it as a dict key, or bit-slicing it does not
+  behave like an int unless you convert first (`int(dut.sig.value)`).
+  Always convert explicitly before arithmetic or comparisons that must
+  be exact.
+- A read of `dut.sig.value` immediately after a clock edge, before that
+  edge has propagated, sees the PRE-edge value. Always `await
+  RisingEdge(clk)` (or the correct edge per CONTRACT.md) before sampling
+  a signal that is supposed to reflect that edge's effect.
+- Every coroutine that drives or monitors the DUT must run under a
+  bounded lifetime — either the test-level watchdog, or a loop condition
+  tied to the test finishing. An unconditional `while True` coroutine
+  with no exit path started via `cocotb.start_soon` can outlive the test
+  and hang the NEXT test in the same run.
+- ConfigDB keys are exact strings. A key of `"dut"` in one component and
+  `"DUT"` or `"dut_handle"` in another silently fails to connect (raises
+  at get() time, or worse, returns a stale default) — copy the exact key
+  string from CONTRACT.md into every component that uses it, do not
+  retype it from memory.
+- `assert` statements inside a coroutine only fail the test if that
+  coroutine's exception actually propagates to the test's await chain
+  (e.g. via `cocotb.start_soon` + a saved handle you `await`, or a
+  monitored `Combine`). A `cocotb.start_soon`'d coroutine whose
+  exception is never awaited fails silently — the test can pass while a
+  checker coroutine crashed. Reference model/scoreboard-driven checks
+  should raise from code path that IS awaited by the test body.
 """
 
 # Every later stage reads this instead of re-deriving pin/transaction
@@ -3201,11 +3333,11 @@ Now assemble the complete environment:
 - a top-level Python cocotb entry point at the EXACT, non-negotiable
   path `{TB_DIR_REL}/{TB_TEST_MODULE}.py` — the sim worker only ever
   loads a module literally named `{TB_TEST_MODULE}`, so any other
-  filename (e.g. `tb_top.py`, `<design>_top.py`) will build and pass
-  static checks but then fail every actual simulation run with
-  "Generated Cocotb entry point missing". Do not invent or rename this
-  module. It must contain a small number of `@cocotb.test()`
-  coroutines that:
+  filename (e.g. `tb_top.py`, `<design>_top.py`, or anything else that
+  "sounds right") will build and pass static checks but then fail
+  EVERY actual simulation run with "Generated Cocotb entry point
+  missing". Do not invent or rename this module for any reason. It
+  must contain a small number of `@cocotb.test()` coroutines that:
   - read which UVM test class to run from an environment variable
     (e.g. `os.environ.get("UVM_TESTNAME", ...)`), mirroring how SV UVM
     is normally driven by `+UVM_TESTNAME`
@@ -3216,10 +3348,11 @@ Now assemble the complete environment:
 - build/run configuration for the cocotb flow MUST use a cocotb
   `Makefile` with `SIM = verilator`, `TOPLEVEL = <top module>`,
   `MODULE = {TB_TEST_MODULE}` (this exact value — not the design name,
-  not any other descriptive name), and `VERILOG_SOURCES` pointing only
-  at the DUT RTL file(s). Do not use `cocotb.runner` or `get_runner`.
-  There is no generated SystemVerilog to compile — only the existing
-  DUT RTL is passed to the simulator as an HDL source.
+  not any other descriptive name, not derived from the top module
+  name), and `VERILOG_SOURCES` pointing only at the DUT RTL file(s).
+  Do not use `cocotb.runner` or `get_runner`. There is no generated
+  SystemVerilog to compile — only the existing DUT RTL is passed to
+  the simulator as an HDL source.
 
 ## UVM CAPABILITIES
 {capabilities}
@@ -3242,8 +3375,7 @@ test_classes:
   - <exact pyuvm uvm_test class names, selectable via the UVM_TESTNAME
     environment variable read by the top-level cocotb entry point>
 python_test_module:
-  <the top-level Python cocotb test module to run, e.g.
-  {TB_TEST_MODULE}, without the .py extension>
+  {TB_TEST_MODULE}
 
 scenarios:
   - id: <exact directed_test_scenarios[].id from verification_plan.yaml>
@@ -3304,6 +3436,11 @@ Inspect ALL generated files together for:
   and test class
 - every directed sequence's `SCENARIO_ID` exactly matches its manifest ID
 - no undeclared directed scenario ID has been introduced
+- the top-level cocotb entry point file is named EXACTLY
+  `{TB_TEST_MODULE}.py` (run `ls /workspace/{TB_DIR_REL}` and confirm
+  this exact filename exists) and the Makefile's `MODULE` line is
+  exactly `MODULE = {TB_TEST_MODULE}` — a mismatch here passes this
+  stage silently and only fails deep inside the next simulation run
 Fix anything you find before finishing.
 
 Do not return generated source code in your response. Return a concise
@@ -3378,21 +3515,6 @@ def generate_and_validate_uvm(llm, bash, canonical_plan):
                   "forcing UVM integration regeneration.")
             for error in manifest_errors:
                 print(f"  - {error}")
-            clear_stage("uvm_integration")
-
-        # Same crash-loop shape as the manifest case above: if the
-        # 'integration' stage ran and got marked done but wrote its cocotb
-        # entry point under some other module name (e.g. the LLM followed
-        # a Makefile MODULE it invented instead of TB_TEST_MODULE), every
-        # restart skips straight past this stage, then fails deep in
-        # simulation with "Generated Cocotb entry point missing" forever.
-        # Detect it here and force regeneration instead.
-        elif not (TB_DIR / f"{TB_TEST_MODULE}.py").is_file():
-            print(
-                f"\n⚠ Existing generated TB is missing the required cocotb "
-                f"entry point {TB_TEST_MODULE}.py; forcing UVM integration "
-                "regeneration."
-            )
             clear_stage("uvm_integration")
 
     capabilities = (HOST_WORKSPACE / "uvm_generator/capabilities.yaml").read_text()
@@ -5054,13 +5176,63 @@ IMPORTANT:
 - Prefer the smallest behavior-preserving correction that fixes the demonstrated
   failure without changing unrelated functionality.
 
+## WHAT EACH ACTION MEANS — pick carefully, this decision is not reviewed
+## by anyone before it takes effect
+- `repair`: you have identified a specific RTL defect that explains the
+  observed failure(s), and you can name the exact line(s)/logic to change.
+- `no_repair`: you are asserting, with evidence, that the RTL is CORRECT
+  and the accepted RTL should be considered done. This is a strong claim
+  — it means "ship this RTL as final." Only choose it when you can show,
+  for the specific tests that failed, that the failure is caused by the
+  TB/environment and not by the RTL. Never choose `no_repair` just
+  because you cannot find the bug, cannot explain a failure, or because
+  simulation_result.json's failures look generic/uninformative — that is
+  `non_actionable`, not `no_repair`.
+- `template_bug`: the failure is caused by shared toolchain/template
+  infrastructure (e.g. wrong module name expected by the harness, a
+  simulator/build defect) that no per-design RTL or TB change can fix.
+- `non_actionable`: you do not have enough evidence to safely choose
+  `repair` or `no_repair`. This is the SAFE default when evidence is
+  thin, contradictory, or the simulation itself did not produce real
+  pass/fail results (see below). Choosing `non_actionable` costs nothing
+  — the pipeline automatically retries the analysis with a fresh look.
+  Choosing `no_repair` incorrectly ships unverified RTL as if it were
+  correct. When genuinely unsure, prefer `non_actionable`.
+
+## HARD RULE — when you must NOT choose no_repair
+If simulation_result.json shows `status` other than a normal completed
+run (e.g. `validation_error`, `build_failure`, a crash, or every single
+test failing with the same generic/infrastructure-looking error and zero
+tests showing a real pass/fail comparison), you have ZERO functional
+test evidence about the RTL's correctness. In that situation `no_repair`
+is never justified — use `non_actionable` (if you suspect it might still
+be fixable with different evidence) or `template_bug` (if the cause is
+clearly toolchain/harness-level, e.g. a missing/misnamed generated
+file). Declaring "the RTL must be fine because the failures look
+TB-related" without being able to point to a SPECIFIC TB defect is not
+evidence — it is a guess, and guesses must map to `non_actionable`.
+
+## EVIDENCE BAR (applies to every action)
+Each `evidence` item must satisfy BOTH of these, not just one:
+1. Cite a SPECIFIC RTL line/signal/behavior (quote it or give the exact
+   line number) — not a general description of the module.
+2. Cite the SPECIFIC test in simulation_result.json it explains (test
+   name + its actual reported status/error) — not "the tests fail" in
+   general.
+A vague evidence item that does neither is worthless and will be
+rejected downstream. If you choose `no_repair`, your evidence must
+collectively account for EVERY test that failed in simulation_result.json
+— not just the easiest one or two to explain. If you cannot do that for
+all of them, you do not have enough evidence for `no_repair`; use
+`non_actionable` instead.
+
 Return ONLY YAML:
 
 schema_version: "1.0"
 action: repair | no_repair | template_bug | non_actionable
 root_cause: <specific root cause>
 evidence:
-  - <specific simulation evidence and source-grounded reasoning>
+  - <RTL line/behavior AND the specific simulation_result.json test it explains>
 confidence: high | medium | low
 changes:
   - file: <RTL-relative path, normally rtl.sv>
@@ -5069,6 +5241,18 @@ changes:
       - <smallest concrete repair>
 
 For action=no_repair, template_bug, or non_actionable, changes may be [].
+
+## BEFORE YOU ANSWER
+- If action is `no_repair`: does your evidence cover EVERY failing test
+  in simulation_result.json, with a specific reason per test? If not,
+  change action to `non_actionable`.
+- If action is `repair`: can you point to the exact line(s) in rtl.sv
+  that are wrong, and state what they currently do vs. what they should
+  do? If not, you do not have enough evidence for `repair` either.
+- Is every `evidence` item specific (a line/signal AND a named test), or
+  did you write a general summary sentence? Rewrite any general sentence
+  into a specific, checkable claim.
+
 Do not include markdown fences or explanations outside the YAML.
 """.strip()
 
@@ -5098,9 +5282,30 @@ HARD RULES:
 - Preserve all unrelated behavior.
 - The repair must address the diagnosed root cause, not merely suppress the
   observed error.
-- After editing, inspect rtl.sv for syntax, width, reset, clocking, and unintended
+- Apply EXACTLY the instructions in rtl_repair_decision.yaml — do not use
+  it as inspiration to make a broader change you think is "really" needed.
+  If you believe the decision's instructions are insufficient or wrong
+  once you look at the actual RTL, make the smallest change that still
+  satisfies the decision's stated intent; do not silently expand scope.
+
+BEFORE EDITING, for the specific line(s) you are about to change, write
+out (in your own working notes, not the final summary) what that line
+currently does and what it should do instead per the repair decision.
+If you cannot state both clearly, re-read rtl_repair_decision.yaml and
+the cited evidence before touching any code — do not guess.
+
+AFTER EDITING:
+- Inspect rtl.sv for syntax, width, reset, clocking, and unintended
   behavioral changes.
-- Return a concise summary only. Do not paste the RTL source.
+- Confirm every line you changed matches an instruction in
+  rtl_repair_decision.yaml — if a line changed that isn't traceable to
+  an instruction, revert it.
+- Confirm you did not touch any signal/port/parameter not named in the
+  repair decision.
+
+Return a concise summary only, stating for each change: the line(s)
+touched, what they did before, and what they do now. Do not paste the
+RTL source.
 """.strip()
 
 
