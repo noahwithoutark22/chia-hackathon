@@ -166,12 +166,16 @@ def load_handoff(uvm_dir: Path, cfg: dict, allow_unverified: bool) -> dict:
     state = json.loads(state_path.read_text())
 
     verified = state.get("status") == "verified" and state.get("verified") is True
-    no_repair = (
-        state.get("status") == "complete"
-        and state.get("handoff_ready_to_next_stage") is True
-        and state.get("rtl_outcome") == "no_repair"
-    )
-    if not (verified or no_repair):
+    # rtl_outcome=="no_repair" means the RTL-repair loop's diagnosis LLM
+    # concluded no fix was needed -- but that conclusion can be reached
+    # without a single genuinely passing simulation (e.g. "failures are
+    # testbench-related, not RTL"), so it is NOT the same guarantee as
+    # `verified`. Treating it as automatically handoff-eligible let the
+    # LLM use no_repair as an escape hatch from the repair loop instead
+    # of actually fixing the RTL until all required tests pass. It now
+    # requires the same explicit --allow-unverified acknowledgement as
+    # any other unverified state.
+    if not verified:
         summary = {k: state.get(k) for k in ("status", "verified", "rtl_outcome", "stop_reason")}
         if not allow_unverified:
             raise PipelineError(
