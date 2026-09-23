@@ -25,6 +25,9 @@ CONTAINER_UVM = "/workspace"
 CONTAINER_ORFS_REPO = "/root/chia-orfs"
 DESIGNS_SUBDIR = "rtl_to_gds_designs"
 
+# One self-contained folder per run: runs/<design>/<timestamp>/.
+DEFAULT_RUNS_DIR = REPO_ROOT / "runs"
+
 CLOCK_PORT_CANDIDATES = ["clk", "clock", "clk_i", "i_clk", "CLK", "clk_in"]
 
 UVM_RESOURCES = ["rtl_extract", "sim_worker", "opencode_tools"]
@@ -118,16 +121,39 @@ def collect_run_logs(logs_dir: Path, uvm_dir: Path, cfg: dict,
     uvm_copied = _copy_logs_from(gen_root, logs_dir / "uvm")
     orfs_copied = _copy_logs_from(run_dir, logs_dir / "orfs") if run_dir else []
 
+    # The ORFS design directory holds the config this run actually closed with
+    # (config.mk, constraint.sdc, the synthesised RTL, rtl_handoff.json). It is
+    # not log-shaped, so _copy_logs_from skips it -- but it is the one thing you
+    # need to reproduce the result, so copy it wholesale.
+    config_copied = []
+    design_dir_str = result.get("orfs_design_dir")
+    if design_dir_str and Path(design_dir_str).is_dir():
+        dest = logs_dir / "orfs_config"
+        for path in Path(design_dir_str).rglob("*"):
+            if not path.is_file():
+                continue
+            target = dest / path.relative_to(design_dir_str)
+            try:
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(path, target)
+                config_copied.append(str(path.relative_to(design_dir_str)))
+            except OSError:
+                continue
+
     (logs_dir / "manifest.json").write_text(json.dumps({
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "design": name,
         "uvm_source": str(gen_root),
         "orfs_source": str(run_dir) if run_dir else None,
+        "orfs_config_source": design_dir_str,
+        "final_gds": result.get("final_gds"),
         "uvm_files_collected": len(uvm_copied),
         "orfs_files_collected": len(orfs_copied),
+        "orfs_config_files_collected": len(config_copied),
     }, indent=2))
     (logs_dir / "rtl_to_gds.json").write_text(json.dumps(result, indent=2, default=str))
-    log(f"Collected {len(uvm_copied) + len(orfs_copied)} log files into {logs_dir}")
+    log(f"Collected {len(uvm_copied) + len(orfs_copied)} log files and "
+        f"{len(config_copied)} ORFS config files into {logs_dir}")
     return logs_dir
 
 
@@ -513,11 +539,13 @@ def parse_args(argv: list[str]):
     ap.add_argument("--skip-preflight", action="store_true")
     ap.add_argument("--result-json", type=Path, default=None,
                     help="Also write the run record (stage timings, handoff, ORFS outcome) here")
+    ap.add_argument("--runs-dir", type=Path, default=None,
+                    help=f"Parent directory for run folders (default: {DEFAULT_RUNS_DIR}). "
+                         "Each run gets <runs-dir>/<design>/<timestamp>/ holding the UVM "
+                         "logs, the ORFS logs, and the exact ORFS config the run used.")
     ap.add_argument("--logs-dir", type=Path, default=None,
-                    help="Collect every log/report/state file from this run here once it "
-                         "finishes (default: <result-json's dir>/logs, or "
-                         "<orfs-repo>/orfs_runs/<design>-logs-<ts> if --result-json is not "
-                         "given). Also tees this run's full console output there live.")
+                    help="Use this exact directory for the run folder instead of the "
+                         "<runs-dir>/<design>/<timestamp> layout.")
     ap.add_argument("--no-logs-collect", action="store_true",
                     help="Disable log collection and the console tee entirely")
     args = ap.parse_args(argv)
@@ -569,10 +597,10 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.logs_dir:
             logs_dir = args.logs_dir.resolve()
-        elif args.result_json:
-            logs_dir = args.result_json.resolve().parent / "logs"
         else:
-            logs_dir = orfs_repo / "orfs_runs" / f"{cfg['name']}-logs-{int(time.time())}"
+            runs_root = (args.runs_dir or DEFAULT_RUNS_DIR).resolve()
+            stamp = time.strftime("%Y%m%d_%H%M%S")
+            logs_dir = runs_root / cfg["name"] / stamp
         if not args.no_logs_collect:
             tee = start_console_tee(logs_dir / "console.log")
             log(f"Logs for this run will be collected under {logs_dir}")
