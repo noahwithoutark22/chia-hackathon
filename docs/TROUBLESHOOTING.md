@@ -6,7 +6,7 @@ that identifies each one and the fix. Ordered by how much time they cost.
 | # | Symptom | Area | Root cause |
 |---|---|---|---|
 | 1 | Pipeline alive, zero progress for hours; host out of RAM | infra | verilator wrapper recursing |
-| 2 | Log stalls mid-LLM-call, never recovers | infra | provider rate limit, no fallback in UVM stage |
+| 2 | Log stalls mid-LLM-call, never recovers | infra | provider stalls; now auto-switches model |
 | 3 | `PROCESS FAILURE` restart loop on YAML errors | UVM | unguarded `ensure_valid_yaml()` |
 | 4 | RTL reaches ORFS without passing tests | UVM | `no_repair` treated as verified |
 | 5 | Repeated regeneration of the same testbench | UVM | scenario-manifest mismatch |
@@ -55,21 +55,42 @@ modified at runtime, one worker can be broken while its siblings are fine,
 and which one a run lands on is a scheduling lottery — so verify every worker,
 not just the one that failed.
 
-## 2. LLM provider rate limit hangs the UVM stage
+## 2. LLM provider stalls mid-call
 
-**Signature.** The log stops mid-iteration, often after `Timeout on attempt
-N/5`. The process stays alive at ~0% CPU with its LLM-call subprocesses
-already exited.
+**Signature.** The log stops mid-iteration and artifacts stop appearing, but
+the process stays alive. Confirm by checking whether the agent's output file
+is still growing — frozen means deadlocked, not slow:
 
-**Cause.** A provider silently rate-limits under load (empty result, no
-error). `orfs_loop.py` handles this correctly — it logs the condition and
-switches models. The UVM stage does **not**: `_load_llm_model()` /
-`_prompt_with_backoff` in `run14.py` retry the same model indefinitely.
-This is a known gap, not yet fixed in code.
+```bash
+docker exec <opencode-worker> sh -c '
+  F=$(ls -t /tmp/opencode_out_*.out | head -1)
+  s1=$(stat -c %s $F); sleep 15; s2=$(stat -c %s $F)
+  echo "$F: $s1 -> $s2"; tail -c 200 $F'
+```
 
-**Workaround.** Cool the model down and restart the process. Each process
-caches its model selection once at startup, so editing state alone does
-nothing until restart:
+A frozen size whose last record is `"type":"step_finish"` with
+`"reason":"tool-calls"` is the deadlock: the model asked for a tool call and
+the round-trip never came back. CPU sitting at a few percent is a poll loop,
+not progress.
+
+**Cause.** The provider stops responding without erroring. Two shapes seen
+live: a silent rate limit (empty result, no exception), and a tool-call
+deadlock where the agent emits `step_finish` with `reason: tool-calls` and the
+round-trip to the MCP tool server never returns — the opencode output file
+freezes mid-stream while the process spins at a few percent CPU.
+
+Because chia's `get()` blocks indefinitely, neither case raised anything, so
+the model was never cooled down and the supervisor never got the non-zero exit
+it needs to switch models.
+
+**Fix.** `llm_get()` in `run14.py` bounds every LLM call with
+`LLM_CALL_TIMEOUT_S` (default 1800 s) and converts a timeout into a
+`RuntimeError` matching `_MODEL_UNAVAILABLE_MARKERS`. That cools the model
+down, exits non-zero, and the supervisor restart picks the next candidate from
+`config/llm_models.txt` — automatically.
+
+**Manual override**, if you need to force a switch sooner. Each process caches
+its model at startup, so edit the state *and* restart:
 
 ```jsonc
 // uvm_loop/generated/llm_model_state.json  (shared across designs, not per-design)

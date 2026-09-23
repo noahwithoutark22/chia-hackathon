@@ -14,6 +14,7 @@ import ray
 import yaml
 
 
+from ray.exceptions import GetTimeoutError
 from chia.base.ChiaFunction import ChiaFunction, get
 
 from chia.base.tools.BashTool import BashTool
@@ -51,6 +52,11 @@ LLM_MODELS_FILE = HOST_WORKSPACE / "config" / "llm_models.txt"
 LLM_MODEL_STATE = HOST_WORKSPACE / "generated" / "llm_model_state.json"
 LLM_MODEL_LOG = HOST_WORKSPACE / "generated" / "llm_model_usage.jsonl"
 LLM_RATE_LIMIT_COOLDOWN_S = int(os.environ.get("LLM_RATE_LIMIT_COOLDOWN_S", "3600"))
+# Wall-clock ceiling for a single LLM call. chia's get() blocks forever if the
+# remote OpenCodeLLM actor deadlocks (observed live: the agent emits
+# step_finish/reason=tool-calls and the tool round-trip never returns), so no
+# exception is ever raised and the model-fallback path never engages.
+LLM_CALL_TIMEOUT_S = int(os.environ.get("LLM_CALL_TIMEOUT_S", "1800"))
 _SELECTED_LLM_MODEL: str | None = None
 
 
@@ -102,6 +108,8 @@ def _load_llm_model() -> str:
 
 _MODEL_UNAVAILABLE_MARKERS = (
     "RateLimitError", "Rate limit exceeded",
+    # Raised by llm_get() when a call exceeds LLM_CALL_TIMEOUT_S.
+    "LLM call timed out",
     # Provider/model itself broken or gone, not just throttled (observed live:
     # opencode/nemotron-3-ultra-free returning a bare 404) -- retrying the
     # same model would fail identically forever, so treat it the same as a
@@ -142,6 +150,24 @@ def _record_llm_rate_limit(exc: BaseException) -> None:
             "cooldown_until": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(until)),
         }) + "\n")
     print(f"LLM model {model} unavailable/rate-limited; cooling down for {LLM_RATE_LIMIT_COOLDOWN_S}s")
+
+
+def llm_get(ref, stage: str = "LLM call"):
+    """get() an LLM ObjectRef with a wall-clock ceiling.
+
+    A stalled provider that never returns would otherwise block forever: the
+    call raises nothing, so _record_llm_rate_limit() never sees an exception,
+    the model is never cooled down, and the supervisor never gets the non-zero
+    exit it needs to restart on a different model. Converting the timeout into
+    a recognised failure is what makes the existing fallback chain automatic.
+    """
+    try:
+        return get(ref, timeout=LLM_CALL_TIMEOUT_S)
+    except GetTimeoutError as exc:
+        raise RuntimeError(
+            f"LLM call timed out after {LLM_CALL_TIMEOUT_S}s during {stage}; "
+            "cooling down this model so the next restart picks another"
+        ) from exc
 
 
 def _raise_on_llm_failure(response, stage: str) -> None:
@@ -1296,7 +1322,7 @@ Malformed weakness report:
 Return ONLY the corrected weakness_report YAML.
 """
 
-        response = get(
+        response = llm_get(
             llm.prompt.chia_remote(
                 llm,
                 prompt,
@@ -1885,7 +1911,7 @@ Do not modify or create files.
 
 """
 
-    response = get(
+    response = llm_get(
 
         llm.prompt.chia_remote(
 
@@ -2246,7 +2272,7 @@ more exhaustive, or more elaborate — that is not a defect.
 
 """
 
-    response = get(
+    response = llm_get(
 
         llm.prompt.chia_remote(
 
@@ -2402,7 +2428,7 @@ If you need to reason about the fix, do that internally.
 Your externally returned response must contain ONLY the YAML document.
 """
 
-    response = get(
+    response = llm_get(
         llm.prompt.chia_remote(
             llm,
             prompt,
@@ -2656,7 +2682,7 @@ Malformed diagnosis response:
 Return ONLY the corrected tb_update_plan YAML.
 """
 
-        response = get(
+        response = llm_get(
             llm.prompt.chia_remote(
                 llm,
                 prompt,
@@ -2814,7 +2840,7 @@ Do NOT add explanations.
 Do NOT add text before or after the YAML.
 """
 
-        response = get(
+        response = llm_get(
             llm.prompt.chia_remote(
                 llm,
                 prompt,
@@ -3007,7 +3033,7 @@ def plan_section(canonical_plan, keys):
 
 def run_stage(llm, bash, prompt, stage_name, tools=None):
     """Run one staged generation call and surface its summary."""
-    response = get(
+    response = llm_get(
         llm.prompt.chia_remote(
             llm,
             prompt,
@@ -3783,7 +3809,7 @@ def generate_and_validate_uvm(llm, bash, canonical_plan):
                 f"[DIAGNOSIS] Submitting prompt (length={len(diagnosis_prompt)} chars); waiting for LLM...",
                 flush=True,
             )
-            diagnosis_response = get(
+            diagnosis_response = llm_get(
                 diagnosis_llm.prompt.chia_remote(
                     diagnosis_llm, diagnosis_prompt, tools=[diagnosis_bash]
                 )
@@ -3971,7 +3997,7 @@ def generate_and_validate_uvm(llm, bash, canonical_plan):
             retries=LLM_RETRIES,
         )
         try:
-            repair_response = get(
+            repair_response = llm_get(
                 repair_llm.prompt.chia_remote(
                     repair_llm,
                     build_repair_prompt(
@@ -4082,7 +4108,7 @@ def generate_llm_weakness_report(
 
     llm, bash = create_analysis_agent(str(analysis_root))
     try:
-        response = get(
+        response = llm_get(
             llm.prompt.chia_remote(
                 llm,
                 build_analysis_prompt(analysis_root),
@@ -4566,7 +4592,7 @@ def run_verification_improvement_loop(llm_unused, bash_unused, canonical_plan):
             retries=LLM_RETRIES,
         )
         try:
-            decision_response = get(
+            decision_response = llm_get(
                 decision_llm.prompt.chia_remote(
                     decision_llm,
                     build_improvement_decision_prompt(improvement_root),
@@ -4649,7 +4675,7 @@ def run_verification_improvement_loop(llm_unused, bash_unused, canonical_plan):
 
         llm, bash = create_improvement_agent(str(improvement_root))
         try:
-            response = get(
+            response = llm_get(
                 llm.prompt.chia_remote(
                     llm,
                     build_improvement_prompt(
@@ -5639,7 +5665,7 @@ def run_rtl_verification_loop():
             retries=LLM_RETRIES,
         )
         try:
-            response = get(
+            response = llm_get(
                 analysis_llm.prompt.chia_remote(
                     analysis_llm,
                     build_rtl_failure_analysis_prompt(
@@ -5824,7 +5850,7 @@ def run_rtl_verification_loop():
                     retries=LLM_RETRIES,
                 )
                 try:
-                    retry_response = get(
+                    retry_response = llm_get(
                         retry_llm.prompt.chia_remote(
                             retry_llm,
                             build_rtl_failure_analysis_prompt(
@@ -6134,7 +6160,7 @@ def run_rtl_verification_loop():
             retries=LLM_RETRIES,
         )
         try:
-            repair_response = get(
+            repair_response = llm_get(
                 repair_llm.prompt.chia_remote(
                     repair_llm,
                     build_rtl_repair_prompt(repair_workspace),

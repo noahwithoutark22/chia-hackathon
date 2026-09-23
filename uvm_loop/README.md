@@ -151,9 +151,12 @@ the model once at startup and keeps it for its lifetime, so a rate limit just
 kills the run. Only a restart re-reads the state file. `orfs_loop.py` takes a
 single-shot `--model` flag and does not share this mechanism.
 
-> Known gap: a provider that rate-limits *silently* (empty result, no error)
-> is not detected here, and the stage can hang instead of exiting. See
-> [Troubleshooting #2](../docs/TROUBLESHOOTING.md#2-llm-provider-rate-limit-hangs-the-uvm-stage).
+Every LLM call is bounded by `LLM_CALL_TIMEOUT_S` (default 1800 s). A provider
+that stalls silently — returning nothing, raising nothing — would otherwise
+block forever and never reach the fallback path, so the timeout is converted
+into a recognised failure: the model is cooled down and the process exits
+non-zero, which is what lets the supervisor restart on the next model. See
+[Troubleshooting #2](../docs/TROUBLESHOOTING.md#2-llm-provider-stalls-mid-call).
 
 ### Adding a model or key
 
