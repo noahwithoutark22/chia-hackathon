@@ -6442,7 +6442,7 @@ def main():
     )
     parser.add_argument(
         "--design-config",
-        default="pipeline/designs/adder.yaml",
+        default="benchmarks/fifo/design.yaml",
         help="Project-relative YAML benchmark configuration",
     )
     args = parser.parse_args()

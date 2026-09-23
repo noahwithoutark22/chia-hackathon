@@ -47,7 +47,7 @@ Before starting any work, the script checks that the needed Ray resources exist 
 ## Run
 
 ```bash
-python3 rtl_to_gds/rtl_to_gds.py --design-config pipeline/designs/fifo.yaml --clock-period 10 \
+python3 rtl_to_gds/rtl_to_gds.py --design-config benchmarks/fifo/design.yaml --clock-period 10 \
     -- --max-iterations 3 --objective area --model opencode/big-pickle --stage-timeout-seconds 7200
 ```
 

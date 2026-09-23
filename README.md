@@ -102,7 +102,7 @@ cd uvm_loop
 docker build -t chia-rtl-worker:local -f workers/rtl/Dockerfile .
 make build-sim-image
 ./setup.sh
-python3 -m pipeline.run14 --design-config pipeline/designs/fifo.yaml
+python3 -m pipeline.run14 --design-config benchmarks/fifo/design.yaml
 ```
 
 ```bash
@@ -127,7 +127,7 @@ export CHIA_PROJECT_ROOT=$PWD/uvm_loop
 export CHIA_ORFS_REPO=$PWD/orfs_loop
 chia up rtl_to_gds/cluster.yaml -y
 
-python3 rtl_to_gds/rtl_to_gds.py --design-config pipeline/designs/fifo.yaml \
+python3 rtl_to_gds/rtl_to_gds.py --design-config benchmarks/fifo/design.yaml \
   --clock-period 10 \
   -- --max-iterations 3 --objective area --model opencode/big-pickle \
      --stage-timeout-seconds 7200

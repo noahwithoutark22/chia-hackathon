@@ -160,10 +160,34 @@ def collect_run_logs(logs_dir: Path, uvm_dir: Path, cfg: dict,
 # ---------------------------------------------------------------- stage 1: UVM
 
 def resolve_design_config(arg: str, uvm_dir: Path) -> Path:
-    for candidate in (Path(arg), uvm_dir / arg):
+    """Locate a design config from a path, a directory name, or a design name.
+
+    Each design keeps its config beside its RTL as
+    benchmarks/<dir>/design.yaml. The directory is usually named after the
+    design, but not always, so a bare name is also matched against each
+    config's `name:` field.
+    """
+    for candidate in (Path(arg), uvm_dir / arg, uvm_dir / "benchmarks" / arg / "design.yaml"):
         if candidate.is_file():
             return candidate.resolve()
-    raise PipelineError(f"Design config not found: {arg} (also tried under {uvm_dir})")
+
+    for candidate in sorted((uvm_dir / "benchmarks").glob("*/design.yaml")):
+        try:
+            if (yaml.safe_load(candidate.read_text()) or {}).get("name") == arg:
+                return candidate.resolve()
+        except (OSError, yaml.YAMLError):
+            continue
+
+    known = sorted(
+        n for n in (
+            (yaml.safe_load(p.read_text()) or {}).get("name")
+            for p in (uvm_dir / "benchmarks").glob("*/design.yaml")
+        ) if n
+    )
+    raise PipelineError(
+        f"Design config not found: {arg}. Pass a path to a design.yaml, or one "
+        f"of: {', '.join(known)}"
+    )
 
 
 def run_uvm_stage(uvm_dir: Path, design_config: Path, supervised_iters: int | None) -> None:

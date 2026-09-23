@@ -6,12 +6,12 @@ Files:
 - `benchmarks/fifo/fifo.sv` — synchronous FIFO RTL
 - `benchmarks/fifo/spec.md` — behavioral specification
 - `benchmarks/fifo/ref_model.py` — Python reference model
-- `pipeline/designs/fifo.yaml` — design configuration
+- `benchmarks/fifo/design.yaml` — design configuration
 
 Run from the project root:
 
 ```bash
-python -m pipeline.run14 --design-config pipeline/designs/fifo.yaml
+python -m pipeline.run14 --design-config benchmarks/fifo/design.yaml
 ```
 
 The generated environment should appear under:

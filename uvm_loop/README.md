@@ -6,7 +6,7 @@ under Verilator, checks results against the reference model, and iterates —
 repairing the testbench and the RTL until the design is verified.
 
 ```bash
-python3 -m pipeline.run14 --design-config pipeline/designs/fifo.yaml
+python3 -m pipeline.run14 --design-config benchmarks/fifo/design.yaml
 ```
 
 Run it as a module from `uvm_loop/` — imports are `pipeline.*`, `src.*`,
@@ -28,13 +28,12 @@ being baked into the testbench.
 
 ```text
 uvm_loop/
-├── benchmarks/<design>/     # RTL + spec + reference model
+├── benchmarks/<design>/     # RTL + spec + reference model + design.yaml
 ├── pipeline/
 │   ├── run14.py             # the orchestrator and entrypoint
 │   ├── functions.py         # Ray-dispatched remote operations
 │   ├── tb_feedback.py       # testbench diagnosis / repair
-│   ├── verification_improvement.py
-│   └── designs/             # one YAML per benchmark
+│   └── verification_improvement.py
 ├── src/                     # RTL parsing, plan generation, VerificationPlan schema
 ├── uvm_generator/           # renders templates/*.j2, validates output
 ├── workers/{rtl,sim}/       # worker images
@@ -48,8 +47,7 @@ uvm_loop/
 └── Makefile
 ```
 
-You normally touch only `benchmarks/`, `pipeline/designs/`, `cluster.yaml`
-and `pipeline/run14.py`. `uvm_generator/verilator_compat.py` rejects
+You normally touch only `benchmarks/`, `cluster.yaml` and `pipeline/run14.py`. `uvm_generator/verilator_compat.py` rejects
 SystemVerilog constructs Verilator can't handle (e.g. parameterised virtual
 interfaces); `rules.yaml` and `capabilities.yaml` constrain generation.
 
@@ -94,7 +92,9 @@ behaviour, handshakes, expected outputs, corner cases and timing requirements.
 Don't copy an existing generated testbench in — the environment is meant to be
 generated from the spec.
 
-**2.** Add `pipeline/designs/my_fifo.yaml` (paths relative to the repo root):
+**2.** Add `benchmarks/my_fifo/design.yaml` beside them (copy
+`benchmarks/TEMPLATE.yaml`). Paths inside it resolve relative to `uvm_loop/`,
+not to the config's own location:
 
 ```yaml
 name: my_fifo
@@ -104,8 +104,9 @@ ref_model: benchmarks/my_fifo/ref_model.py
 output_parent: generated/designs
 ```
 
-**3.** Run it. Output lands in `generated/designs/my_fifo/` — `rtl/`, `plans/`,
-`tb/`, `results/`, `tb_iterations/`, `checkpoints/` and `rtl_verification/`.
+**3.** Run it with `--design-config benchmarks/my_fifo/design.yaml`. Output
+lands in `generated/designs/my_fifo/` — `rtl/`, `plans/`, `tb/`, `results/`,
+`tb_iterations/`, `checkpoints/` and `rtl_verification/`.
 
 Re-running **resumes** from valid artifacts already in that directory,
 including `improvement_state.json`, so it is safe to re-run after an
@@ -117,7 +118,7 @@ wipes all designs).
 Use the supervisor rather than calling `run14` directly:
 
 ```bash
-./run_forever.sh pipeline/designs/fifo.yaml 25
+./run_forever.sh benchmarks/fifo/design.yaml 25
 ```
 
 The second argument caps verification-improvement iterations. The supervisor
@@ -188,9 +189,9 @@ python3 -m pytest tests/test_verilator_compat.py::test_comment_examples_are_igno
 
 | Task | Command |
 |---|---|
-| Run a benchmark | `python3 -m pipeline.run14 --design-config pipeline/designs/<design>.yaml` |
+| Run a benchmark | `python3 -m pipeline.run14 --design-config benchmarks/<design>/design.yaml` |
 | Run via Make | `make pipeline BENCHMARK=<design>` |
-| Run the supervisor | `./run_forever.sh pipeline/designs/<design>.yaml 25` |
+| Run the supervisor | `./run_forever.sh benchmarks/<design>/design.yaml 25` |
 | Build the sim image | `make build-sim-image` |
 | Build the RTL worker | `docker build -t chia-rtl-worker:local -f workers/rtl/Dockerfile .` |
 | Cluster health | `chia status && ray status` |

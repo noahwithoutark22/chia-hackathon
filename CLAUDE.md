@@ -18,8 +18,8 @@ cd uvm_loop
 docker build -t chia-rtl-worker:local -f workers/rtl/Dockerfile .
 make build-sim-image                                               # chia-sim-worker:chia-local
 ./setup.sh                                                         # checks prereqs, picks LLM provider, runs chia up
-python3 -m pipeline.run14 --design-config pipeline/designs/fifo.yaml   # or: make pipeline BENCHMARK=fifo
-./run_forever.sh pipeline/designs/fifo.yaml 25                     # supervisor: restarts run14 on failure, arg 2 = iteration cap
+python3 -m pipeline.run14 --design-config benchmarks/fifo/design.yaml   # or: make pipeline BENCHMARK=fifo
+./run_forever.sh benchmarks/fifo/design.yaml 25                     # supervisor: restarts run14 on failure, arg 2 = iteration cap
 python3 -m pytest tests/                                           # single: python3 -m pytest tests/test_verilator_compat.py::test_comment_examples_are_ignored
 ```
 
@@ -31,7 +31,7 @@ Architecture:
 - Remote work is dispatched by Ray resource: `pipeline/functions.py` runs RTL extraction on `rtl_extract` workers and simulation on `sim_worker`; LLM calls go to `opencode_creds`/`opencode_tools`; `verilator_run` is another worker type (see `cluster.yaml`).
 - `src/` holds RTL parsing, plan generation, and the `VerificationPlan` schema; `uvm_generator/` renders `templates/*.j2` and validates output (`verilator_compat.py` rejects SV constructs Verilator can't handle, e.g. parameterized virtual interfaces; `rules.yaml`/`capabilities.yaml` constrain generation).
 - `pipeline/verification_improvement.py`, `tb_feedback.py`, `llm_weakness_analyzer.py` drive the diagnose/repair/improve iterations.
-- Per design, inputs are `benchmarks/<design>/{<design>.sv,spec.md,ref_model.py}` wired via `pipeline/designs/<design>.yaml` (`template.yaml` as a starting point). All outputs go to `generated/designs/<design>/`; re-running **resumes** from valid artifacts there (including `improvement_state.json`), so delete that directory for a clean run (`make clean` wipes all designs).
+- Per design, inputs live together in `benchmarks/<design>/`: `<design>.sv`, `spec.md`, `ref_model.py` and `design.yaml` (copy `benchmarks/TEMPLATE.yaml` for a new one). `rtl_to_gds.py --design-config` accepts a path, a directory name, or a design `name:`. All outputs go to `generated/designs/<design>/`; re-running **resumes** from valid artifacts there (including `improvement_state.json`), so delete that directory for a clean run (`make clean` wipes all designs).
 - `spec.md` must describe *intended* behavior, not what the current RTL does — the loop may modify RTL based on mismatches.
 
 ## orfs_loop
