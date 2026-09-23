@@ -11,7 +11,7 @@
 #
 # What it does:
 #   1. Copies the 3 input files into uvm_loop/benchmarks/<design_name>/ (if not already there).
-#   2. Writes uvm_loop/pipeline/designs/<design_name>.yaml (the design config rtl_to_gds.py needs).
+#   2. Writes uvm_loop/benchmarks/<design_name>/design.yaml (the design config rtl_to_gds.py needs).
 #   3. Runs rtl_to_gds.py under the run_forever.sh supervisor (--uvm-supervised), so the LLM
 #      model fallback pool actually engages on a rate limit instead of the whole run dying.
 #   4. Writes results/<design_name>/pipeline.log (full unbuffered log) and rtl_to_gds.json
@@ -49,7 +49,7 @@ cp -n "$RTL_FILE" "$BENCH_DIR/$RTL_BASENAME" 2>/dev/null || true
 cp -n "$SPEC_FILE" "$BENCH_DIR/$SPEC_BASENAME" 2>/dev/null || true
 cp -n "$REF_MODEL_FILE" "$BENCH_DIR/$REF_MODEL_BASENAME" 2>/dev/null || true
 
-DESIGN_CONFIG="$REPO/uvm_loop/pipeline/designs/$DESIGN_NAME.yaml"
+DESIGN_CONFIG="$BENCH_DIR/design.yaml"
 cat > "$DESIGN_CONFIG" <<EOF
 name: $DESIGN_NAME
 rtl: benchmarks/$DESIGN_NAME/$RTL_BASENAME
@@ -74,7 +74,7 @@ ORFS_MAX_ITERATIONS="${ORFS_MAX_ITERATIONS:-3}"
 ORFS_BATCH_SIZE="${ORFS_BATCH_SIZE:-3}"
 ORFS_STAGE_TIMEOUT="${ORFS_STAGE_TIMEOUT:-7200}"
 
-echo "Design config       : pipeline/designs/$DESIGN_NAME.yaml"
+echo "Design config       : benchmarks/$DESIGN_NAME/design.yaml"
 echo "ORFS repo            : $CHIA_ORFS_REPO"
 echo "Output               : $OUT_DIR"
 echo "UVM max iterations   : $UVM_MAX_ITERS"
@@ -84,7 +84,7 @@ echo "Starting..."
 
 cd "$REPO"
 python3 rtl_to_gds/rtl_to_gds.py \
-    --design-config "pipeline/designs/$DESIGN_NAME.yaml" \
+    --design-config "benchmarks/$DESIGN_NAME/design.yaml" \
     --orfs-repo "$CHIA_ORFS_REPO" \
     --uvm-supervised "$UVM_MAX_ITERS" \
     --core-utilization "$CORE_UTILIZATION" \

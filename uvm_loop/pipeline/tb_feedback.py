@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Any
 import yaml
 
+from pipeline.pyuvm_reference import pyuvm_api_reference
+
 MAX_LOG_CHARS = 20000
 
 
@@ -340,6 +342,7 @@ Rules:
 def build_repair_prompt(plan_path: str, workspace: str = "/workspace") -> str:
     return f"""
 You are repairing an LLM-generated cocotb+pyuvm verification environment.
+{pyuvm_api_reference()}
 
 Your filesystem is intentionally sanitized. The RTL implementation is NOT
 available to you. Work only inside {workspace}. Do not search parent

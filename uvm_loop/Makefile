@@ -1,5 +1,5 @@
-BENCHMARK ?= adder
-DESIGN_CONFIG ?= pipeline/designs/$(BENCHMARK).yaml
+BENCHMARK ?= fifo
+DESIGN_CONFIG ?= benchmarks/$(BENCHMARK)/design.yaml
 BENCHMARK_ROOT ?= generated/designs/$(BENCHMARK)
 TB_DIR := $(BENCHMARK_ROOT)/tb
 EXAMPLE_RTL ?= $(shell python3 -c "import yaml; c=yaml.safe_load(open('$(DESIGN_CONFIG)')); print(c['rtl'])")
