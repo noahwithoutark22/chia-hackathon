@@ -1,0 +1,36 @@
+# model: opencode/big-pickle
+# error: Invalid YAML: while scanning a directive
+  in "<unicode string>", line 1, column 1:
+    %Error: /workspace/benchmarks/sh ... 
+    ^
+expected alphabetic or numeric character, but found ':'
+  in "<unicode string>", line 1, column 7:
+    %Error: /workspace/benchmarks/sha256_b ... 
+          ^
+# ---- raw response ----
+Diagnosis complete. Plan written to `/workspace/generated/designs/sha256_benchmark_corrupted/results/tb_update_plan_iteration_0.yaml`.
+
+## Summary
+
+**Verdict: `non_actionable`** (RTL/DUT compilation failure — TB could not be meaningfully validated)
+
+### Evidence chain
+
+1. **Exact failing test/failure**: All 11 tests fail identically with `status: runtime_error`, `returncode: 2`, `clean_exit: false`, and `results_file_exists: false`.
+
+2. **Exact error**: Verilator aborts compiling the DUT before any TB code runs:
+   ```
+   %Error: /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv:10:40: Assignment pattern missed initializing elements: 62
+   %Error: /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv:10:40: Assignment pattern missed initializing elements: 63
+   %Error: Exiting due to 2 error(s)
+   ```
+   The diagnostic points exclusively to the RTL source file (`sha256.sv:10`, the `localparam logic [31:0] K [0:63]` initialization) — never to a generated-TB file. The `make` step fails before `Vtop.mk` is produced, so cocotb/pyuvm never executed.
+
+3. **Generated TB inspection**: The TB is pure-Python cocotb+pyuvm (`Sha256Pins` is a plain Python helper; no SystemVerilog interfaces). A grep confirms **no** parameterized virtual-interface or `uvm_config_db#(virtual ...)` patterns exist, consistent with the **DETERMINISTIC COMPATIBILITY SCAN: NONE** result. Therefore the "Verilator internal fault + forbidden pattern ⇒ generation_bug" rule does not apply (and this is a normal compile error, not an internal fault).
+
+### Classification rationale
+- **Not `generation_bug`**: The failure is not attributable to the generated TB, and no forbidden pattern was detected.
+- **Not `template_bug`**: The failure does not point to shared verification infrastructure or templates.
+- **`non_actionable`**: The evidence explicitly identifies an RTL/DUT compilation failure (`sha256.sv:10:40`), which this RTL-blind stage cannot safely repair.
+
+Per the rules, `changes: []` for `non_actionable` — no generated-TB repair is proposed, and no RTL modification is requested or described.

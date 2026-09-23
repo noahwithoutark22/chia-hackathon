@@ -1,0 +1,131 @@
+schema_version: '1.0'
+action: repair
+root_cause: 'The accepted RTL (byte-identical to rtl_verification/accepted/i2c_master.sv;
+  no infrastructure/toolchain defect) still contains the transaction-path defect set
+  DIS-01, DIS-02, DIS-03, DIS-04, DIS-05, DIS-06, DIS-08, DIS-09, DIS-10, DIS-11,
+  DIS-20 from the verification-plan catalog (verification_plan.yaml lines 1256-1415).
+  Concretely: (1) DIS-20 - SDA is hard-wired low for the entire active phase (sda_oe
+  = busy, sda_out = 0), so the address/data bits are never transmitted; with the open-drain
+  resolve model (bus = sda_oe ? sda_out : 1) every address slot resolves to 0, which
+  is why the checkers observe address byte 0x00. (2) DIS-01 - the R/W bit is inverted
+  on load ({slave_addr, ~rw}). (3) DIS-02/03/04 - the address bit counter is loaded
+  to 6, increments, and exits at bit_cnt==1 (11 slots) and nothing shifts shift_reg,
+  so SEND_ADDR never emits the 8-bit MSB-first address {slave_addr,rw} and never reaches
+  ADDR_ACK at the driver''s ADV_ADDR_ACK (advance 10) window. (4) DIS-05/DIS-06 -
+  ack_error is asserted when sda_in==1''b0 at the ACK samples, but the spec, the assertion
+  checkers, and the scoreboard define an observed ACK as SDA low and a NACK as SDA
+  high (CONTRACT.md fields), so ack_error must assert when sda_in==1''b1; combined
+  with the missed ADDR_ACK window this violates a_addr_ack_error on every ack-dependent
+  test. (5) DIS-08/DIS-09 - write data is loaded complemented (~tx_data) and read
+  data is complemented on transfer (rx_data <= ~rx_shift). (6) DIS-10 - read data
+  is captured LSB-first using rx_shift[7-bit_cnt] with the counter exiting at bit_cnt==1
+  (7 bits), corrupting rx_data and the read-data check. (7) DIS-11 - the IDLE case
+  forces ack_error <= 1''b1, so ack_error leaks high into the next transaction''s
+  completion sampling (a_ack_error_clear_on_success). ResetIdleCheckTest passes, isolating
+  the failure locus to the transaction path and ruling out clocking/reset/infrastructure
+  problems; this is conclusively RTL-caused.
+
+  '
+evidence:
+- 'simulation_result.json for iteration 07: 14/15 tests failed, 1 passed (ResetIdleCheckTest).
+
+  '
+- 'Representative .chia_sim failures: a_addr_ack_error - ''sda_in==1 at the address-ACK
+  sample (slave NACKed) but ack_error was not asserted'' (13 tests, e.g. WriteBasicTest,
+  WriteZeroTest, WriteMaxTest, ReadBasicTest, ReadMaxTest, StartWhileBusyTest, ReadWriteCornerTest,
+  I2CRandomWriteTest, I2CRandomReadTest, I2CRandomReadWriteTest, I2CWriteNackTest,
+  I2CReadNackTest); a_address_byte_correct - ''observed address byte 0x00 != (slave_addr<<1)|rw''
+  (WriteAddrNackTest, I2CRandomReadWriteTest); a_ack_error_clear_on_success - ''ack_error=1
+  at completion although all expected ACKs were observed'' (ReadAddrNackTest).
+
+  '
+- 'Every message maps 1:1 to the DIS defects cited in root_cause and matches the plan
+  catalog''s documented corruptions.
+
+  '
+- 'Note (not an RTL defect, not repaired here): ResetDuringTransactionTest reports
+  ''scoreboard contract violations: no scoreboard-graded transactions'' because the
+  frozen scenario resets its only transaction mid-flight, the frozen monitor drops
+  the in-flight item (CONTRACT.md section 11), sb.txn_count==0, and `_require_graded_transactions`
+  defaults true - that test cannot pass even on a fully corrected RTL; its failure
+  is a frozen test-design property independent of the RTL.
+
+  '
+confidence: high
+changes:
+- file: rtl.sv
+  action: modify
+  description: 'Apply the verification-plan''s prescribed DEFECT repairs as minimal
+    edits to rtl.sv. No TB/toolchain changes (TB is frozen); no changes to the clock
+    divider / div_cnt (the scoreboard''s majority sampling windows, +/-CLK_DIV/2 around
+    the driver''s ADV_* slots, are robust to any divider phase).
+
+    '
+  instructions:
+  - "Lines 45-48 (DIS-20): replace the open-drain drive section with bit-transmitting\
+    \ logic. Resolved bus = (sda_oe ? sda_out : 1), so bit value 1 is transmitted\
+    \ by releasing SDA (oe high-Z) and bit value 0 by driving low. Replace with:\n\
+    \  assign sda_oe  = (state == SEND_ADDR || state == SEND_DATA) ? ~shift_reg[7]\n\
+    \                 : (state == ADDR_ACK || state == READ_DATA)   ? 1'b0\n     \
+    \            : busy;\n  assign sda_out = 1'b0;\n  assign scl_oe  = busy;\n  assign\
+    \ scl_out = 1'b0;\nThis transmits the MSB-first address/data stream, releases\
+    \ SDA during ADDR_ACK and READ_DATA (as required by the scoreboard READ_DATA phase\
+    \ check), holds SDA low during DATA_ACK/READ_ACK/START_COND/STOP_COND so the STOP-condition\
+    \ check sees sda_level 0->1 with scl_level==1 in the completion window, and fully\
+    \ releases both lines once busy drops in IDLE (satisfying a_open_drain_release).\
+    \ Note shift_reg[7] is still valid for the whole slot because the shift below\
+    \ is nonblocking (takes effect at the following edge).\n"
+  - 'Line 66 (DIS-01): load the correct R/W bit: shift_reg <= {slave_addr, rw};
+
+    '
+  - 'Line 67 (DIS-02): load bit_cnt to 7 so all 8 address bits are emitted: bit_cnt
+    <= 4''d7;
+
+    '
+  - "Lines 82-88 (DIS-03/04): SEND_ADDR must decrement, exit at bit_cnt==0, and shift\
+    \ the register each slot so shift_reg[7] presents the successive address bits\
+    \ MSB first. Replace the body with:\n  SEND_ADDR: begin\n      shift_reg <= {shift_reg[6:0],\
+    \ 1'b0};\n      if (bit_cnt == 4'd0) state <= ADDR_ACK;\n      else          \
+    \       bit_cnt <= bit_cnt - 1'b1;\n  end\n"
+  - 'Lines 90-96 (DIS-05): ADDR_ACK asserts ack_error when a NACK is observed, i.e.
+    when sda_in == 1''b1 (an ACK is SDA low): change ''sda_in == 1''b0'' to ''sda_in
+    == 1''b1''. Keep the existing rw branch selection (read-reset or write branch
+    as currently structured).
+
+    '
+  - 'Lines 98-102 (DIS-08): the write branch must load the un-complemented data word:
+    shift_reg <= tx_data;
+
+    '
+  - "Lines 105-111 (DIS-03, data phase): add a per-slot left shift so the data bits\
+    \ stream MSB first on shift_reg[7]:\n  SEND_DATA: begin\n      shift_reg <= {shift_reg[6:0],\
+    \ 1'b0};\n      if (bit_cnt == 4'd0) state <= DATA_ACK;\n      else          \
+    \       bit_cnt <= bit_cnt - 1'b1;\n  end\n"
+  - 'Lines 113-117 (DIS-06): DATA_ACK asserts ack_error when sda_in == 1''b1 (NACK
+    observed; an ACK is SDA low): change ''sda_in == 1''b0'' to ''sda_in == 1''b1''.
+
+    '
+  - "Lines 119-127 (DIS-10): READ_DATA must capture MSB first and leave at bit_cnt==0:\n\
+    \  READ_DATA: begin\n      rx_shift[bit_cnt] <= sda_in;\n      if (bit_cnt ==\
+    \ 4'd0) state <= READ_ACK;\n      else                 bit_cnt <= bit_cnt - 1'b1;\n\
+    \  end\n(replaces rx_shift[7-bit_cnt] <= sda_in with an LSB-first/7-bit scheme).\n"
+  - 'Lines 129-132 (DIS-09): READ_ACK must transfer the un-complemented shift register:
+    rx_data <= rx_shift;
+
+    '
+  - "Lines 73-76 (DIS-11): the IDLE case must clear ack_error instead of forcing it\
+    \ high:\n  IDLE: begin\n      busy      <= 1'b0;\n      ack_error <= 1'b0;\n \
+    \ end\n"
+  verification: 'Re-run the frozen regression. Expected outcome after repair: the
+    13 RTL-caused failures (a_addr_ack_error, a_address_byte_correct, a_ack_error_clear_on_success,
+    plus the write/read data checks) transition to passing because address/data bytes
+    are transmitted correctly, the ACK samples align with the driver''s ADV_ADDR_ACK/ADV_DATA_ACK
+    windows, ack_error follows the checker-defined wire semantics, and ack_error clears
+    on success. ResetDuringTransactionTest remains unpassable-by-design (frozen test-design
+    property documented in evidence) and is not attributed to the RTL.
+
+    '
+summary: The remaining RTL defects after iteration 06 are the transaction-path corruptions
+  DIS-01/02/03/04/05/06/08/09/10/11/20. A minimal, plan-conformant repair (open-drain
+  bit drive + corrected polarity/loading/counter/terminal) makes the frozen grader
+  checkers (16 assertions + stream-scoreboard) pass.

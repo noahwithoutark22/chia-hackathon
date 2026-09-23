@@ -1,0 +1,182 @@
+schema_version: '1.0'
+action: repair
+root_cause: 'The accepted RTL (byte-identical to rtl_verification/accepted/i2c_master.sv;
+  no infrastructure/toolchain defect) transmits the address byte during FSM advances
+  1..8 and the write-data byte during advances 10..17 - exactly one FSM advance EARLIER
+  than the frozen TB''s executable advance schedule requires (address advances 2..9,
+  write-data advances 11..18; scoreboard/assertion constants ADV_ACCEPT=0, ADV_ADDR_ACK=10,
+  ADV_DATA_PHASE_START=11, ADV_DATA_ACK=19, ADV_STOP=20 with `_rel_index_for_advance(adv,
+  cdiv) = accept_gi + adv*cdiv` and majority sampling +-CLK_DIV/2). The frozen observers
+  (i2c_assertions.py _finalize_transaction / _check_a_address_byte_correct and i2c_scoreboard.py
+  _check_stream, lines 829-833) reconstruct the transmitted address byte from the
+  resolved bus level sda_level at nominal edges accept_gi + (2+j)*CLK_DIV, j=0..7,
+  and the write-data byte at accept_gi + (11+i)*CLK_DIV, i=0..7. Because each transmitted
+  bit occupies exactly one 4-cycle advance while the sampling windows are 5 edges
+  wide (+-CLK_DIV/2 around the nominal edge), presenting the byte one advance early
+  makes every job land one slot late: the observers reconstruct {b6,b5,b4,b3,b2,b1,b0,
+  ACK-release(=1)} instead of the transmitted {b7..b0}. This matches the observed
+  failures byte-for-byte in every data-path test (see evidence). Three concrete RTL
+  structural causes: (1) START_COND occupies only ONE advance (case arm `state <=
+  SEND_ADDR` fires at the advance-1 edge), so SEND_ADDR presents shift_reg[7] (=b7)
+  during advance 1; (2) the ADDR_ACK case at the advance-10 edge immediately loads
+  shift_reg<=tx_data and enters SEND_DATA, so tx_data[7] is presented during advance
+  10; (3) the accept arm never resets div_cnt, so the FSM advance grid is anchored
+  in an unknown phase relative to the accept edge (advance-1 edge lands at accept+d,
+  d in {1,2,3,4}); the driver''s slave sda_in timeline is fixed relative to acceptance,
+  so the address-ACK sample (currently one advance after the SEND_ADDR terminal),
+  the read-bit samples, and the data-ACK sample would land outside the driver''s sda_in
+  windows for most phases. The TB is internally consistent (driver holds the address
+  ACK on sda_in through the advance-10 edge only, presents read bit i on edges accept+(10..11+i)*CLK_DIV,
+  holds the data ACK through the advance-19 edge, and pulses done at advance 20),
+  so this is conclusively an RTL cadence/FSM-structure defect, not a TB defect. The
+  repair must (a) anchor div_cnt at acceptance, (b) hold START_COND for two advances
+  so the address byte spans advances 2..9, (c) sample the address ACK inside the SEND_ADDR
+  terminal advance (10), (d) delay the write-data presentation by one advance (ADDR_ACK
+  becomes the one-advance write pre-data hold entered at advance 10, so SEND_DATA
+  presents tx_data[7] at advance 11), and (e) sample the data ACK inside the SEND_DATA
+  terminal advance (19) before STOP_COND. Read-data sampling (advances 11..18) and
+  rx_data latching (advance 19) are already correctly aligned once div_cnt is anchored
+  and are left unchanged.
+
+  '
+evidence:
+- 'simulation_result.json (iteration 08): status functional_failure; 14 of 15 tests
+  fail with status runtime_error / returncode 2; only ResetIdleCheckTest passes (no
+  start offered), isolating the defect to the transaction path (reset/idle and clocking
+  are already correct).
+
+  '
+- 'Every failing test aborts on the SAME first assertion, a_address_byte_correct (all
+  tb/.chia_sim/*.xml, e.g. WriteBasicTest: "observed address byte 0x41 != (slave_addr<<1)|rw
+  = 0xa0"). Observed-vs-expected address bytes (slave_addr, rw): WriteBasic/WriteDataNack/StartWhileBusy/DonePulseCheck
+  (0x50,0) 0x41!=0xa0; WriteZero/I2CCorner (0x00,0) 0x01!=0x00; WriteMax (0x7f,0)
+  0xfd!=0xfe; ReadBasic/ReadAddrNack (0x50,1) 0x43!=0xa1; ReadMax (0x2a,1) 0xab!=0x55;
+  WriteAddrNack (0x30,0) 0xc1!=0x60; AddressMsbFirstCheck (0x6a,0) 0xa9!=0xd4; I2CRandom
+  (0x7e,1) 0xfb!=0xfd.
+
+  '
+- 'Pattern: for every test, observed == {b6,b5,b4,b3,b2,b1,b0, ACK_release_level}
+  where {b7..b0} is the true transmitted byte (slave_addr<<1 | rw) and the trailing
+  bit is the bus release level during the first ACK advance (SDA pulled high, =1).
+  E.g. 0xa0=1010_0000 -> observed 0100_0001=0x41. Verified arithmetically for 13 independently
+  failing tests; the shift is one address slot, phase-independent.
+
+  '
+- 'RTL hand-trace of the accepted RTL (accept edge Ec, CLK_DIV=4): address b7..b0
+  on SDA during advances 1..8; ADDR_ACK state at advance 9 and ADDR_ACK case at advance
+  10 (address-ACK sample edge currently OK); write tx_data[7..0] during advances 10..17;
+  DATA_ACK case at advance 19 and done/busy=0 at advance 20; read-data samples at
+  advances 11..18 with rx_data latched at advance 19. So the PRESENTATION phases (address,
+  write data) are one advance early while the ACK/STOP sample edges and read sampling
+  are right, and, because div_cnt is not reset at accept, every sampling edge depends
+  on the arbitrary accept-edge phase (d in {1,2,3,4}) - only one phase in four aligns
+  with the fixed driver timeline.
+
+  '
+- 'The intended cadence is defined by the executable frozen code, not merely by prose:
+  i2c_assertions.py/_finalize_transaction and i2c_scoreboard.py/_check_stream sample
+  the address byte at _rel_index_for_advance(2+j, cdiv) and write bytes at ADV_DATA_PHASE_START+i;
+  i2c_driver.py/drive_slave_response drives the address ACK on sda_in from edge accept+1+8*CLK_DIV
+  through accept+1+10*CLK_DIV (released immediately after the advance-10 edge), read
+  bit i at accept+(10..11+i)*CLK_DIV, and the data ACK through the advance-19 edge;
+  CONTRACT.md 13.3 documents the same schedule. No interpretation of the current RTL
+  cadence satisfies these checkers, and no DIS-catalog defect (verification_plan.yaml
+  lines 1256-1415 DIS-01..20) describes this one-advance-early presentation: it is
+  a new RTL FSM-cadence defect introduced/remaining in the iteration-07 repaired RTL.
+
+  '
+confidence: medium
+changes:
+- file: rtl.sv
+  action: modify
+  description: 'Realign the transmitted-address (and write-data) presentation with
+    the frozen advance schedule (advances 2..9 and 11..18) while keeping the ACK samples,
+    read sampling, and STOP pulse on their correct advances. No TB/toolchain changes
+    (TB frozen); leave the sda_oe/scl_oe open-drain logic, the ack polarity (sda_in==1''b1
+    -> ack_error), the data content paths (shift_reg<=tx_data, rx_data<=rx_shift),
+    READ_DATA/READ_ACK, IDLE, and STOP_COND arms unchanged. The DATA_ACK case arm
+    becomes unreachable (SEND_DATA now terminates directly to STOP_COND); leave its
+    enum entry and body so the state encoding/width is unchanged.
+
+    '
+  instructions:
+  - "Line 43 area (declarations): add a one-bit START-hold flag next to the other\
+    \ FSM registers:\n  logic start_hold;\n"
+  - 'Reset arm (lines 53-62): add `start_hold <= 1''b0;` alongside the other register
+    clears. '
+  - "Accept arm (lines 66-70): anchor the FSM advance grid at acceptance and prime\
+    \ the START hold. Replace:\n  if (state == IDLE && start) begin\n      busy  \
+    \    <= 1'b1;\n      shift_reg <= {slave_addr, rw};\n      bit_cnt   <= 4'd7;\n\
+    \      state     <= START_COND;\n  end\nwith:\n  if (state == IDLE && start) begin\n\
+    \      busy      <= 1'b1;\n      shift_reg <= {slave_addr, rw};\n      bit_cnt\
+    \   <= 4'd7;\n      div_cnt   <= '0;\n      start_hold<= 1'b0;\n      state  \
+    \   <= START_COND;\n  end\n(resetting div_cnt locks advance 1 to the accept edge\
+    \ + CLK_DIV so every subsequent advance, ACK sample, read sample, and done pulse\
+    \ is phase-independent and matches the driver timeline.)\n"
+  - "START_COND arm (lines 80-82): hold the START condition for TWO advances so the\
+    \ first address bit is presented at advance 2, not advance 1. Replace:\n  START_COND:\
+    \ begin\n      state <= SEND_ADDR;\n  end\nwith:\n  START_COND: begin\n      if\
+    \ (start_hold) begin\n          start_hold <= 1'b0;\n          state      <= SEND_ADDR;\n\
+    \      end else begin\n          start_hold <= 1'b1;\n      end\n  end\n"
+  - "SEND_ADDR arm (lines 84-88): sample the address ACK at the terminal advance (advance\
+    \ 10; the driver only holds sda_in through that edge) and branch directly to the\
+    \ correct data state. Replace:\n  SEND_ADDR: begin\n      shift_reg <= {shift_reg[6:0],\
+    \ 1'b0};\n      if (bit_cnt == 4'd0) state <= ADDR_ACK;\n      else          \
+    \       bit_cnt <= bit_cnt - 1'b1;\n  end\nwith:\n  SEND_ADDR: begin\n      shift_reg\
+    \ <= {shift_reg[6:0], 1'b0};\n      if (bit_cnt == 4'd0) begin\n          if (sda_in\
+    \ == 1'b1) ack_error <= 1'b1;\n          if (rw) begin\n              bit_cnt\
+    \  <= 4'd7;\n              rx_shift <= 8'd0;\n              state    <= READ_DATA;\n\
+    \          end else begin\n              state <= ADDR_ACK;\n          end\n \
+    \     end else begin\n          bit_cnt <= bit_cnt - 1'b1;\n      end\n  end\n\
+    (the address byte now occupies advances 2..9; for reads, READ_DATA is entered\
+    \ at advance 10 so its first sample lands at advance 11; for writes, ADDR_ACK\
+    \ becomes the one-advance pre-data hold so SEND_DATA starts at advance 11.)\n"
+  - "ADDR_ACK arm (lines 90-103): now only the write pre-data hold (the address-ACK\
+    \ sample and the read branch moved into the SEND_ADDR terminal). Replace the whole\
+    \ arm with:\n  ADDR_ACK: begin\n      shift_reg <= tx_data;\n      bit_cnt   <=\
+    \ 4'd7;\n      state     <= SEND_DATA;\n  end\n"
+  - "SEND_DATA arm (lines 105-109): sample the data ACK at the terminal advance (advance\
+    \ 19) and go directly to STOP. Replace:\n  SEND_DATA: begin\n      shift_reg <=\
+    \ {shift_reg[6:0], 1'b0};\n      if (bit_cnt == 4'd0) state <= DATA_ACK;\n   \
+    \   else                 bit_cnt <= bit_cnt - 1'b1;\n  end\nwith:\n  SEND_DATA:\
+    \ begin\n      shift_reg <= {shift_reg[6:0], 1'b0};\n      if (bit_cnt == 4'd0)\
+    \ begin\n          if (sda_in == 1'b1) ack_error <= 1'b1;\n          state <=\
+    \ STOP_COND;\n      end else begin\n          bit_cnt <= bit_cnt - 1'b1;\n   \
+    \   end\n  end\n(the write-data byte now occupies advances 11..18 and the data-ACK\
+    \ sample happens at advance 19, within the driver''s data-ACK hold window, before\
+    \ STOP at advance 20.)\n"
+  - 'Leave the DATA_ACK arm (lines 111-115), READ_DATA (117-125), READ_ACK (127-130),
+    STOP_COND (132-136), IDLE (75-78), the default arm, and the sda_oe/scl_oe/sda_out/scl_out
+    assigns (45-50) UNCHANGED. DATA_ACK is now unreachable but keeping it preserves
+    the enum width; STOP_COND still pulses done and clears busy at advance 20, which
+    keeps the done-pulse/busy-span/STOP-condition and latency expectations identical
+    to the accepted RTL (total transaction length remains 21 advances = 84 cycles).
+
+    '
+  verification: 'Re-run the frozen regression. Expected outcome: all 14 previously
+    failing tests (WriteBasic, WriteZero, WriteMax, ReadBasic, ReadMax, WriteAddrNack,
+    WriteDataNack, ReadAddrNack, StartWhileBusy, DonePulseCheck, AddressMsbFirstCheck,
+    I2CCorner, I2CRandom, and ResetDuringTransaction) stop aborting at a_address_byte_correct
+    and instead complete: address byte == (slave_addr<<1)|rw for advances 2..9, write
+    bytes reconstructed at advances 11..18, read rx_data sampled at advances 11..18,
+    address/data ACK errors asserted at advances 10/19, and done/busy=0 at advance
+    20; ResetDuringTransactionTest is judged by its scoreboard/hung-report contract
+    rather than the address-byte assertion. Caveats validated by a cycle-accurate
+    model (frozen _sample_majority_ring semantics, frozen driver sda_in timeline,
+    all 4 divider phases x 9 directed scenarios): (a) every frozen checker other than
+    a_clk_div_advance_timing passes; (b) a_clk_div_advance_timing only records ACTUAL
+    sda_level changes inside [rel(2)..rel(9)], so it can only be satisfied by addresses
+    whose on-bus bits toggle at every boundary (e.g. 0xa0 gives spacing [4,4] and
+    passes, 0x00/0xfe are flat and skipped, but 0xa1/0x60 have flat runs and yield
+    spacing [4,4,16]/[8] and are flagged). No data-faithful bit-serial master that
+    holds each bit exactly CLK_DIV cycles can satisfy it for such addresses; today
+    it never fires because a_address_byte_correct aborts the test first. This is a
+    latent data-dependent property of the frozen checker, not a defect of this repair.
+
+    '
+summary: 'The iteration-08 failure is an RTL FSM-cadence defect (address/write-data
+  presentation one advance early, plus unanchored divider phase), not a TB defect.
+  Smallest repair: reset div_cnt at accept, hold START_COND two advances, sample the
+  address ACK and the data ACK inside their terminal (advance 10 / advance 19), and
+  use ADDR_ACK as the one-advance write pre-data hold so write-data starts at advance
+  11; read path, ack polarity, data content, and STOP/done logic are unchanged.'

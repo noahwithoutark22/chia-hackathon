@@ -1,0 +1,47 @@
+schema_version: '1.0'
+action: repair
+root_cause: ack_error is sticky across back-to-back transactions. The RTL only ever
+  *sets* ack_error (on NACK detection during SEND_ADDR/SEND_DATA/DATA_ACK) and clears
+  it only on reset or in the IDLE divisor-tick (div_cnt == CLK_DIV-1). The acceptance
+  branch (`if (state == IDLE && start)`, rtl.sv lines 70-77) is prioritized before
+  the `else if (div_cnt == CLK_DIV-1)` IDLE-clear branch and does not clear ack_error.
+  Therefore, when a new fully-acknowledged transaction is accepted on/before the first
+  post-done IDLE div-tick, it inherits the previous (NACKed) transaction's ack_error=1
+  and completes with ack_error=1, violating spec §11 ('A successful transaction leaves
+  ack_error low') and the reference model's `expected_ack_error = not slave_ack`.
+evidence:
+- 'I2CCornerTest runtime_error (returncode=2): assertion ''a_ack_error_clear_on_success''
+  fails at accept_gi=761 -- ''ack_error=1 at completion although all expected ACKs
+  were observed''. The failing txn is a fully-ACKed write (mon_txn_9 addr=0x50 tx=0xA5;
+  driver presented address ACK sda_in=0 at 8080ns and data ACK sda_in=0 at 8440ns)
+  which completed with ack_error=1. It immediately followed CornerMissingDataAck (txn
+  8) which had correctly ended ack_error=1; txn 9 was accepted at 7720ns, exactly
+  the edge where the prior txn''s IDLE div-clear (7680+40ns) was preempted by the
+  acceptance branch.'
+- 'I2CRandomTest runtime_error (returncode=2): same assertion fails at accept_gi=267
+  on fully-ACKed read (mon_txn_3 addr=0x31 rw=1; driver presented address ACK sda_in=0
+  at 3140ns) with ack_error=1. Preceding txns 0-2 were NACK scenarios ending ack_error=1;
+  txn 3 was accepted at 2780ns, exactly the preempted IDLE div-clear edge (done at
+  2740ns + 40ns).'
+- 'rtl.sv: the acceptance branch (state==IDLE && start) sets busy=1, latches addr/rw/tx,
+  but never clears ack_error, and it takes priority over the `IDLE: busy<=0; ack_error<=0;`
+  div-tick branch; ack_error is a set-only flag during any transaction (SEND_ADDR/SEND_DATA/DATA_ACK
+  `if (sda_in==1) ack_error<=1`), so a stale 1 is carried into and out of an ACKed
+  transaction.'
+- 'Monitor completions and driver completion samples both read the DUT pin ack_error=1
+  at the done pulse on these fully-ACKed transactions (e.g. ''completion sampled:
+  ... ack_error=1'' with slave_ack=1), confirming it is DUT output behavior, not a
+  TB capture error. The scoreboard ''read-data sda_oe'' and ''idle-window'' catch-reports
+  are non-fatal scoring artifacts (they also occur on the passing read tests) and
+  are not the demonstrated failure.'
+confidence: high
+changes:
+- file: rtl.sv
+  action: modify
+  instructions:
+  - 'In the `always_ff` acceptance branch (`if (state == IDLE && start) begin ...
+    end`, around lines 70-77), clear the sticky error flag when a new transaction
+    starts: add `ack_error <= 1''b0;` (e.g., next to `busy <= 1''b1;`). This makes
+    `expected_ack_error` per-transaction (spec §11: a successful transaction leaves
+    ack_error low) without altering any NACK-detection logic, reset semantics, or
+    state sequencing.'

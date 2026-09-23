@@ -1,0 +1,76 @@
+# SHA-256 cocotb+pyuvm testbench -- generation manifest (stage-6 INTEGRATION).
+#
+# This manifest is the authoritative runtime contract for the generated
+# environment and is consumed by workers/sim/run.py.  The top module, RTL
+# file(s), the Python cocotb test module, and the exact pyuvm test class
+# names selectable via UVM_TESTNAME are listed here; `scenarios` maps each
+# directed verification-plan scenario id to its sequence and test classes.
+
+top_module: sha256
+top_file: benchmarks/sha256_benchmark_corrupted/sha256.sv
+
+# Only the DUT RTL is compiled.  Every other part of the testbench is
+# Python (cocotb 2.1.0 + pyuvm 5.0.0); there is no generated SV source.
+compile_files:
+  - benchmarks/sha256_benchmark_corrupted/sha256.sv
+
+# Exact runtime pyuvm test class names (selectable via UVM_TESTNAME and
+# resolved by test_top.py through pyuvm's factory).
+test_classes:
+  - Sha256ResetInitializationTest
+  - Sha256EmptyMessageTest
+  - Sha256SingleByteATest
+  - Sha256AbcMessageTest
+  - Sha256HelloWorldTest
+  - Sha256QuickBrownFoxTest
+  - Sha256BackToBackTransactionsTest
+  - Sha256StartWhileBusyRestartsTest
+  - Sha256DoneBehaviorContinuousTest
+  - Sha256CornerTest
+  - Sha256RandomizedTest
+
+# Top-level Python cocotb test module (without .py).
+python_test_module: test_top
+
+# Authoritative mapping between the accepted verification plan
+# (directed_test_scenarios, keyed by the exact scenario id from
+# CONTRACT.md §9) and the generated directed environment.  The corner_case
+# and randomized test classes above intentionally have NO scenarios entry
+# (separate verification strategies, CONTRACT.md §9).
+scenarios:
+  - id: reset_initialization
+    name: reset_initialization
+    sequence: Sha256ResetInitializationSequence
+    test: Sha256ResetInitializationTest
+  - id: empty_message
+    name: empty_message
+    sequence: Sha256EmptyMessageSequence
+    test: Sha256EmptyMessageTest
+  - id: single_byte_a
+    name: single_byte_a
+    sequence: Sha256SingleByteASequence
+    test: Sha256SingleByteATest
+  - id: abc_message
+    name: abc_message
+    sequence: Sha256AbcMessageSequence
+    test: Sha256AbcMessageTest
+  - id: hello_world
+    name: hello_world
+    sequence: Sha256HelloWorldSequence
+    test: Sha256HelloWorldTest
+  - id: quick_brown_fox
+    name: quick_brown_fox
+    sequence: Sha256QuickBrownFoxSequence
+    test: Sha256QuickBrownFoxTest
+  - id: back_to_back_transactions
+    name: back_to_back_transactions
+    sequence: Sha256BackToBackTransactionsSequence
+    test: Sha256BackToBackTransactionsTest
+  - id: start_while_busy_restarts
+    name: start_while_busy_restarts
+    sequence: Sha256StartWhileBusyRestartsSequence
+    test: Sha256StartWhileBusyRestartsTest
+  - id: done_behavior_continuous
+    name: done_behavior_continuous
+    sequence: Sha256DoneBehaviorContinuousSequence
+    test: Sha256DoneBehaviorContinuousTest

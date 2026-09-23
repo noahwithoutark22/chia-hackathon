@@ -1,0 +1,51 @@
+version: '1.0'
+verdict: generation_bug
+root_cause:
+  category: assertion
+  summary: The generated I2CAssertions checker fan-out queues use the stdlib asyncio.Queue,
+    which has no running asyncio event loop under cocotb 2.1.0's scheduler, so every
+    transaction checker crashes on its first `await q.get()` during build_phase.
+  evidence: 'All 15 tests fail identically at 90 ns during build_phase with runtime_error
+    (return code 2, clean_exit=false, not a timeout). Traceback: tb/i2c_assertions.py:901
+    `_check_a_address_byte_correct` -> `rec = await q.get()` -> asyncio/queues.py:156
+    `getter = self._get_loop().create_future()` -> AttributeError: ''NoneType'' object
+    has no attribute ''create_future''; identical crash in the 8 sibling checkers
+    (lines 922/951/970/991/1013/1038/1065/1093). `I2CAssertions.__init__` (line 368)
+    creates the observer-to-checker queues with stdlib `asyncio.Queue`; pyuvm 5.0.0''s
+    FIFOs (scoreboard/coverage) use `cocotb.queue` and work under this scheduler,
+    confirming the assertions module is the only generated file using raw asyncio.'
+changes:
+- file: tb/i2c_assertions.py
+  action: modify
+  reason: The generated assertion checkers use the stdlib asyncio.Queue for observer-to-checker
+    fan-out; cocotb 2.1.0 steps cocotb.start_soon coroutines with no running asyncio
+    loop, so asyncio.Queue.get() fails with 'NoneType' object has no attribute 'create_future'
+    and every test crashes in build_phase. cocotb.queue.Queue is API-compatible (put_nowait/await
+    get) and works under cocotb's scheduler.
+  instructions:
+  - In `I2CAssertions.__init__` (line 368), replace `asyncio.Queue()` with `cocotb.queue.Queue()`
+    when building `self._queues`.
+  - Add `from cocotb import queue` to the existing guarded cocotb import block alongside
+    `start_soon`/`RisingEdge` (and `queue = None` in the ImportError fallback).
+  - Remove the now-unused `import asyncio` at module top.
+validation:
+  tests:
+  - ResetIdleCheckTest
+  - WriteBasicTest
+  - WriteZeroTest
+  - WriteMaxTest
+  - ReadBasicTest
+  - ReadMaxTest
+  - WriteAddrNackTest
+  - WriteDataNackTest
+  - ReadAddrNackTest
+  - StartWhileBusyTest
+  - ResetDuringTransactionTest
+  - DonePulseCheckTest
+  - AddressMsbFirstCheckTest
+  - I2CCornerTest
+  - I2CRandomTest
+  requirements:
+  - build succeeds
+  - no UVM_ERROR or UVM_FATAL
+  - no reference-model mismatch

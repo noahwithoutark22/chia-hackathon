@@ -1,0 +1,65 @@
+schema_version: '1.0'
+action: repair
+root_cause: RTL transaction-FSM completion path is corrupted, so no transaction can
+  terminate and `done` never pulses 0->1. In rtl.sv the ADDR_ACK arm selects READ_DATA
+  for writes and SEND_DATA for reads (verification_plan DIS-07, line 94 `if (!rw)`),
+  DATA_ACK loops into READ_DATA instead of STOP (DIS-13, line 116), READ_ACK loops
+  back to DATA_ACK instead of STOP (DIS-14, line 131), and STOP_COND keeps `busy<=1`
+  and re-enters START_COND instead of returning to IDLE (DIS-16/DIS-17, lines 135/137).
+  Every write/read path therefore spins forever between READ_DATA/READ_ACK/DATA_ACK
+  and never reaches STOP_COND, exactly matching the frozen driver's bounded done-wait
+  timeout.
+evidence:
+- 'simulation_result.json + tb/.chia_sim/*.xml: 14/15 tests (WriteBasic, WriteZero,
+  WriteMax, ReadBasic, ReadMax, WriteAddrNack, WriteDataNack, ReadAddrNack, StartWhileBusy,
+  ResetDuringTransaction, DonePulseCheck, AddressMsbFirstCheck, I2CCorner, I2CRandom)
+  all report status=runtime_error returncode=2 with the identical failure message,
+  e.g. WriteBasicTest.xml / I2CCornerTest.xml / StartWhileBusyTest.xml: "I2CDriverTimeout[done-pulse]:
+  no done 0->1 pulse within 2048 cycles after start acceptance (transaction hung on
+  the DUT)". The timeout is raised by tb/i2c_driver.py _wait_done_edge, which is armed
+  only after start acceptance (busy already rose), so the RTL accepted the start but
+  never completed.'
+- 'ResetIdleCheckTest passes (170 ns sim, no start offered), isolating the defect
+  to the transaction path: reset/idle outputs are already correct and the failure
+  is not an infrastructure/toolchain issue.'
+- 'RTL trace of rtl.sv: write path (rw=0) ADDR_ACK !rw branch -> READ_DATA -> READ_ACK
+  -> DATA_ACK -> READ_DATA (loop, DIS-13 line 116); read path (rw=1) ADDR_ACK else
+  branch -> SEND_DATA -> DATA_ACK -> READ_DATA -> READ_ACK -> DATA_ACK (loop, DIS-14
+  line 131). Read/write path selection is swapped (DIS-07 line 94). STOP_COND (lines
+  134-138) sets busy<=1 and state<=START_COND, so even a reached STOP would not clear
+  busy or return to IDLE (DIS-16/DIS-17). No path can emit the done pulse, reproducing
+  the observed hang byte-for-byte.'
+- 'Intended behavior is grounded in the spec/reference model, not the TB: specification.md
+  sections 5/6/7 (write: START -> addr+0 -> ACK -> data -> ACK -> STOP -> DONE; read:
+  START -> addr+1 -> ACK -> 8 data -> master NACK -> STOP -> DONE; done pulses one
+  clock, busy low at STOP) and reference_model.py write_transaction/read_transaction.
+  verification_plan DIS-07/DIS-13/DIS-14/DIS-16/DIS-17 document exactly these corrupted
+  expressions and their correct replacements. The frozen TB implements this plan (driver
+  advance schedule and done-pulse binding), so the deviation is an RTL defect.'
+confidence: high
+changes:
+- file: rtl.sv
+  action: modify
+  instructions:
+  - 'Fix the read/write path selection in the ADDR_ACK arm (line 94): change `if (!rw)
+    begin` to `if (rw) begin`. rw=1 (read) selects READ_DATA; rw=0 (write, else branch)
+    selects SEND_DATA. This restores specification.md section 5/6 path selection (plan
+    DIS-07). Leave the branch bodies (bit_cnt <= 4''d7, rx_shift <= 8''d0, shift_reg
+    <= ~tx_data) unchanged.'
+  - 'Make the write transaction terminate: in the DATA_ACK arm (line 116) change `state
+    <= READ_DATA;` to `state <= STOP_COND;` so that after the write-data ACK the controller
+    proceeds to STOP per specification section 5 (plan DIS-13).'
+  - 'Make the read transaction terminate: in the READ_ACK arm (line 131) change `state
+    <= DATA_ACK;` to `state <= STOP_COND;` so that after the one-byte read and master
+    NACK the controller proceeds to STOP per specification section 6 (plan DIS-14).'
+  - 'Fix the STOP_COND arm (lines 134-138): change `busy <= 1''b1;` to `busy <= 1''b0;`
+    (busy returns low at completion, plan DIS-16) and change `state <= START_COND;`
+    to `state <= IDLE;` (controller returns to IDLE after STOP, plan DIS-17). Retain
+    `done <= 1''b1;`: combined with the existing `done <= 1''b0;` default (line 62)
+    this yields the required one-cycle done pulse detected by the frozen driver/monitor.'
+  - 'Do not modify any other state logic: ACK-sampling polarity (DIS-05/06), address
+    bit-counter init/progression and terminals (DIS-02/03/04/10), data complement
+    (DIS-08/09), idle ack_error (DIS-11) and the sda_out/scl_out drive controls (DIS-20)
+    are not the demonstrated failure (the hang) and remain out of scope for this repair;
+    this change only makes accepted transactions reach STOP_COND, pulse done, clear
+    busy, and return to IDLE.'

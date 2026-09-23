@@ -1,0 +1,40 @@
+version: '1.0'
+verdict: non_actionable
+root_cause:
+  category: other
+  summary: The corrupted DUT RTL keeps the SDA drive controls active while the bus
+    is idle (sda_oe=1, sda_out=0 sampled at busy==0), so the open-drain line resolves
+    low and assertion a_open_drain_release (verification_plan.yaml lines 1241-1247)
+    correctly fails. This is the plan-documented RTL corruption DIS-20 (sda_oe/scl_oe
+    hardwired 1, sda_out/scl_out hardwired 0), not a TB defect; fast failure of the
+    always-on pin checkers on the corrupted RTL is the intended catch-report behavior,
+    so no TB change is warranted.
+  evidence: '[assertion a_open_drain_release] FAILED: SDA resolved level 0 while busy==0
+    (sda_oe=1, sda_out=0); the line must be released (driven high via pull-up) while
+    idle - raised by I2CAssertions._check_a_open_drain_release (tb/i2c_assertions.py:878)
+    on the DUT sda_oe/sda_out outputs sampled immediately after reset while idle;
+    these are DUT outputs, not TB stimulus, and the observed values match the plan
+    discrepancy DIS-20 (lines 1404-1415), which the reference assertion implements
+    exactly.'
+changes: []
+validation:
+  tests:
+  - ResetIdleCheckTest
+  - WriteBasicTest
+  - WriteZeroTest
+  - WriteMaxTest
+  - ReadBasicTest
+  - ReadMaxTest
+  - WriteAddrNackTest
+  - WriteDataNackTest
+  - ReadAddrNackTest
+  - StartWhileBusyTest
+  - ResetDuringTransactionTest
+  - DonePulseCheckTest
+  - AddressMsbFirstCheckTest
+  - I2CCornerTest
+  - I2CRandomTest
+  requirements:
+  - build succeeds
+  - no UVM_ERROR or UVM_FATAL
+  - no reference-model mismatch

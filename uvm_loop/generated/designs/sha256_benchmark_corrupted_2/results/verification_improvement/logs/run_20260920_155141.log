@@ -1,0 +1,997 @@
+==============================================================================
+Starting run14
+Time          : 2026-09-20T15:51:41+05:30
+Project       : /home/auralab/nwark/chia-hackathon/uvm_loop
+Design config : pipeline/designs/sha256_benchmark_corrupted.yaml
+Design        : sha256_benchmark_corrupted
+Max iterations: 25
+Run log       : /home/auralab/nwark/chia-hackathon/uvm_loop/generated/designs/sha256_benchmark_corrupted/results/verification_improvement/logs/run_20260920_155141.log
+==============================================================================
+
+=========================================================
+ CHIA verification run: sha256_benchmark_corrupted
+=========================================================
+  RTL:          benchmarks/sha256_benchmark_corrupted/sha256.sv
+  Specification:benchmarks/sha256_benchmark_corrupted/sha256_spec.md
+  Reference:    benchmarks/sha256_benchmark_corrupted/sha256_reference_model.py
+  Generated TB: generated/designs/sha256_benchmark_corrupted/tb
+  Plan:         generated/designs/sha256_benchmark_corrupted/plans/verification_plan.yaml
+2026-09-20 15:51:42,037	INFO worker.py:1810 -- Connecting to existing Ray cluster at address: 172.16.0.2:6379...
+2026-09-20 15:51:42,061	INFO worker.py:2004 -- Connected to Ray cluster. View the dashboard at [1m[32m127.0.0.1:8265 [39m[22m
+/home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/ray/_private/worker.py:2052: FutureWarning: Tip: In future versions of Ray, Ray will no longer override accelerator visible devices env var if num_gpus=0 or num_gpus=None (default). To enable this behavior and turn off this error message, set RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
+  warnings.warn(
+
+✓ Found existing verification plan and rtl_info.json — skipping extraction, generation, and review.
+  Plan:     /home/auralab/nwark/chia-hackathon/uvm_loop/generated/designs/sha256_benchmark_corrupted/plans/verification_plan.yaml
+  RTL info: /home/auralab/nwark/chia-hackathon/uvm_loop/generated/designs/sha256_benchmark_corrupted/rtl/rtl_info.json
+/home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/pydantic_settings/sources/utils.py:47: IncompleteFieldDefinitionWarning: Field 'lifespan' has an incomplete definition: its annotation contains an unresolved forward reference, so settings sources may fail to correctly resolve its value. Call `model_rebuild()` on the model where the field is defined, once all the referenced types are defined.
+  warnings.warn(
+[36m(_ToolServerActor pid=14081)[0m INFO:     Started server process [14081]
+[36m(_ToolServerActor pid=14081)[0m INFO:     Waiting for application startup.
+[36m(_ToolServerActor pid=14081)[0m INFO:     Application startup complete.
+[36m(_ToolServerActor pid=14081)[0m INFO:     Uvicorn running on http://172.16.0.2:8000 (Press CTRL+C to quit)
+verification_workspace started at 172.16.0.2:8000 on node 610730ae364a0e0bb00012d07b70bde2ec9e32ab1252220086da3a0f
+LLM model selected: opencode/big-pickle
+OpenCodeLLM is experimental: only exercised by unit tests so far, not validated in production.
+
+[4/4] Generating cocotb+pyuvm environment (staged)...
+[36m(_ToolServerActor pid=14081)[0m INFO:     172.16.0.2:54242 - "POST /verification_workspace/mcp HTTP/1.1" 200 OK
+[36m(_ToolServerActor pid=14081)[0m INFO:     172.16.0.2:54242 - "POST /verification_workspace/mcp HTTP/1.1" 202 Accepted
+[36m(_ToolServerActor pid=14081)[0m INFO:     172.16.0.2:54242 - "GET /verification_workspace/mcp HTTP/1.1" 200 OK
+[36m(_ToolServerActor pid=14081)[0m INFO:     172.16.0.2:54248 - "POST /verification_workspace/mcp HTTP/1.1" 200 OK
+
+===== UVM GENERATION: CONTRACT =====
+Stage 1 (CONTRACT) is complete. Summary of what was written to `/workspace/generated/designs/sha256_benchmark_corrupted/tb/`:
+
+## Files written
+
+**`sha256_transaction.py`** — `Sha256Transaction(uvm_sequence_item)` with plain Python attributes (pyuvm 5.0.0 has no `uvm_object_utils`/field macros, so plain attributes are the canonical style):
+- DUT input fields: `start` (int, 1 bit), `block` (int, 512 bits, big-endian word order)
+- DUT output fields (monitor-filled): `done` (int, 1 bit), `digest` (int, 256 bits)
+- Metadata (documented as NOT pins): `txn_id`, `latency_cycles`
+- Verified helpers: `block_bytes`/`digest_bytes` (big-endian, `int.to_bytes`), `convert2string()`; masked width coercion that rejects negatives.
+- Verified interop with the golden reference model: `block_to_digest(t.block_bytes)` reproduces the plan's "abc" and empty-message digests.
+
+**`sha256_pins.py`** — plain-Python pin-access helper (NOT an SV interface):
+- `Sha256Pins(dut)` binding all 6 pins (`dut.clk`, `dut.rst_n`, `dut.start`, `dut.block`, `dut.done`, `dut.digest`), plus read/drive helpers (`drive_block`, `read_digest`, `sample_inputs/outputs`, async `reset_dut`).
+- Single source of truth for conventions: `CLK_PERIOD_NS=10`, reset polarity/style (`active_low`/`asynchronous`), `EXPECTED_LATENCY_CYCLES=64`, `COMPLETION_MARGIN_CYCLES=70`, `WATCHDOG_MARGIN_CYCLES=500`, `make_clock()`.
+- Cocotb 2.1.0-pure: reads use `int(<handle>.value)` (never the deprecated `int(handle)`), writes use `.value = <int>`, and `cocotb.handle.ModifiableObject` is never imported.
+
+**`CONTRACT.md`** — authoritative record for stages 2–6: top module `sha256`; full pin table (direction/width/`dut.<pin>` access); transaction field names/types/roles; the exact ConfigDB keys `"dut"` and `"sha256_pins"` (both set in `test_top.py`); clock (`clk`, posedge) and reset (`rst_n`, active-low asynchronous) semantics; the fixed-cycle-latency completion model (never rely on `done` — DISC-001/013/014); the `block_to_digest` reference-model invocation contract; the locked directed-scenario IDs; and the cocotb-coverage/assertion/watchdog conventions.
+
+Validation performed: all files compile; both modules import and run against pyuvm 5.0.0 / cocotb 2.1.0; reference-model interop (abc, empty, negative-input) passes; fake-`dut` wire-up of `Sha256Pins` passes; and a scan confirms no forbidden/deprecated Cocotb API usage. No RTL, spec, reference model, or plan files were modified, and no driver/monitor/sequencer/etc. files were generated in this stage.
+[36m(_ToolServerActor pid=14081)[0m INFO:     172.16.0.2:33812 - "POST /verification_workspace/mcp HTTP/1.1" 200 OK
+[36m(_ToolServerActor pid=14081)[0m INFO:     172.16.0.2:33812 - "POST /verification_workspace/mcp HTTP/1.1" 202 Accepted
+[36m(_ToolServerActor pid=14081)[0m INFO:     172.16.0.2:33812 - "GET /verification_workspace/mcp HTTP/1.1" 200 OK
+[36m(_ToolServerActor pid=14081)[0m INFO:     172.16.0.2:33820 - "POST /verification_workspace/mcp HTTP/1.1" 200 OK
+
+===== UVM GENERATION: STIMULUS =====
+Stage 2 (STIMULUS) complete. Here's a summary of what was generated.
+
+## Files written (all under `tb/`)
+
+**`sha256_sequencer.py`** — `Sha256Sequencer(uvm_sequencer)`. Minimal: no custom phases; the agent (later stage) connects `seq_item_export` → `driver.seq_item_port`.
+
+**`sha256_driver.py`** — `Sha256Driver(uvm_driver)`.
+- Reads the shared `"sha256_pins"` ConfigDB key in `build_phase` (exact CONTRACT key), raises early if missing.
+- Drives each item as **exactly one one-cycle `start` pulse** with `block` held stable across the sampling edge — this satisfies the `start_deasserted_same_cycle` corner case by construction.
+- Synchronizes on falling edges so inputs settle half a period before the RTL's sampling rising edge (no delta-cycle race); `start == 0` items are no-drive items.
+- Uses only `cocotb.triggers.FallingEdge` and the `Sha256Pins` drive helpers.
+
+**`sha256_sequences.py`** — all stimulus:
+- **9 directed sequences**, one per plan id, each with exact class-level `SCENARIO_ID` (`reset_initialization`, `empty_message`, `single_byte_a`, `abc_message`, `hello_world`, `quick_brown_fox`, `back_to_back_transactions`, `start_while_busy_restarts`, `done_behavior_continuous`). Plan "check" expectations carried as `EXPECTED_DIGEST`/`EXPECTED_CHECKS` metadata for later stages; resets/waits realized with `Sha256Pins.reset_dut()` and `ClockCycles`.
+- **6 corner-case sequences** (`maximum_message_length`, `block_with_all_ones`, `block_with_alternating_pattern`, `reset_during_processing`, `start_deasserted_same_cycle`, `block_changes_during_processing`) — **no** `SCENARIO_ID`, per the plan separation; include `VALID_PADDED_BLOCK` flags so the scoreboard can treat raw non-canonical blocks separately.
+- **1 randomized sequence** honoring plan constraints (length 0–55, bytes 0–255) with the two injections: reset-during-processing (p=0.1, hold 1–3 cycles) and back-to-back (p=0.2).
+- `DIRECTED_SCENARIO_SEQUENCES` registry + `validate_scenario_ids()` enforcing that all 9 planned IDs appear exactly once and match their `SCENARIO_ID`.
+
+## CONTRACT divergence (documented, appended as §11)
+Every `block` hex literal in the planning documents is corrupted (all >512 bits, fail canonical one-block padding — verified programmatically), while each scenario's description states the intended message/length unambiguously. Per the contract's append-only rule, I appended a §11 note and construct blocks with `canonical_one_block_pad()` (proven byte-identical to the reference model's `pad_one_block()` for all lengths 0–55). No scenario id, expected digest, or stimulus intent changed; no new ConfigDB keys.
+
+## Verification performed
+- `py_compile` of all three files passes; `validate_scenario_ids()` passes (9 IDs exactly once); corner/randomized classes confirmed to have no `SCENARIO_ID`.
+- Padded blocks match the reference model for every length 0–55; all directed KAT digests equal `hashlib` and the plan's expected values.
+- Import review: only public Cocotb 2.1.0 (`ClockCycles`, `FallingEdge`) and pyuvm 5.0.0 APIs (`uvm_sequencer`, `uvm_driver`, `uvm_sequence`, `ConfigDB`); no `ModifiableObject`, no `cocotb.handle`, no `int(dut.<pin>)`, no SystemVerilog.
+- Confirmed the pyuvm item handshake (`start_item` → set fields → `finish_item` → driver `get_next_item` waits on `item_ready` → `item_done`) so field setting is race-free. No RTL simulator is installed here, so live simulation could not be run in this environment; a `__main__` sanity check is included in the sequences module.
+[36m(_ToolServerActor pid=14081)[0m INFO:     172.16.0.2:53782 - "POST /verification_workspace/mcp HTTP/1.1" 200 OK
+[36m(_ToolServerActor pid=14081)[0m INFO:     172.16.0.2:53782 - "POST /verification_workspace/mcp HTTP/1.1" 202 Accepted
+[36m(_ToolServerActor pid=14081)[0m INFO:     172.16.0.2:53782 - "GET /verification_workspace/mcp HTTP/1.1" 200 OK
+[36m(_ToolServerActor pid=14081)[0m INFO:     172.16.0.2:53786 - "POST /verification_workspace/mcp HTTP/1.1" 200 OK
+
+===== UVM GENERATION: OBSERVATION =====
+## Stage 3 (OBSERVATION) complete
+
+### Files written
+
+**`tb/sha256_monitor.py`** — `Sha256Monitor(uvm_monitor)`:
+- `build_phase` fetches the shared `"sha256_pins"` helper (exact CONTRACT §5 key; never touches raw `dut`) and builds `ap = uvm_analysis_port("ap", self)`.
+- `run_phase` is an `async def` synchronized on `RisingEdge(dut.clk)`, with 0→1 edge detection of `start` (one transaction per start pulse, width-independent). `block` is captured on the same sampling edge the RTL captures it on, per the driver's falling-edge settle convention (§11).
+- Completion is **fixed-cycle only**: a per-start observer (`cocotb.start_soon` on the transaction) awaits `ClockCycles(clk, COMPLETION_MARGIN_CYCLES)` (70, §7), samples `done`/`digest`, sets `latency_cycles = 70`, and publishes exactly one `Sha256Transaction` (all six CONTRACT fields, monotonic in-order `txn_id`) via `ap.write(...)`. The broken `done` pin is never used as a completion indicator (DISC-001/013). Concurrent observers keep back-to-back / start-while-busy scenarios loss-free, and finish in start order for in-order scoreboard matching.
+- X/Z samples are logged and mapped to 0 defensively (the documented `int(dut.<pin>.value)` read path is still used).
+
+**`tb/sha256_agent.py`** — `Sha256Agent(uvm_agent)`: builds `sequencer`/`driver`/`monitor` children; `connect_phase` wires `driver.seq_item_port.connect(sequencer.seq_item_export)` (CONTRACT §11) and sets `self.ap = self.monitor.ap` — verified against pyuvm 5.0.0's broadcast-subscriber model, where a separate agent port would silently drop writes. Documented attributes for later stages: `agent.sequencer/driver/monitor/ap`.
+
+### Contract extension + runtime fix
+- Appended **§12** (stage-3 additions) and **§13 (runtime correction)** to `CONTRACT.md` — no §1–§11 changes.
+- **§13 documents a genuine bug found by testing:** pinning the project's `pyuvm==5.0.0` sources showed `ConfigDB().get(None, "*", key)` **raises `UVMError`** (wildcards illegal in `get`'s requesting `inst_name`); the working retrieval matching the stored `"*"` path is `ConfigDB().get(None, "", key)`. I applied the same one-line correction to the stage-2 `sha256_driver.py` and `sha256_sequences.py` call sites (three edits total; no behavioral change) so the environment can actually run at integration time.
+
+### Verification performed
+- `py_compile` on all six `.py` modules — OK; no `cocotb.handle.ModifiableObject` in any source.
+- Structural smoke test against the real pinned stack (cocotb 2.1.0 + pyuvm 5.0.0): agent `build_phase`/`connect_phase`, `monitor.ap` construction, `driver.seq_item_port → sequencer.seq_item_export` binding, downstream fifo subscription via `agent.ap.connect(...)`, and fifo delivery of a monitor-written transaction — all pass.
+- No simulator binary (`iverilog`/`verilator`) is installed in this environment, so a full co-simulation of `run_phase` timing could not be executed here; timing logic follows the CONTRACT's documented falling-edge-settle protocol and fixed-latency completion model.
+[36m(_ToolServerActor pid=14081)[0m INFO:     172.16.0.2:42436 - "POST /verification_workspace/mcp HTTP/1.1" 200 OK
+[36m(_ToolServerActor pid=14081)[0m INFO:     172.16.0.2:42436 - "POST /verification_workspace/mcp HTTP/1.1" 202 Accepted
+[36m(_ToolServerActor pid=14081)[0m INFO:     172.16.0.2:42436 - "GET /verification_workspace/mcp HTTP/1.1" 200 OK
+[36m(_ToolServerActor pid=14081)[0m INFO:     172.16.0.2:42444 - "POST /verification_workspace/mcp HTTP/1.1" 200 OK
+
+===== UVM GENERATION: SCOREBOARD =====
+## Stage 4 (SCOREBOARD) complete
+
+### Files written (all under `tb/`)
+- **`sha256_scoreboard.py`** — `Sha256Scoreboard(uvm_scoreboard)`, the plan's in-order scoreboard/reference-model integration.
+- **`sha256_reference_model.py`** — **verbatim copy** of `benchmarks/sha256_benchmark_corrupted/sha256_reference_model.py` (md5-verified byte-identical: `b9bdbb2da88052420dea305305167526`). Copied so the TB imports `block_to_digest` by bare name under the flat-module convention and never depends on runtime filesystem paths. No digest logic was rewritten — the reference model is the only SHA-256 computation in the environment.
+- **`CONTRACT.md`** — appended §14 (no §1–§13 changes): stage-4 file inventory, scoreboard behavior, wiring convention, public counters, and the locked grading semantics the env/test stage needs.
+
+### Scoreboard design
+- **ConfigDB**: reads `"dut"` in `build_phase` (exact §5 key; the contract lists the scoreboard as a `"dut"` consumer) and builds an unbounded `uvm_tlm_analysis_fifo("sha256_sb_fifo", self)`. **No new ConfigDB keys.**
+- **Wiring**: `connect_monitor(agent.ap)` (== `agent.ap.connect(fifo.analysis_export)` under pyuvm 5.0.0's broadcast model) — documented stable entry point for the env stage; verified against the installed pyuvm 5.0.0 sources and by a live instantiation test (write → fifo enqueue → `try_get` round-trip).
+- **run_phase**: infinite loop on `fifo.get_peek_export.get()` (blocking, in-order). Per transaction it (1) enforces `txn_id` contiguity → missing/extra/out-of-order detection; (2) predicts the expected digest via `block_to_digest(txn.block_bytes)` and compares to `txn.digest_bytes`, applying the §7 fixed-cycle input/output relationship (digest sampled `COMPLETION_MARGIN_CYCLES` after the start edge); (3) reports **txn id, input block, expected digest, actual digest, and cycle of mismatch** (`cocotb.utils.get_sim_time("ps")`/`CLK_PERIOD_NS` plus `latency_cycles`).
+- **Counter semantics** (documented in §14): `match_count`/`mismatch_count` are reports; for this corrupted RTL mismatches are **expected catches**, not failures. `order_error_count`/`invalid_block_count` and the aggregate `error_count` are real contract violations.
+- **Cocotb 2.1.0 compliance**: only `cocotb.utils.get_sim_time` (public, verified present in the installed 2.1.0); pyuvm 5.0.0 `uvm_scoreboard`/`uvm_tlm_analysis_fifo`; no `ModifiableObject`, no deprecated reads, no SystemVerilog. The `done` field is consumed as data (warning if ≠1; strict continuity is left to the assertions stage per §8).
+
+### Verification performed
+- `py_compile` of all nine TB modules; reference-model self-test passes.
+- Isolated unit checks of `_check_transaction` (match, mismatch report contents, order error, invalid block, mixed stream, done-warning, summary helpers) — all passed.
+- Real pyuvm instantiation + `build_phase` + `connect_monitor` + broadcast-write FIFO round-trip — passed.
+[36m(_ToolServerActor pid=14081)[0m INFO:     172.16.0.2:34926 - "POST /verification_workspace/mcp HTTP/1.1" 200 OK
+[36m(_ToolServerActor pid=14081)[0m INFO:     172.16.0.2:34926 - "POST /verification_workspace/mcp HTTP/1.1" 202 Accepted
+[36m(_ToolServerActor pid=14081)[0m INFO:     172.16.0.2:34926 - "GET /verification_workspace/mcp HTTP/1.1" 200 OK
+[36m(_ToolServerActor pid=14081)[0m INFO:     172.16.0.2:34940 - "POST /verification_workspace/mcp HTTP/1.1" 200 OK
+[36m(OpenCodeLLM.prompt pid=14142)[0m Timeout on attempt 1/5
+[36m(_ToolServerActor pid=14081)[0m INFO:     172.16.0.2:43836 - "POST /verification_workspace/mcp HTTP/1.1" 200 OK
+[36m(_ToolServerActor pid=14081)[0m INFO:     172.16.0.2:43836 - "POST /verification_workspace/mcp HTTP/1.1" 202 Accepted
+[36m(_ToolServerActor pid=14081)[0m INFO:     172.16.0.2:43836 - "GET /verification_workspace/mcp HTTP/1.1" 200 OK
+[36m(_ToolServerActor pid=14081)[0m INFO:     172.16.0.2:43844 - "POST /verification_workspace/mcp HTTP/1.1" 200 OK
+
+===== UVM GENERATION: COVERAGE_ASSERTIONS =====
+Stage 5 (COVERAGE & ASSERTIONS) is complete. Here's a summary of what was done in this session:
+
+## What I wrote
+
+**`tb/sha256_coverage.py`** — functional coverage using the shared cocotb-coverage `coverage_db` (verified compatible: `cocotb 2.1.0` + `cocotb-coverage 1.2.0` installed with `--no-deps`):
+- `message_length_cg` — `msg_len_bits` CoverPoint sampling `block[63:0]` with labeled bins `zero_len[0,0]`, `short_len[1,128]`, `medium_len[129,256]`, `long_len[257,384]`, `max_len[385,440]`
+- `control_signals_cg` — `start_pulse` / `done_pulse` (`asserted`/`deasserted` bins) + paired cross `start_done_cross`
+- `start_coverage()` (foreground `cocotb.start_soon` sampler with disarmable `Forever` trigger), `report_coverage()`, standalone `__main__` entry
+
+**`tb/sha256_assertions.py`** — SVA specs ported to continuous Python checker coroutines (no SV, no deprecated APIs):
+- `reset_sets_done_high` (ERROR) — asserts `done == 1` on every clk edge outside reset
+- `digest_holds_until_next` (ERROR) — completion window armed at start edge + 70; changes beyond it (after the first digest sample) violate
+- `transaction_completes_within_latency` (ERROR) — each start needs `digest != 0` inside `[start+64, start+70]`; unsatisfied windows fire ~cycle `start+72`; restart-while-busy opens extra windows
+- `_fail()` logs `result.error` + raises `AssertionError` immediately (fail-fast), watchdog coroutine with `WATCHDOG_MARGIN_CYCLES=500` bound
+
+**`results/stage5_tests/stage5_unit_tests.py`** — simulator-free unit tests for both modules; **all 30 checks now PASS** (after fixing test-harness bugs on my side: first-violation-only stepping, bin-label key checks, and SVA-consistent band semantics).
+
+**`tb/CONTRACT.md`** — appended §15 documenting the above, the verified CoverPoint/CoverCross decorator-ordering rule, and the expected firing of `transaction_completes_within_latency` on the corrupted RTL (digest stays 0 — intended DISC-008/014 catch).
+
+**`checkpoints/uvm_coverage_assertions.done`** — stage-5 checkpoint created.
+
+## Key verification findings
+- CoverCross must be declared **below** the CoverPoints (point-above/cross-below) for correct correlation — verified empirically
+- `cocotb-coverage 1.2.0` imports no cocotb symbols, so it works with Cocotb 2.1.0; plain `pip install` would downgrade cocotb to 1.9.2 (reinstall `--no-deps` to recover)
+- No `ModifiableObject` imports anywhere; all config stays via `Sha256Pins` + `"dut"`/`"sha256_pins"` ConfigDB keys (unchanged, no new keys)
+
+The modules are ready for the final stage (env/test build), which can consume `start_coverage()`/`start_assertions()`, the scoreboard counters, and the assertion `failure_count` for grading.
+[36m(_ToolServerActor pid=14081)[0m INFO:     172.16.0.2:42664 - "POST /verification_workspace/mcp HTTP/1.1" 200 OK
+[36m(_ToolServerActor pid=14081)[0m INFO:     172.16.0.2:42664 - "POST /verification_workspace/mcp HTTP/1.1" 202 Accepted
+[36m(_ToolServerActor pid=14081)[0m INFO:     172.16.0.2:42664 - "GET /verification_workspace/mcp HTTP/1.1" 200 OK
+[36m(_ToolServerActor pid=14081)[0m INFO:     172.16.0.2:42676 - "POST /verification_workspace/mcp HTTP/1.1" 200 OK
+
+===== UVM GENERATION: INTEGRATION =====
+Stage-6 INTEGRATION is complete — all six planned artifacts are written, and the full static validation passes 125/125. Here's what was delivered:
+
+## Files created in `tb/`
+
+| Artifact | Purpose |
+|---|---|
+| `sha256_env.py` | `Sha256Env(uvm_env)`: build_phase builds `Sha256Agent` + `Sha256Scoreboard`, starts `start_coverage()` and `start_assertions()` (§15); connect_phase wires `scoreboard.connect_monitor(agent.ap)` (§12/§14). No new ConfigDB keys. |
+| `sha256_test.py` | `Sha256BaseTest(uvm_test)` + **11 runnable tests**: 9 directed (`Sha256<Scenario>Test`, each with `@staticmethod get_sequence_class()` returning the class symbol per its plan id), `Sha256CornerTest` (all 6 corner sequences, `_allow_invalid_blocks=True`, budget 1000), `Sha256RandomizedTest` (20 txns, seed 24601 / `RANDOM_SEED` env override, budget 4000). Watchdog armed in `run_phase`, disarmed in `finally`; `report_phase` fails on order/invalid-block errors and empty graded streams only (`mismatch_count` stays a catch-report). |
+| `test_top.py` | Single `@cocotb.test()` at the exact worker path: idle pins → `make_clock` reset sequence (3+2 cycles, §6) → exactly `ConfigDB` keys `"dut"`/`"sha256_pins"` → `await with_timeout(uvm_root().run_test(name, keep_singletons=True), 10000*10 ns)` with `SimTimeoutError` handling and `report_coverage()` in finally. `UVM_TESTNAME` selects the test. |
+| `Makefile` | cocotb flow: `SIM=verilator TOPLEVEL=sha256 MODULE=test_top`, read-only `VERILOG_SOURCES` to `sha256.sv`, `--timing -Wno-fatal -Wno-WIDTH -Wno-CASEINCOMPLETE -Wno-UNOPTFLAT -j 0`, `UVM_TESTNAME ?= big-pickle`… (`Sha256ResetInitializationTest`), includes cocotb `Makefile.sim`. |
+| `generation_manifest.yaml` | `top_module: sha256`, `top_file`/`compile_files` → `benchmarks/sha256_benchmark_corrupted/sha256.sv`, the exact 11 `test_classes`, `python_test_module: test_top`, and the `scenarios` mapping of all 9 plan ids → sequence/test classes. Worker-compatible (mirrors `workers/sim/run.py` `validate_manifest`). |
+
+Also: **§16 appended** to `tb/CONTRACT.md` (records the locked decisions — `keep_singletons=True` requirement, watchdog-ownership split, grading semantics, static-auditability, corner/randomized having no `SCENARIO_ID`).
+
+## Verification
+- `results/stage6_integration/stage6_consistency_checks.py` — AST/YAML-based (runs without cocotb installed): **125/125 PASS** → `stage6_consistency_report.json`. Covers plan↔sequence↔test↔manifest wiring, registry keys, staticmethod returns, ConfigDB key whitelist, `keep_singletons=True`, `with_timeout(..., "ns")`, Makefile fields, and env wiring.
+- `py_compile` clean on all new files; every cross-module import resolves against the actual stage-1..5 sources; each runtime call (`run_test` singleton/objection semantics, `uvm_sequence.start(seqr)`, `create_component_by_name` bare-name factory lookup, `ap`/`connect_monitor` signatures) re-verified against the pinned pyuvm 5.0.0 / cocotb 2.1.0 / stage-5 sources.
+
+## Caveat (unchanged)
+This shell has no cocotb/pyuvm/verilator, so functional execution must happen via `workers/sim/run.py` in the sim container (`--rtl benchmarks/.../sha256.sv --tb .../tb/`). On this corrupted RTL the expectation is: data-path tests log `scoreboard mismatch` then fail fast via `transaction_completes_within_latency` (~start+71); `Sha256ResetInitializationTest` passes (done=1/digest=0). On a repaired RTL all 11 tests should pass.
+
+Nothing further is pending unless you want me to run the worker in an environment where the sim toolchain is available.
+
+✓ cocotb+pyuvm environment generated directly under /workspace/generated/designs/sha256_benchmark_corrupted/tb.
+✓ Directed scenario IDs validated against the accepted plan.
+[36m(_ToolServerActor pid=14081)[0m INFO:     Shutting down
+
+[5/5] Validating generated cocotb+pyuvm environment...
+[36m(_ToolServerActor pid=14081)[0m INFO:     Waiting for application shutdown.
+[36m(_ToolServerActor pid=14081)[0m INFO:     Application shutdown complete.
+[36m(_ToolServerActor pid=14081)[0m INFO:     Finished server process [14081]
+✓ Generated TB passed deterministic pre-simulation validation.
+
+===== TB SIMULATION ANALYSIS =====
+{
+  "verdict": "generation_bug",
+  "detail": {
+    "status": "functional_failure",
+    "tests": {
+      "Sha256ResetInitializationTest": {
+        "status": "runtime_error",
+        "category": "runtime_error",
+        "timed_out": false,
+        "watchdog_expired": false,
+        "returncode": 2,
+        "counts": {
+          "uvm_errors": 0,
+          "uvm_fatals": 0,
+          "uvm_warnings": 0,
+          "scoreboard_mismatches": 0,
+          "assertion_failures": 0
+        },
+        "clean_exit": false,
+        "log": "rm -f /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256ResetInitializationTest.xml\n/usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/bf128b9602c2 --top-module sha256 --timing -Wno-fatal  --timescale 1ns/1ps --vpi --public-flat-rw --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"  /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n%Error: /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv:10:40: Assignment pattern missed initializing elements: 62\n                                                                        : ... note: In instance 'sha256'\n   10 |     localparam logic [31:0] K [0:63] = '{\n      |                                        ^~\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042 for more assistance.\n%Error: /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv:10:40: Assignment pattern missed initializing elements: 63\n                                                                        : ... note: In instance 'sha256'\n   10 |     localparam logic [31:0] K [0:63] = '{\n      |                                        ^~\n%Error: Exiting due to 2 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65: /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/bf128b9602c2/Vtop.mk] Error 1\n",
+        "command": [
+          "timeout",
+          "--signal=TERM",
+          "--kill-after=5",
+          "60",
+          "make",
+          "-f",
+          "/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Makefile",
+          "SIM=verilator",
+          "TOPLEVEL_LANG=verilog",
+          "TOPLEVEL=sha256",
+          "COCOTB_TOPLEVEL=sha256",
+          "MODULE=test_top",
+          "COCOTB_TEST_MODULES=test_top",
+          "VERILOG_SOURCES=/workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv",
+          "SIM_BUILD=/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/bf128b9602c2",
+          "COCOTB_RESULTS_FILE=/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256ResetInitializationTest.xml",
+          "COCOTB_HDL_TIMEUNIT=1ns",
+          "COCOTB_HDL_TIMEPRECISION=1ps",
+          "BUILD_ARGS=-j 4"
+        ],
+        "test_name": "Sha256ResetInitializationTest",
+        "test_module": "test_top",
+        "dut_parameter_overrides": [],
+        "results_file": "/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256ResetInitializationTest.xml",
+        "results_file_exists": false
+      },
+      "Sha256EmptyMessageTest": {
+        "status": "runtime_error",
+        "category": "runtime_error",
+        "timed_out": false,
+        "watchdog_expired": false,
+        "returncode": 2,
+        "counts": {
+          "uvm_errors": 0,
+          "uvm_fatals": 0,
+          "uvm_warnings": 0,
+          "scoreboard_mismatches": 0,
+          "assertion_failures": 0
+        },
+        "clean_exit": false,
+        "log": "rm -f /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256EmptyMessageTest.xml\n/usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/bf128b9602c2 --top-module sha256 --timing -Wno-fatal  --timescale 1ns/1ps --vpi --public-flat-rw --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"  /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n%Error: /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv:10:40: Assignment pattern missed initializing elements: 62\n                                                                        : ... note: In instance 'sha256'\n   10 |     localparam logic [31:0] K [0:63] = '{\n      |                                        ^~\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042 for more assistance.\n%Error: /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv:10:40: Assignment pattern missed initializing elements: 63\n                                                                        : ... note: In instance 'sha256'\n   10 |     localparam logic [31:0] K [0:63] = '{\n      |                                        ^~\n%Error: Exiting due to 2 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65: /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/bf128b9602c2/Vtop.mk] Error 1\n",
+        "command": [
+          "timeout",
+          "--signal=TERM",
+          "--kill-after=5",
+          "60",
+          "make",
+          "-f",
+          "/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Makefile",
+          "SIM=verilator",
+          "TOPLEVEL_LANG=verilog",
+          "TOPLEVEL=sha256",
+          "COCOTB_TOPLEVEL=sha256",
+          "MODULE=test_top",
+          "COCOTB_TEST_MODULES=test_top",
+          "VERILOG_SOURCES=/workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv",
+          "SIM_BUILD=/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/bf128b9602c2",
+          "COCOTB_RESULTS_FILE=/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256EmptyMessageTest.xml",
+          "COCOTB_HDL_TIMEUNIT=1ns",
+          "COCOTB_HDL_TIMEPRECISION=1ps",
+          "BUILD_ARGS=-j 4"
+        ],
+        "test_name": "Sha256EmptyMessageTest",
+        "test_module": "test_top",
+        "dut_parameter_overrides": [],
+        "results_file": "/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256EmptyMessageTest.xml",
+        "results_file_exists": false
+      },
+      "Sha256SingleByteATest": {
+        "status": "runtime_error",
+        "category": "runtime_error",
+        "timed_out": false,
+        "watchdog_expired": false,
+        "returncode": 2,
+        "counts": {
+          "uvm_errors": 0,
+          "uvm_fatals": 0,
+          "uvm_warnings": 0,
+          "scoreboard_mismatches": 0,
+          "assertion_failures": 0
+        },
+        "clean_exit": false,
+        "log": "rm -f /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256SingleByteATest.xml\n/usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/bf128b9602c2 --top-module sha256 --timing -Wno-fatal  --timescale 1ns/1ps --vpi --public-flat-rw --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"  /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n%Error: /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv:10:40: Assignment pattern missed initializing elements: 62\n                                                                        : ... note: In instance 'sha256'\n   10 |     localparam logic [31:0] K [0:63] = '{\n      |                                        ^~\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042 for more assistance.\n%Error: /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv:10:40: Assignment pattern missed initializing elements: 63\n                                                                        : ... note: In instance 'sha256'\n   10 |     localparam logic [31:0] K [0:63] = '{\n      |                                        ^~\n%Error: Exiting due to 2 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65: /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/bf128b9602c2/Vtop.mk] Error 1\n",
+        "command": [
+          "timeout",
+          "--signal=TERM",
+          "--kill-after=5",
+          "60",
+          "make",
+          "-f",
+          "/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Makefile",
+          "SIM=verilator",
+          "TOPLEVEL_LANG=verilog",
+          "TOPLEVEL=sha256",
+          "COCOTB_TOPLEVEL=sha256",
+          "MODULE=test_top",
+          "COCOTB_TEST_MODULES=test_top",
+          "VERILOG_SOURCES=/workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv",
+          "SIM_BUILD=/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/bf128b9602c2",
+          "COCOTB_RESULTS_FILE=/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256SingleByteATest.xml",
+          "COCOTB_HDL_TIMEUNIT=1ns",
+          "COCOTB_HDL_TIMEPRECISION=1ps",
+          "BUILD_ARGS=-j 4"
+        ],
+        "test_name": "Sha256SingleByteATest",
+        "test_module": "test_top",
+        "dut_parameter_overrides": [],
+        "results_file": "/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256SingleByteATest.xml",
+        "results_file_exists": false
+      },
+      "Sha256AbcMessageTest": {
+        "status": "runtime_error",
+        "category": "runtime_error",
+        "timed_out": false,
+        "watchdog_expired": false,
+        "returncode": 2,
+        "counts": {
+          "uvm_errors": 0,
+          "uvm_fatals": 0,
+          "uvm_warnings": 0,
+          "scoreboard_mismatches": 0,
+          "assertion_failures": 0
+        },
+        "clean_exit": false,
+        "log": "rm -f /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256AbcMessageTest.xml\n/usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/bf128b9602c2 --top-module sha256 --timing -Wno-fatal  --timescale 1ns/1ps --vpi --public-flat-rw --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"  /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n%Error: /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv:10:40: Assignment pattern missed initializing elements: 62\n                                                                        : ... note: In instance 'sha256'\n   10 |     localparam logic [31:0] K [0:63] = '{\n      |                                        ^~\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042 for more assistance.\n%Error: /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv:10:40: Assignment pattern missed initializing elements: 63\n                                                                        : ... note: In instance 'sha256'\n   10 |     localparam logic [31:0] K [0:63] = '{\n      |                                        ^~\n%Error: Exiting due to 2 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65: /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/bf128b9602c2/Vtop.mk] Error 1\n",
+        "command": [
+          "timeout",
+          "--signal=TERM",
+          "--kill-after=5",
+          "60",
+          "make",
+          "-f",
+          "/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Makefile",
+          "SIM=verilator",
+          "TOPLEVEL_LANG=verilog",
+          "TOPLEVEL=sha256",
+          "COCOTB_TOPLEVEL=sha256",
+          "MODULE=test_top",
+          "COCOTB_TEST_MODULES=test_top",
+          "VERILOG_SOURCES=/workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv",
+          "SIM_BUILD=/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/bf128b9602c2",
+          "COCOTB_RESULTS_FILE=/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256AbcMessageTest.xml",
+          "COCOTB_HDL_TIMEUNIT=1ns",
+          "COCOTB_HDL_TIMEPRECISION=1ps",
+          "BUILD_ARGS=-j 4"
+        ],
+        "test_name": "Sha256AbcMessageTest",
+        "test_module": "test_top",
+        "dut_parameter_overrides": [],
+        "results_file": "/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256AbcMessageTest.xml",
+        "results_file_exists": false
+      },
+      "Sha256HelloWorldTest": {
+        "status": "runtime_error",
+        "category": "runtime_error",
+        "timed_out": false,
+        "watchdog_expired": false,
+        "returncode": 2,
+        "counts": {
+          "uvm_errors": 0,
+          "uvm_fatals": 0,
+          "uvm_warnings": 0,
+          "scoreboard_mismatches": 0,
+          "assertion_failures": 0
+        },
+        "clean_exit": false,
+        "log": "rm -f /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256HelloWorldTest.xml\n/usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/bf128b9602c2 --top-module sha256 --timing -Wno-fatal  --timescale 1ns/1ps --vpi --public-flat-rw --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"  /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n%Error: /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv:10:40: Assignment pattern missed initializing elements: 62\n                                                                        : ... note: In instance 'sha256'\n   10 |     localparam logic [31:0] K [0:63] = '{\n      |                                        ^~\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042 for more assistance.\n%Error: /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv:10:40: Assignment pattern missed initializing elements: 63\n                                                                        : ... note: In instance 'sha256'\n   10 |     localparam logic [31:0] K [0:63] = '{\n      |                                        ^~\n%Error: Exiting due to 2 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65: /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/bf128b9602c2/Vtop.mk] Error 1\n",
+        "command": [
+          "timeout",
+          "--signal=TERM",
+          "--kill-after=5",
+          "60",
+          "make",
+          "-f",
+          "/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Makefile",
+          "SIM=verilator",
+          "TOPLEVEL_LANG=verilog",
+          "TOPLEVEL=sha256",
+          "COCOTB_TOPLEVEL=sha256",
+          "MODULE=test_top",
+          "COCOTB_TEST_MODULES=test_top",
+          "VERILOG_SOURCES=/workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv",
+          "SIM_BUILD=/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/bf128b9602c2",
+          "COCOTB_RESULTS_FILE=/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256HelloWorldTest.xml",
+          "COCOTB_HDL_TIMEUNIT=1ns",
+          "COCOTB_HDL_TIMEPRECISION=1ps",
+          "BUILD_ARGS=-j 4"
+        ],
+        "test_name": "Sha256HelloWorldTest",
+        "test_module": "test_top",
+        "dut_parameter_overrides": [],
+        "results_file": "/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256HelloWorldTest.xml",
+        "results_file_exists": false
+      },
+      "Sha256QuickBrownFoxTest": {
+        "status": "runtime_error",
+        "category": "runtime_error",
+        "timed_out": false,
+        "watchdog_expired": false,
+        "returncode": 2,
+        "counts": {
+          "uvm_errors": 0,
+          "uvm_fatals": 0,
+          "uvm_warnings": 0,
+          "scoreboard_mismatches": 0,
+          "assertion_failures": 0
+        },
+        "clean_exit": false,
+        "log": "rm -f /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256QuickBrownFoxTest.xml\n/usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/bf128b9602c2 --top-module sha256 --timing -Wno-fatal  --timescale 1ns/1ps --vpi --public-flat-rw --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"  /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n%Error: /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv:10:40: Assignment pattern missed initializing elements: 62\n                                                                        : ... note: In instance 'sha256'\n   10 |     localparam logic [31:0] K [0:63] = '{\n      |                                        ^~\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042 for more assistance.\n%Error: /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv:10:40: Assignment pattern missed initializing elements: 63\n                                                                        : ... note: In instance 'sha256'\n   10 |     localparam logic [31:0] K [0:63] = '{\n      |                                        ^~\n%Error: Exiting due to 2 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65: /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/bf128b9602c2/Vtop.mk] Error 1\n",
+        "command": [
+          "timeout",
+          "--signal=TERM",
+          "--kill-after=5",
+          "60",
+          "make",
+          "-f",
+          "/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Makefile",
+          "SIM=verilator",
+          "TOPLEVEL_LANG=verilog",
+          "TOPLEVEL=sha256",
+          "COCOTB_TOPLEVEL=sha256",
+          "MODULE=test_top",
+          "COCOTB_TEST_MODULES=test_top",
+          "VERILOG_SOURCES=/workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv",
+          "SIM_BUILD=/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/bf128b9602c2",
+          "COCOTB_RESULTS_FILE=/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256QuickBrownFoxTest.xml",
+          "COCOTB_HDL_TIMEUNIT=1ns",
+          "COCOTB_HDL_TIMEPRECISION=1ps",
+          "BUILD_ARGS=-j 4"
+        ],
+        "test_name": "Sha256QuickBrownFoxTest",
+        "test_module": "test_top",
+        "dut_parameter_overrides": [],
+        "results_file": "/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256QuickBrownFoxTest.xml",
+        "results_file_exists": false
+      },
+      "Sha256BackToBackTransactionsTest": {
+        "status": "runtime_error",
+        "category": "runtime_error",
+        "timed_out": false,
+        "watchdog_expired": false,
+        "returncode": 2,
+        "counts": {
+          "uvm_errors": 0,
+          "uvm_fatals": 0,
+          "uvm_warnings": 0,
+          "scoreboard_mismatches": 0,
+          "assertion_failures": 0
+        },
+        "clean_exit": false,
+        "log": "rm -f /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256BackToBackTransactionsTest.xml\n/usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/bf128b9602c2 --top-module sha256 --timing -Wno-fatal  --timescale 1ns/1ps --vpi --public-flat-rw --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"  /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n%Error: /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv:10:40: Assignment pattern missed initializing elements: 62\n                                                                        : ... note: In instance 'sha256'\n   10 |     localparam logic [31:0] K [0:63] = '{\n      |                                        ^~\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042 for more assistance.\n%Error: /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv:10:40: Assignment pattern missed initializing elements: 63\n                                                                        : ... note: In instance 'sha256'\n   10 |     localparam logic [31:0] K [0:63] = '{\n      |                                        ^~\n%Error: Exiting due to 2 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65: /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/bf128b9602c2/Vtop.mk] Error 1\n",
+        "command": [
+          "timeout",
+          "--signal=TERM",
+          "--kill-after=5",
+          "60",
+          "make",
+          "-f",
+          "/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Makefile",
+          "SIM=verilator",
+          "TOPLEVEL_LANG=verilog",
+          "TOPLEVEL=sha256",
+          "COCOTB_TOPLEVEL=sha256",
+          "MODULE=test_top",
+          "COCOTB_TEST_MODULES=test_top",
+          "VERILOG_SOURCES=/workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv",
+          "SIM_BUILD=/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/bf128b9602c2",
+          "COCOTB_RESULTS_FILE=/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256BackToBackTransactionsTest.xml",
+          "COCOTB_HDL_TIMEUNIT=1ns",
+          "COCOTB_HDL_TIMEPRECISION=1ps",
+          "BUILD_ARGS=-j 4"
+        ],
+        "test_name": "Sha256BackToBackTransactionsTest",
+        "test_module": "test_top",
+        "dut_parameter_overrides": [],
+        "results_file": "/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256BackToBackTransactionsTest.xml",
+        "results_file_exists": false
+      },
+      "Sha256StartWhileBusyRestartsTest": {
+        "status": "runtime_error",
+        "category": "runtime_error",
+        "timed_out": false,
+        "watchdog_expired": false,
+        "returncode": 2,
+        "counts": {
+          "uvm_errors": 0,
+          "uvm_fatals": 0,
+          "uvm_warnings": 0,
+          "scoreboard_mismatches": 0,
+          "assertion_failures": 0
+        },
+        "clean_exit": false,
+        "log": "rm -f /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256StartWhileBusyRestartsTest.xml\n/usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/bf128b9602c2 --top-module sha256 --timing -Wno-fatal  --timescale 1ns/1ps --vpi --public-flat-rw --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"  /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n%Error: /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv:10:40: Assignment pattern missed initializing elements: 62\n                                                                        : ... note: In instance 'sha256'\n   10 |     localparam logic [31:0] K [0:63] = '{\n      |                                        ^~\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042 for more assistance.\n%Error: /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv:10:40: Assignment pattern missed initializing elements: 63\n                                                                        : ... note: In instance 'sha256'\n   10 |     localparam logic [31:0] K [0:63] = '{\n      |                                        ^~\n%Error: Exiting due to 2 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65: /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/bf128b9602c2/Vtop.mk] Error 1\n",
+        "command": [
+          "timeout",
+          "--signal=TERM",
+          "--kill-after=5",
+          "60",
+          "make",
+          "-f",
+          "/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Makefile",
+          "SIM=verilator",
+          "TOPLEVEL_LANG=verilog",
+          "TOPLEVEL=sha256",
+          "COCOTB_TOPLEVEL=sha256",
+          "MODULE=test_top",
+          "COCOTB_TEST_MODULES=test_top",
+          "VERILOG_SOURCES=/workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv",
+          "SIM_BUILD=/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/bf128b9602c2",
+          "COCOTB_RESULTS_FILE=/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256StartWhileBusyRestartsTest.xml",
+          "COCOTB_HDL_TIMEUNIT=1ns",
+          "COCOTB_HDL_TIMEPRECISION=1ps",
+          "BUILD_ARGS=-j 4"
+        ],
+        "test_name": "Sha256StartWhileBusyRestartsTest",
+        "test_module": "test_top",
+        "dut_parameter_overrides": [],
+        "results_file": "/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256StartWhileBusyRestartsTest.xml",
+        "results_file_exists": false
+      },
+      "Sha256DoneBehaviorContinuousTest": {
+        "status": "runtime_error",
+        "category": "runtime_error",
+        "timed_out": false,
+        "watchdog_expired": false,
+        "returncode": 2,
+        "counts": {
+          "uvm_errors": 0,
+          "uvm_fatals": 0,
+          "uvm_warnings": 0,
+          "scoreboard_mismatches": 0,
+          "assertion_failures": 0
+        },
+        "clean_exit": false,
+        "log": "rm -f /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256DoneBehaviorContinuousTest.xml\n/usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/bf128b9602c2 --top-module sha256 --timing -Wno-fatal  --timescale 1ns/1ps --vpi --public-flat-rw --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"  /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n%Error: /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv:10:40: Assignment pattern missed initializing elements: 62\n                                                                        : ... note: In instance 'sha256'\n   10 |     localparam logic [31:0] K [0:63] = '{\n      |                                        ^~\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042 for more assistance.\n%Error: /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv:10:40: Assignment pattern missed initializing elements: 63\n                                                                        : ... note: In instance 'sha256'\n   10 |     localparam logic [31:0] K [0:63] = '{\n      |                                        ^~\n%Error: Exiting due to 2 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65: /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/bf128b9602c2/Vtop.mk] Error 1\n",
+        "command": [
+          "timeout",
+          "--signal=TERM",
+          "--kill-after=5",
+          "60",
+          "make",
+          "-f",
+          "/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Makefile",
+          "SIM=verilator",
+          "TOPLEVEL_LANG=verilog",
+          "TOPLEVEL=sha256",
+          "COCOTB_TOPLEVEL=sha256",
+          "MODULE=test_top",
+          "COCOTB_TEST_MODULES=test_top",
+          "VERILOG_SOURCES=/workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv",
+          "SIM_BUILD=/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/bf128b9602c2",
+          "COCOTB_RESULTS_FILE=/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256DoneBehaviorContinuousTest.xml",
+          "COCOTB_HDL_TIMEUNIT=1ns",
+          "COCOTB_HDL_TIMEPRECISION=1ps",
+          "BUILD_ARGS=-j 4"
+        ],
+        "test_name": "Sha256DoneBehaviorContinuousTest",
+        "test_module": "test_top",
+        "dut_parameter_overrides": [],
+        "results_file": "/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256DoneBehaviorContinuousTest.xml",
+        "results_file_exists": false
+      },
+      "Sha256CornerTest": {
+        "status": "runtime_error",
+        "category": "runtime_error",
+        "timed_out": false,
+        "watchdog_expired": false,
+        "returncode": 2,
+        "counts": {
+          "uvm_errors": 0,
+          "uvm_fatals": 0,
+          "uvm_warnings": 0,
+          "scoreboard_mismatches": 0,
+          "assertion_failures": 0
+        },
+        "clean_exit": false,
+        "log": "rm -f /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256CornerTest.xml\n/usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/bf128b9602c2 --top-module sha256 --timing -Wno-fatal  --timescale 1ns/1ps --vpi --public-flat-rw --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"  /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n%Error: /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv:10:40: Assignment pattern missed initializing elements: 62\n                                                                        : ... note: In instance 'sha256'\n   10 |     localparam logic [31:0] K [0:63] = '{\n      |                                        ^~\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042 for more assistance.\n%Error: /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv:10:40: Assignment pattern missed initializing elements: 63\n                                                                        : ... note: In instance 'sha256'\n   10 |     localparam logic [31:0] K [0:63] = '{\n      |                                        ^~\n%Error: Exiting due to 2 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65: /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/bf128b9602c2/Vtop.mk] Error 1\n",
+        "command": [
+          "timeout",
+          "--signal=TERM",
+          "--kill-after=5",
+          "60",
+          "make",
+          "-f",
+          "/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Makefile",
+          "SIM=verilator",
+          "TOPLEVEL_LANG=verilog",
+          "TOPLEVEL=sha256",
+          "COCOTB_TOPLEVEL=sha256",
+          "MODULE=test_top",
+          "COCOTB_TEST_MODULES=test_top",
+          "VERILOG_SOURCES=/workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv",
+          "SIM_BUILD=/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/bf128b9602c2",
+          "COCOTB_RESULTS_FILE=/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256CornerTest.xml",
+          "COCOTB_HDL_TIMEUNIT=1ns",
+          "COCOTB_HDL_TIMEPRECISION=1ps",
+          "BUILD_ARGS=-j 4"
+        ],
+        "test_name": "Sha256CornerTest",
+        "test_module": "test_top",
+        "dut_parameter_overrides": [],
+        "results_file": "/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256CornerTest.xml",
+        "results_file_exists": false
+      },
+      "Sha256RandomizedTest": {
+        "status": "runtime_error",
+        "category": "runtime_error",
+        "timed_out": false,
+        "watchdog_expired": false,
+        "returncode": 2,
+        "counts": {
+          "uvm_errors": 0,
+          "uvm_fatals": 0,
+          "uvm_warnings": 0,
+          "scoreboard_mismatches": 0,
+          "assertion_failures": 0
+        },
+        "clean_exit": false,
+        "log": "rm -f /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256RandomizedTest.xml\n/usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/bf128b9602c2 --top-module sha256 --timing -Wno-fatal  --timescale 1ns/1ps --vpi --public-flat-rw --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"  /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n%Error: /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv:10:40: Assignment pattern missed initializing elements: 62\n                                                                        : ... note: In instance 'sha256'\n   10 |     localparam logic [31:0] K [0:63] = '{\n      |                                        ^~\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042 for more assistance.\n%Error: /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv:10:40: Assignment pattern missed initializing elements: 63\n                                                                        : ... note: In instance 'sha256'\n   10 |     localparam logic [31:0] K [0:63] = '{\n      |                                        ^~\n%Error: Exiting due to 2 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65: /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/bf128b9602c2/Vtop.mk] Error 1\n",
+        "command": [
+          "timeout",
+          "--signal=TERM",
+          "--kill-after=5",
+          "60",
+          "make",
+          "-f",
+          "/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Makefile",
+          "SIM=verilator",
+          "TOPLEVEL_LANG=verilog",
+          "TOPLEVEL=sha256",
+          "COCOTB_TOPLEVEL=sha256",
+          "MODULE=test_top",
+          "COCOTB_TEST_MODULES=test_top",
+          "VERILOG_SOURCES=/workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv",
+          "SIM_BUILD=/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/bf128b9602c2",
+          "COCOTB_RESULTS_FILE=/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256RandomizedTest.xml",
+          "COCOTB_HDL_TIMEUNIT=1ns",
+          "COCOTB_HDL_TIMEPRECISION=1ps",
+          "BUILD_ARGS=-j 4"
+        ],
+        "test_name": "Sha256RandomizedTest",
+        "test_module": "test_top",
+        "dut_parameter_overrides": [],
+        "results_file": "/workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256RandomizedTest.xml",
+        "results_file_exists": false
+      }
+    }
+  }
+}
+
+[DIAGNOSIS] Starting TB diagnosis (attempt 1)...
+[DIAGNOSIS] Workspace: /home/auralab/nwark/chia-hackathon/uvm_loop/generated/designs/sha256_benchmark_corrupted/llm_tb_diagnosis_workspace
+[DIAGNOSIS] Preparing sanitized workspace...
+[DIAGNOSIS] Sanitized inputs prepared; RTL remains excluded.
+[36m(simulate pid=32010)[0m Wrote /workspace/generated/designs/sha256_benchmark_corrupted/results/tb_validation_iteration_0.json
+verification_improvement_workspace started at 172.16.0.2:8000 on node 610730ae364a0e0bb00012d07b70bde2ec9e32ab1252220086da3a0f
+OpenCodeLLM is experimental: only exercised by unit tests so far, not validated in production.
+[DIAGNOSIS] LLM agent created (retries=5).
+[DIAGNOSIS] Building diagnosis prompt...
+[DIAGNOSIS] Submitting prompt (length=10790 chars); waiting for LLM...
+[36m(_ToolServerActor pid=18002)[0m INFO:     Started server process [18002]
+[36m(_ToolServerActor pid=18002)[0m INFO:     Waiting for application startup.
+[36m(_ToolServerActor pid=18002)[0m INFO:     Application startup complete.
+[36m(_ToolServerActor pid=18002)[0m INFO:     Uvicorn running on http://172.16.0.2:8000 (Press CTRL+C to quit)
+[36m(_ToolServerActor pid=18002)[0m INFO:     172.16.0.2:33358 - "POST /verification_improvement_workspace/mcp HTTP/1.1" 200 OK
+[36m(_ToolServerActor pid=18002)[0m INFO:     172.16.0.2:33358 - "POST /verification_improvement_workspace/mcp HTTP/1.1" 202 Accepted
+[36m(_ToolServerActor pid=18002)[0m INFO:     172.16.0.2:33358 - "GET /verification_improvement_workspace/mcp HTTP/1.1" 200 OK
+[36m(_ToolServerActor pid=18002)[0m INFO:     172.16.0.2:33366 - "POST /verification_improvement_workspace/mcp HTTP/1.1" 200 OK
+[DIAGNOSIS] LLM response received (success=True).
+[DIAGNOSIS] Stopping diagnosis workspace agent...
+[36m(_ToolServerActor pid=18002)[0m INFO:     Shutting down
+[DIAGNOSIS] Diagnosis workspace agent stopped.
+[DIAGNOSIS] Converting LLM response into validated update plan...
+
+⚠ Invalid TB update plan YAML:
+Invalid YAML: while scanning a directive
+  in "<unicode string>", line 1, column 1:
+    %Error: /workspace/benchmarks/sh ... 
+    ^
+expected alphabetic or numeric character, but found ':'
+  in "<unicode string>", line 1, column 7:
+    %Error: /workspace/benchmarks/sha256_b ... 
+          ^
+TB diagnosis YAML repair attempt 1/5...
+[36m(_ToolServerActor pid=18002)[0m INFO:     Waiting for application shutdown.
+[36m(_ToolServerActor pid=18002)[0m INFO:     Application shutdown complete.
+[36m(_ToolServerActor pid=18002)[0m INFO:     Finished server process [18002]
+[33m(raylet)[0m The node with node id: 2d3c4131c12cc53f7b5eefdefd4eca266c062125b915dafaa88eac0f and address: 172.16.0.2 and node name: 172.16.0.2 has been marked dead because the detector has missed too many heartbeats from it. This can happen when a 	(1) raylet crashes unexpectedly (OOM, etc.) 
+	(2) raylet has lagging heartbeats due to slow network or busy workload.
+[33m(raylet)[0m Raylet is terminated. Termination is unexpected. Possible reasons include: (1) SIGKILL by the user or system OOM killer, (2) Invalid memory access from Raylet causing SIGSEGV or SIGBUS, (3) Other termination signals. Last 20 lines of the Raylet logs:
+    *** StackTrace Information ***
+    /home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf71a1a) [0x5fedb478da1a] ray::operator<<()
+    /home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf74039) [0x5fedb4790039] ray::RayLog::~RayLog()
+    /home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x2bc788) [0x5fedb3ad8788] ray::raylet::NodeManager::RegisterGcs()::{lambda()#10}::operator()()::{lambda()#1}::operator()<>()
+    /home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x6756f6) [0x5fedb3e916f6] ray::gcs::NodeInfoAccessor::AsyncCheckAlive()::{lambda()#1}::operator()()
+    /home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x6601a8) [0x5fedb3e7c1a8] std::_Function_handler<>::_M_invoke()
+    /home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x677ec1) [0x5fedb3e93ec1] ray::rpc::RetryableGrpcClient::RetryableGrpcRequest::Create<>()::{lambda()#1}::operator()()::{lambda()#1}::operator()()
+    /home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x6975cb) [0x5fedb3eb35cb] ray::rpc::ClientCallImpl<>::OnReplyReceived()
+    /home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x261a45) [0x5fedb3a7da45] std::_Function_handler<>::_M_invoke()
+    /home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x86c0cb) [0x5fedb40880cb] EventTracker::RecordExecution()
+    /home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x86274b) [0x5fedb407e74b] std::_Function_handler<>::_M_invoke()
+    /home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x863aeb) [0x5fedb407faeb] boost::asio::detail::executor_op<>::do_complete()
+    /home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf3d53b) [0x5fedb475953b] boost::asio::detail::scheduler::do_run_one()
+    /home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf3fae9) [0x5fedb475bae9] boost::asio::detail::scheduler::run()
+    /home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf3fff2) [0x5fedb475bff2] boost::asio::io_context::run()
+    /home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x226487) [0x5fedb3a42487] main
+    /lib/x86_64-linux-gnu/libc.so.6(+0x29d90) [0x7d1ced029d90]
+    /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80) [0x7d1ced029e40] __libc_start_main
+    /home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x248867) [0x5fedb3a64867]
+    
+
+[33m(raylet)[0m [2026-09-20 17:48:41,132 C 3012803 3012803] (raylet) node_manager.cc:468: GCS consider this node to be dead. This may happen when GCS is not backed by a DB and restarted or there is data loss in the DB.
+[33m(raylet)[0m *** StackTrace Information ***
+[33m(raylet)[0m /home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf71a1a) [0x5fedb478da1a] ray::operator<<()
+[33m(raylet)[0m /home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf74039) [0x5fedb4790039] ray::RayLog::~RayLog()
+[33m(raylet)[0m /home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x2bc788) [0x5fedb3ad8788] ray::raylet::NodeManager::RegisterGcs()::{lambda()#10}::operator()()::{lambda()#1}::operator()<>()
+[33m(raylet)[0m /home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x6756f6) [0x5fedb3e916f6] ray::gcs::NodeInfoAccessor::AsyncCheckAlive()::{lambda()#1}::operator()()
+[33m(raylet)[0m /home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x6601a8) [0x5fedb3e7c1a8] std::_Function_handler<>::_M_invoke()
+[33m(raylet)[0m /home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x677ec1) [0x5fedb3e93ec1] ray::rpc::RetryableGrpcClient::RetryableGrpcRequest::Create<>()::{lambda()#1}::operator()()::{lambda()#1}::operator()()
+[33m(raylet)[0m /home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x6975cb) [0x5fedb3eb35cb] ray::rpc::ClientCallImpl<>::OnReplyReceived()
+[33m(raylet)[0m /home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x86c0cb) [0x5fedb40880cb] EventTracker::RecordExecution()
+[33m(raylet)[0m /home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x863aeb) [0x5fedb407faeb] boost::asio::detail::executor_op<>::do_complete()
+[33m(raylet)[0m /home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf3d53b) [0x5fedb475953b] boost::asio::detail::scheduler::do_run_one()
+[33m(raylet)[0m /home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf3fae9) [0x5fedb475bae9] boost::asio::detail::scheduler::run()
+[33m(raylet)[0m /home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf3fff2) [0x5fedb475bff2] boost::asio::io_context::run()
+[33m(raylet)[0m /home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x226487) [0x5fedb3a42487] main
+[33m(raylet)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x29d90) [0x7d1ced029d90]
+[33m(raylet)[0m /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80) [0x7d1ced029e40] __libc_start_main
+[33m(raylet)[0m /home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x248867) [0x5fedb3a64867]
+[33m(raylet)[0m 
+[33m(raylet)[0m /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x2bc788) [0x64a7eec0e788] ray::raylet::NodeManager::RegisterGcs()::{lambda()#10}::operator()()::{lambda()#1}::operator()<>()
+[33m(raylet)[0m /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x6756f6) [0x64a7eefc76f6] ray::gcs::NodeInfoAccessor::AsyncCheckAlive()::{lambda()#1}::operator()()
+[33m(raylet)[0m /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x677ec1) [0x64a7eefc9ec1] ray::rpc::RetryableGrpcClient::RetryableGrpcRequest::Create<>()::{lambda()#1}::operator()()::{lambda()#1}::operator()()
+[33m(raylet)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x29d90) [0x7769ef03cd90]
+[33m(raylet)[0m /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x248867) [0x64a7eeb9a867]
+[33m(raylet)[0m 
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x2bc788) [0x597084a5c788] ray::raylet::NodeManager::RegisterGcs()::{lambda()#10}::operator()()::{lambda()#1}::operator()<>()
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x6756f6) [0x597084e156f6] ray::gcs::NodeInfoAccessor::AsyncCheckAlive()::{lambda()#1}::operator()()
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x677ec1) [0x597084e17ec1] ray::rpc::RetryableGrpcClient::RetryableGrpcRequest::Create<>()::{lambda()#1}::operator()()::{lambda()#1}::operator()()
+[33m(raylet)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x29d90) [0x70e741649d90]
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x248867) [0x5970849e8867]
+[33m(raylet)[0m 
+[33m(raylet)[0m /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x2bc788) [0x55f3bbad9788] ray::raylet::NodeManager::RegisterGcs()::{lambda()#10}::operator()()::{lambda()#1}::operator()<>()
+[33m(raylet)[0m /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x6756f6) [0x55f3bbe926f6] ray::gcs::NodeInfoAccessor::AsyncCheckAlive()::{lambda()#1}::operator()()
+[33m(raylet)[0m /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x677ec1) [0x55f3bbe94ec1] ray::rpc::RetryableGrpcClient::RetryableGrpcRequest::Create<>()::{lambda()#1}::operator()()::{lambda()#1}::operator()()
+[33m(raylet)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x29d90) [0x753cb9812d90]
+[33m(raylet)[0m /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x248867) [0x55f3bba65867]
+[33m(raylet)[0m 
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x2bc788) [0x584ea514f788] ray::raylet::NodeManager::RegisterGcs()::{lambda()#10}::operator()()::{lambda()#1}::operator()<>()
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x6756f6) [0x584ea55086f6] ray::gcs::NodeInfoAccessor::AsyncCheckAlive()::{lambda()#1}::operator()()
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x677ec1) [0x584ea550aec1] ray::rpc::RetryableGrpcClient::RetryableGrpcRequest::Create<>()::{lambda()#1}::operator()()::{lambda()#1}::operator()()
+[33m(raylet)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x29d90) [0x70aedce4fd90]
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x248867) [0x584ea50db867]
+[33m(raylet)[0m 
+[33m(raylet)[0m Raylet is terminated. Termination is unexpected. Possible reasons include: (1) SIGKILL by the user or system OOM killer, (2) Invalid memory access from Raylet causing SIGSEGV or SIGBUS, (3) Other termination signals. Last 20 lines of the Raylet logs:
+    [state-dump] 
+    [2026-09-20 12:18:45,037 I 69 69] (raylet) ray_syncer_bidi_reactor_base.h:243: Failed to read a message from node: 00000000000000000000000000000000000000000000000000000000
+    [2026-09-20 12:18:46,039 I 69 69] (raylet) accessor.cc:436: Received address and liveness notification for node, IsAlive = 0 node_id=2d3c4131c12cc53f7b5eefdefd4eca266c062125b915dafaa88eac0f
+    [2026-09-20 12:18:46,052 C 69 69] (raylet) node_manager.cc:920: [Timeout] Exiting because this node manager has mistakenly been marked as dead by the GCS: GCS failed to check the health of this node for 5 times. This is likely because the machine or raylet has become overloaded.
+    *** StackTrace Information ***
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf71a1a) [0x60d36fb1da1a] ray::operator<<()
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf74039) [0x60d36fb20039] ray::RayLog::~RayLog()
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x2df07b) [0x60d36ee8b07b] ray::raylet::NodeManager::NodeRemoved()
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x6e2aab) [0x60d36f28eaab] ray::gcs::NodeInfoAccessor::HandleNotification()
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x86c0cb) [0x60d36f4180cb] EventTracker::RecordExecution()
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x86274b) [0x60d36f40e74b] std::_Function_handler<>::_M_invoke()
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x863aeb) [0x60d36f40faeb] boost::asio::detail::executor_op<>::do_complete()
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf3d53b) [0x60d36fae953b] boost::asio::detail::scheduler::do_run_one()
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf3fae9) [0x60d36faebae9] boost::asio::detail::scheduler::run()
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf3fff2) [0x60d36faebff2] boost::asio::io_context::run()
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x226487) [0x60d36edd2487] main
+    /lib/x86_64-linux-gnu/libc.so.6(+0x29d90) [0x7e7359940d90]
+    /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80) [0x7e7359940e40] __libc_start_main
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x248867) [0x60d36edf4867]
+    
+
+[33m(raylet)[0m The node with node id: f33776d7601386cb1df4a5c292d545b48c5e61ecb41278dd61865724 and address: 172.16.0.2 and node name: 172.16.0.2 has been marked dead because the detector has missed too many heartbeats from it. This can happen when a 	(1) raylet crashes unexpectedly (OOM, etc.) 
+	(2) raylet has lagging heartbeats due to slow network or busy workload.[32m [repeated 11x across cluster] (Ray deduplicates logs by default. Set RAY_DEDUP_LOGS=0 to disable log deduplication, or see https://docs.ray.io/en/master/ray-observability/user-guides/configure-logging.html#log-deduplication for more options.)[0m
+[33m(raylet)[0m [2026-09-20 12:18:46,052 C 69 69] (raylet) node_manager.cc:920: [Timeout] Exiting because this node manager has mistakenly been marked as dead by the GCS: GCS failed to check the health of this node for 5 times. This is likely because the machine or raylet has become overloaded.
+[33m(raylet)[0m /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x2df07b) [0x60d36ee8b07b] ray::raylet::NodeManager::NodeRemoved()
+[33m(raylet)[0m /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x6e2aab) [0x60d36f28eaab] ray::gcs::NodeInfoAccessor::HandleNotification()
+[33m(raylet)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x29d90) [0x7e7359940d90]
+[33m(raylet)[0m /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x248867) [0x60d36edf4867]
+[33m(raylet)[0m 
+[33m(raylet)[0m Raylet is terminated. Termination is unexpected. Possible reasons include: (1) SIGKILL by the user or system OOM killer, (2) Invalid memory access from Raylet causing SIGSEGV or SIGBUS, (3) Other termination signals. Last 20 lines of the Raylet logs:
+    *** StackTrace Information ***
+    /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf71a1a) [0x612ae05a7a1a] ray::operator<<()
+    /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf74039) [0x612ae05aa039] ray::RayLog::~RayLog()
+    /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x2bc788) [0x612adf8f2788] ray::raylet::NodeManager::RegisterGcs()::{lambda()#10}::operator()()::{lambda()#1}::operator()<>()
+    /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x6756f6) [0x612adfcab6f6] ray::gcs::NodeInfoAccessor::AsyncCheckAlive()::{lambda()#1}::operator()()
+    /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x6601a8) [0x612adfc961a8] std::_Function_handler<>::_M_invoke()
+    /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x677ec1) [0x612adfcadec1] ray::rpc::RetryableGrpcClient::RetryableGrpcRequest::Create<>()::{lambda()#1}::operator()()::{lambda()#1}::operator()()
+    /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x6975cb) [0x612adfccd5cb] ray::rpc::ClientCallImpl<>::OnReplyReceived()
+    /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x261a45) [0x612adf897a45] std::_Function_handler<>::_M_invoke()
+    /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x86c0cb) [0x612adfea20cb] EventTracker::RecordExecution()
+    /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x86274b) [0x612adfe9874b] std::_Function_handler<>::_M_invoke()
+    /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x863aeb) [0x612adfe99aeb] boost::asio::detail::executor_op<>::do_complete()
+    /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf3d53b) [0x612ae057353b] boost::asio::detail::scheduler::do_run_one()
+    /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf3fae9) [0x612ae0575ae9] boost::asio::detail::scheduler::run()
+    /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf3fff2) [0x612ae0575ff2] boost::asio::io_context::run()
+    /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x226487) [0x612adf85c487] main
+    /lib/x86_64-linux-gnu/libc.so.6(+0x29d90) [0x796616bfed90]
+    /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80) [0x796616bfee40] __libc_start_main
+    /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x248867) [0x612adf87e867]
+    
+[32m [repeated 10x across cluster][0m
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x2bc788) [0x612adf8f2788] ray::raylet::NodeManager::RegisterGcs()::{lambda()#10}::operator()()::{lambda()#1}::operator()<>()
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x6756f6) [0x612adfcab6f6] ray::gcs::NodeInfoAccessor::AsyncCheckAlive()::{lambda()#1}::operator()()
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x677ec1) [0x612adfcadec1] ray::rpc::RetryableGrpcClient::RetryableGrpcRequest::Create<>()::{lambda()#1}::operator()()::{lambda()#1}::operator()()
+[33m(raylet)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x29d90) [0x796616bfed90]
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x248867) [0x612adf87e867]
+[33m(raylet)[0m 
+[33m(raylet)[0m [2026-09-20 05:18:47,593 C 74 74] (raylet) node_manager.cc:468: GCS consider this node to be dead. This may happen when GCS is not backed by a DB and restarted or there is data loss in the DB.[32m [repeated 5x across cluster][0m
+[33m(raylet)[0m *** StackTrace Information ***[32m [repeated 6x across cluster][0m
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf71a1a) [0x612ae05a7a1a] ray::operator<<()[32m [repeated 6x across cluster][0m
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf74039) [0x612ae05aa039] ray::RayLog::~RayLog()[32m [repeated 6x across cluster][0m
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x86274b) [0x612adfe9874b] std::_Function_handler<>::_M_invoke()[32m [repeated 18x across cluster][0m
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x6975cb) [0x612adfccd5cb] ray::rpc::ClientCallImpl<>::OnReplyReceived()[32m [repeated 5x across cluster][0m
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x86c0cb) [0x612adfea20cb] EventTracker::RecordExecution()[32m [repeated 6x across cluster][0m
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x863aeb) [0x612adfe99aeb] boost::asio::detail::executor_op<>::do_complete()[32m [repeated 6x across cluster][0m
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf3d53b) [0x612ae057353b] boost::asio::detail::scheduler::do_run_one()[32m [repeated 6x across cluster][0m
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf3fae9) [0x612ae0575ae9] boost::asio::detail::scheduler::run()[32m [repeated 6x across cluster][0m
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf3fff2) [0x612ae0575ff2] boost::asio::io_context::run()[32m [repeated 6x across cluster][0m
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x226487) [0x612adf85c487] main[32m [repeated 6x across cluster][0m
+[33m(raylet)[0m /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80) [0x796616bfee40] __libc_start_main[32m [repeated 6x across cluster][0m
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x2bc788) [0x58d033447788] ray::raylet::NodeManager::RegisterGcs()::{lambda()#10}::operator()()::{lambda()#1}::operator()<>()
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x6756f6) [0x58d0338006f6] ray::gcs::NodeInfoAccessor::AsyncCheckAlive()::{lambda()#1}::operator()()
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x677ec1) [0x58d033802ec1] ray::rpc::RetryableGrpcClient::RetryableGrpcRequest::Create<>()::{lambda()#1}::operator()()::{lambda()#1}::operator()()
+[33m(raylet)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x29d90) [0x723be9bc1d90]
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x248867) [0x58d0333d3867]
+[33m(raylet)[0m 
+[33m(raylet)[0m Raylet is terminated. Termination is unexpected. Possible reasons include: (1) SIGKILL by the user or system OOM killer, (2) Invalid memory access from Raylet causing SIGSEGV or SIGBUS, (3) Other termination signals. Last 20 lines of the Raylet logs:
+    [state-dump] 
+    [2026-09-20 12:18:45,037 I 69 69] (raylet) ray_syncer_bidi_reactor_base.h:243: Failed to read a message from node: 00000000000000000000000000000000000000000000000000000000
+    [2026-09-20 12:18:46,039 I 69 69] (raylet) accessor.cc:436: Received address and liveness notification for node, IsAlive = 0 node_id=2d3c4131c12cc53f7b5eefdefd4eca266c062125b915dafaa88eac0f
+    [2026-09-20 12:18:46,052 C 69 69] (raylet) node_manager.cc:920: [Timeout] Exiting because this node manager has mistakenly been marked as dead by the GCS: GCS failed to check the health of this node for 5 times. This is likely because the machine or raylet has become overloaded.
+    *** StackTrace Information ***
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf71a1a) [0x60d36fb1da1a] ray::operator<<()
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf74039) [0x60d36fb20039] ray::RayLog::~RayLog()
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x2df07b) [0x60d36ee8b07b] ray::raylet::NodeManager::NodeRemoved()
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x6e2aab) [0x60d36f28eaab] ray::gcs::NodeInfoAccessor::HandleNotification()
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x86c0cb) [0x60d36f4180cb] EventTracker::RecordExecution()
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x86274b) [0x60d36f40e74b] std::_Function_handler<>::_M_invoke()
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x863aeb) [0x60d36f40faeb] boost::asio::detail::executor_op<>::do_complete()
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf3d53b) [0x60d36fae953b] boost::asio::detail::scheduler::do_run_one()
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf3fae9) [0x60d36faebae9] boost::asio::detail::scheduler::run()
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf3fff2) [0x60d36faebff2] boost::asio::io_context::run()
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x226487) [0x60d36edd2487] main
+    /lib/x86_64-linux-gnu/libc.so.6(+0x29d90) [0x7e7359940d90]
+    /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80) [0x7e7359940e40] __libc_start_main
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x248867) [0x60d36edf4867]
+    
+
+[33m(raylet)[0m Raylet is terminated. Termination is unexpected. Possible reasons include: (1) SIGKILL by the user or system OOM killer, (2) Invalid memory access from Raylet causing SIGSEGV or SIGBUS, (3) Other termination signals. Last 20 lines of the Raylet logs:
+    *** StackTrace Information ***
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf71a1a) [0x6355f7824a1a] ray::operator<<()
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf74039) [0x6355f7827039] ray::RayLog::~RayLog()
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x2bc788) [0x6355f6b6f788] ray::raylet::NodeManager::RegisterGcs()::{lambda()#10}::operator()()::{lambda()#1}::operator()<>()
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x6756f6) [0x6355f6f286f6] ray::gcs::NodeInfoAccessor::AsyncCheckAlive()::{lambda()#1}::operator()()
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x6601a8) [0x6355f6f131a8] std::_Function_handler<>::_M_invoke()
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x677ec1) [0x6355f6f2aec1] ray::rpc::RetryableGrpcClient::RetryableGrpcRequest::Create<>()::{lambda()#1}::operator()()::{lambda()#1}::operator()()
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x6975cb) [0x6355f6f4a5cb] ray::rpc::ClientCallImpl<>::OnReplyReceived()
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x261a45) [0x6355f6b14a45] std::_Function_handler<>::_M_invoke()
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x86c0cb) [0x6355f711f0cb] EventTracker::RecordExecution()
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x86274b) [0x6355f711574b] std::_Function_handler<>::_M_invoke()
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x863aeb) [0x6355f7116aeb] boost::asio::detail::executor_op<>::do_complete()
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf3d53b) [0x6355f77f053b] boost::asio::detail::scheduler::do_run_one()
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf3fae9) [0x6355f77f2ae9] boost::asio::detail::scheduler::run()
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf3fff2) [0x6355f77f2ff2] boost::asio::io_context::run()
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x226487) [0x6355f6ad9487] main
+    /lib/x86_64-linux-gnu/libc.so.6(+0x29d90) [0x76d3314f7d90]
+    /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80) [0x76d3314f7e40] __libc_start_main
+    /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x248867) [0x6355f6afb867]
+    
+[32m [repeated 4x across cluster][0m
+[33m(raylet)[0m /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x2bc788) [0x6355f6b6f788] ray::raylet::NodeManager::RegisterGcs()::{lambda()#10}::operator()()::{lambda()#1}::operator()<>()
+[33m(raylet)[0m /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x6756f6) [0x6355f6f286f6] ray::gcs::NodeInfoAccessor::AsyncCheckAlive()::{lambda()#1}::operator()()
+[33m(raylet)[0m /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x677ec1) [0x6355f6f2aec1] ray::rpc::RetryableGrpcClient::RetryableGrpcRequest::Create<>()::{lambda()#1}::operator()()::{lambda()#1}::operator()()
+[33m(raylet)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x29d90) [0x76d3314f7d90]
+[33m(raylet)[0m /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x248867) [0x6355f6afb867]
+[33m(raylet)[0m 
+[33m(raylet)[0m [2026-09-20 12:18:55,325 C 69 69] (raylet) node_manager.cc:468: GCS consider this node to be dead. This may happen when GCS is not backed by a DB and restarted or there is data loss in the DB.[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m *** StackTrace Information ***[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf71a1a) [0x6355f7824a1a] ray::operator<<()[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf74039) [0x6355f7827039] ray::RayLog::~RayLog()[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x86274b) [0x6355f711574b] std::_Function_handler<>::_M_invoke()[32m [repeated 6x across cluster][0m
+[33m(raylet)[0m /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x6975cb) [0x6355f6f4a5cb] ray::rpc::ClientCallImpl<>::OnReplyReceived()[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x86c0cb) [0x6355f711f0cb] EventTracker::RecordExecution()[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x863aeb) [0x6355f7116aeb] boost::asio::detail::executor_op<>::do_complete()[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf3d53b) [0x6355f77f053b] boost::asio::detail::scheduler::do_run_one()[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf3fae9) [0x6355f77f2ae9] boost::asio::detail::scheduler::run()[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf3fff2) [0x6355f77f2ff2] boost::asio::io_context::run()[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x226487) [0x6355f6ad9487] main[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80) [0x76d3314f7e40] __libc_start_main[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x2bc788) [0x56403ab65788] ray::raylet::NodeManager::RegisterGcs()::{lambda()#10}::operator()()::{lambda()#1}::operator()<>()
+[33m(raylet)[0m /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x6756f6) [0x56403af1e6f6] ray::gcs::NodeInfoAccessor::AsyncCheckAlive()::{lambda()#1}::operator()()
+[33m(raylet)[0m /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x677ec1) [0x56403af20ec1] ray::rpc::RetryableGrpcClient::RetryableGrpcRequest::Create<>()::{lambda()#1}::operator()()::{lambda()#1}::operator()()
+[33m(raylet)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x29d90) [0x748ec4309d90]
+[33m(raylet)[0m /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x248867) [0x56403aaf1867]
+[33m(raylet)[0m 
+[33m(raylet)[0m Raylet is terminated. Termination is unexpected. Possible reasons include: (1) SIGKILL by the user or system OOM killer, (2) Invalid memory access from Raylet causing SIGSEGV or SIGBUS, (3) Other termination signals. Last 20 lines of the Raylet logs:
+    *** StackTrace Information ***
+    /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf71a1a) [0x5cb5d1902a1a] ray::operator<<()
+    /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf74039) [0x5cb5d1905039] ray::RayLog::~RayLog()
+    /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x2bc788) [0x5cb5d0c4d788] ray::raylet::NodeManager::RegisterGcs()::{lambda()#10}::operator()()::{lambda()#1}::operator()<>()
+    /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x6756f6) [0x5cb5d10066f6] ray::gcs::NodeInfoAccessor::AsyncCheckAlive()::{lambda()#1}::operator()()
+    /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x6601a8) [0x5cb5d0ff11a8] std::_Function_handler<>::_M_invoke()
+    /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x677ec1) [0x5cb5d1008ec1] ray::rpc::RetryableGrpcClient::RetryableGrpcRequest::Create<>()::{lambda()#1}::operator()()::{lambda()#1}::operator()()
+    /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x6975cb) [0x5cb5d10285cb] ray::rpc::ClientCallImpl<>::OnReplyReceived()
+    /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x261a45) [0x5cb5d0bf2a45] std::_Function_handler<>::_M_invoke()
+    /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x86c0cb) [0x5cb5d11fd0cb] EventTracker::RecordExecution()
+    /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x86274b) [0x5cb5d11f374b] std::_Function_handler<>::_M_invoke()
+    /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x863aeb) [0x5cb5d11f4aeb] boost::asio::detail::executor_op<>::do_complete()
+    /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf3d53b) [0x5cb5d18ce53b] boost::asio::detail::scheduler::do_run_one()
+    /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf3fae9) [0x5cb5d18d0ae9] boost::asio::detail::scheduler::run()
+    /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf3fff2) [0x5cb5d18d0ff2] boost::asio::io_context::run()
+    /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x226487) [0x5cb5d0bb7487] main
+    /lib/x86_64-linux-gnu/libc.so.6(+0x29d90) [0x74661c1dfd90]
+    /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80) [0x74661c1dfe40] __libc_start_main
+    /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x248867) [0x5cb5d0bd9867]
+    
+[32m [repeated 4x across cluster][0m
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x2bc788) [0x5cb5d0c4d788] ray::raylet::NodeManager::RegisterGcs()::{lambda()#10}::operator()()::{lambda()#1}::operator()<>()
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x6756f6) [0x5cb5d10066f6] ray::gcs::NodeInfoAccessor::AsyncCheckAlive()::{lambda()#1}::operator()()
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x677ec1) [0x5cb5d1008ec1] ray::rpc::RetryableGrpcClient::RetryableGrpcRequest::Create<>()::{lambda()#1}::operator()()::{lambda()#1}::operator()()
+[33m(raylet)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x29d90) [0x74661c1dfd90]
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x248867) [0x5cb5d0bd9867]
+[33m(raylet)[0m 
+[33m(raylet)[0m [2026-09-20 05:19:05,679 C 72 72] (raylet) node_manager.cc:468: GCS consider this node to be dead. This may happen when GCS is not backed by a DB and restarted or there is data loss in the DB.[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m *** StackTrace Information ***[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf71a1a) [0x5cb5d1902a1a] ray::operator<<()[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf74039) [0x5cb5d1905039] ray::RayLog::~RayLog()[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x86274b) [0x5cb5d11f374b] std::_Function_handler<>::_M_invoke()[32m [repeated 6x across cluster][0m
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x6975cb) [0x5cb5d10285cb] ray::rpc::ClientCallImpl<>::OnReplyReceived()[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x86c0cb) [0x5cb5d11fd0cb] EventTracker::RecordExecution()[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x863aeb) [0x5cb5d11f4aeb] boost::asio::detail::executor_op<>::do_complete()[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf3d53b) [0x5cb5d18ce53b] boost::asio::detail::scheduler::do_run_one()[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf3fae9) [0x5cb5d18d0ae9] boost::asio::detail::scheduler::run()[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0xf3fff2) [0x5cb5d18d0ff2] boost::asio::io_context::run()[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m /home/ray/anaconda3/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x226487) [0x5cb5d0bb7487] main[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80) [0x74661c1dfe40] __libc_start_main[32m [repeated 2x across cluster][0m
+[33m(raylet)[0m /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x2bc788) [0x5c0d98def788] ray::raylet::NodeManager::RegisterGcs()::{lambda()#10}::operator()()::{lambda()#1}::operator()<>()
+[33m(raylet)[0m /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x6756f6) [0x5c0d991a86f6] ray::gcs::NodeInfoAccessor::AsyncCheckAlive()::{lambda()#1}::operator()()
+[33m(raylet)[0m /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x677ec1) [0x5c0d991aaec1] ray::rpc::RetryableGrpcClient::RetryableGrpcRequest::Create<>()::{lambda()#1}::operator()()::{lambda()#1}::operator()()
+[33m(raylet)[0m /lib/x86_64-linux-gnu/libc.so.6(+0x29d90) [0x75b6d4959d90]
+[33m(raylet)[0m /opt/miniconda/envs/chia_env/lib/python3.10/site-packages/ray/core/src/ray/raylet/raylet(+0x248867) [0x5c0d98d7b867]
+[33m(raylet)[0m 
+------------------------------------------------------------------------------
+run14 exit status: 1
+Time: 2026-09-20T17:49:40+05:30
+Status: STOPPED BY USER
+Supervisor: stopping.
+------------------------------------------------------------------------------
+

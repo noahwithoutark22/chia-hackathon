@@ -1,0 +1,64 @@
+schema_version: "1.0"
+action: repair
+root_cause: RTL start-capture is gated by the clock divider, so the frozen TB's canonical
+  1-cycle `start` pulse is systematically missed and no transaction is ever accepted.
+  In rtl.sv the whole `case (state)` - including the `IDLE` arm that samples `start`
+  (lines 67-78) - is nested inside the divider-advance branch `if (div_cnt == CLK_DIV
+  - 1)`, so `start` is considered only on state-advance clock edges (one every CLK_DIV=4
+  cycles). The frozen driver (tb/i2c_driver.py start_transaction, offer_cycles=1) holds
+  `start=1` for exactly one clock edge and then releases it, so the pulse only ever
+  spans an advance-free edge in this reset-then-offer timeline. `start` is therefore
+  sampled low at every IDLE advance, `busy` never rises, and all 14 data-path tests
+  hang at start-acceptance (specification.md section 7 "start=1 shall begin a transaction...
+  busy shall become asserted"; verification_plan.yaml lines 890-891 "start asserted for
+  exactly one cycle while idle must begin exactly one transaction").
+confidence: high
+evidence:
+  - simulation_result.json: 14/15 tests (TC-02..TC-13 directed, corner, random) report
+    status=runtime_error returncode=2 with the identical hung signature, e.g. WriteBasicTest
+    log line 35: "HUNG transaction detected [start-acceptance] (monitor txn_id=0): hung[txn_id=0
+    start=1 addr=0x50 rw=0 tx_data=0xa5 ... done=0 busy=0 ack_error=1 ...] HUNG[stage=start-acceptance]",
+    and the driver traceback `_wait_busy_rise` -> `I2CDriverTimeout[start-acceptance]:
+    busy never rose (0->1) within 64 cycles of the start offer`.
+  - The `ack_error=1` value in every hung sample proves the FSM *is* advancing: it is
+    set only by rtl.sv line 70 (`ack_error <= 1'b1;` in the IDLE advance arm, reset clears
+    it to 0). The divider repair from iteration 3 is present and functional in the compiled
+    binary (build 3a357d808a49, Vtop__verFiles.dat hashes the accepted RTL; Vtop___024root__0.cpp
+    shows advance compare `3U == div_cnt`, increment `div_cnt = (3U & (1U + div_cnt))`,
+    `done = 0U` default, `sda_oe = busy`). So this is not a DIS-18/19 stall and not a
+    done/open-drain regression - the remaining blocker is purely the start handshake
+    race.
+  - FSM trace of rtl.sv against the exact TB timeline (reset deassertion at 140ns, offer
+    at 140ns, release after the 150ns edge; div_cnt reset to 0 on reset): start is high
+    only at the 150ns edge while div_cnt==1 (not an advance edge); the first IDLE advances
+    occur at 170/210/... ns with start already low, each setting `busy<=0; ack_error<=1`.
+    This reproduces the observed hung sample byte-for-byte (busy=0, ack_error=1, done=0)
+    and shows the acceptance probability is exactly 0 for the frozen 1-cycle offer.
+  - ResetIdleCheckTest (TC-01) passes because it checks only reset/idle output values
+    and never offers a start, isolating the failure to start acceptance.
+  - Intended behavior is defined by the spec/plan, not the TB: specification.md section
+    7 (start accepted while idle) and verification_plan.yaml directed scenarios TC-02..TC-13
+    (`start_write`/`release_start` = one-cycle start pulse; line 890-891 require a one-cycle
+    start while idle to begin exactly one transaction). The frozen TB implements exactly
+    this plan stimulus, so the defect is in the RTL, which allows acceptance only by a
+    1-in-CLK_DIV phase coincidence.
+changes:
+  - file: rtl.sv
+    action: modify
+    instructions:
+      - "Move the start-acceptance out of the divider-gated block so `start` is sampled
+        on every non-reset clock edge while the controller is idle. In the non-reset
+        else branch (rtl.sv line 61), insert a branch before the divider check that
+        captures the request whenever the FSM is idle and start is high: `if (state ==
+        IDLE && start) begin busy <= 1'b1; shift_reg <= {slave_addr, ~rw}; bit_cnt <=
+        4'd6; state <= START_COND; end else if (div_cnt == CLK_DIV - 1) begin ...` (keep
+        `done <= 1'b0;` first, and use `end else if` so the divider printout is unchanged)."
+      - "In the `case (state)` IDLE arm inside the divider-advance block (rtl.sv lines
+        68-78), delete the now-redundant `if (start) begin ... end` sub-block so that
+        arm keeps only its default assignments `busy <= 1'b0; ack_error <= 1'b1;` (terminate
+        the arm with `end` directly after them)."
+      - "Do not modify any other state logic: the address/RW capture values, bit_cnt
+        init, ACK sampling (DIS-05/06), data path, busy handling, and STOP behavior are
+        unchanged and remain out of scope for this demonstrated failure; this change
+        only makes a one-cycle start pulse (the frozen TB's canonical offer) deterministically
+        begin a transaction per spec section 7."

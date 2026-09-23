@@ -1,0 +1,80 @@
+[
+  {
+    "acceptance_reason": "no_regression",
+    "accepted_rtl": "/home/auralab/nwark/chia-hackathon/uvm_loop/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv",
+    "baseline_quality_score": 55.0,
+    "baseline_tests_failed": 11,
+    "candidate_quality_score": 57.73,
+    "candidate_result": "/home/auralab/nwark/chia-hackathon/uvm_loop/generated/designs/sha256_benchmark_corrupted/rtl_verification/results/candidate_01.json",
+    "candidate_tests_failed": 10,
+    "confidence": "high",
+    "decision_path": "/home/auralab/nwark/chia-hackathon/uvm_loop/generated/designs/sha256_benchmark_corrupted/rtl_verification/decisions/iteration_01.yaml",
+    "iteration": 1,
+    "original_rtl": "/home/auralab/nwark/chia-hackathon/uvm_loop/benchmarks/sha256_benchmark_corrupted/sha256.sv",
+    "original_rtl_modified": false,
+    "result": "accepted",
+    "root_cause": "The SHA-256 round-constant table K is malformed in rtl.sv: the declaration `localparam logic [31:0] K [0:63]` requires 64 initializers, but the assignment-pattern body (lines 10-27) supplies only 62 constants. Indices 62 and 63 are left uninitialized, so Verilator rejects the RTL at elaboration with 'Assignment pattern missed initializing elements: 62/63', which aborts the build for every test before any simulation runs. The list is additionally corrupted against the FIPS 180-4 constants mandated by specification.md \u00a73: index 10 is 243185bf (should be 243185be), index 31 is 14292977 (should be 14292967), and constants 2e1b2138 (K[33]) and 4d2c6dfc (K[34]) are deleted, shifting all indices \u226533 down by two.",
+    "score_delta": 2.729999999999997
+  },
+  {
+    "acceptance_reason": "no_regression",
+    "accepted_rtl": "/home/auralab/nwark/chia-hackathon/uvm_loop/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv",
+    "baseline_quality_score": 57.73,
+    "baseline_tests_failed": 10,
+    "candidate_quality_score": 79.55,
+    "candidate_result": "/home/auralab/nwark/chia-hackathon/uvm_loop/generated/designs/sha256_benchmark_corrupted/rtl_verification/results/candidate_02.json",
+    "candidate_tests_failed": 2,
+    "confidence": "high",
+    "decision_path": "/home/auralab/nwark/chia-hackathon/uvm_loop/generated/designs/sha256_benchmark_corrupted/rtl_verification/decisions/iteration_02.yaml",
+    "iteration": 2,
+    "original_rtl": "/home/auralab/nwark/chia-hackathon/uvm_loop/benchmarks/sha256_benchmark_corrupted/sha256.sv",
+    "original_rtl_modified": false,
+    "result": "accepted",
+    "root_cause": "The DUT never completes a single SHA-256 transaction, so digest stays 0x0 and every non-reset test fails Sha256Assertions.check_transaction_completes_within_latency (\"transaction started at cycle 5 did not produce a non-zero digest within 64..70 cycles (digest still 0x0000...0000 at cycle 76)\"). Root mechanism: the round-control path cannot reach the digest-assignment state. On start the RTL loads round with 7'd1 (line 157, fault 49) and advances it by 2 (round <= round + 2'd2, line 214, fault 41), so round visits only odd values (1,3,...,63,65,...) and never equals 62; the completion block gated on if (round == 62) (line 199, fault 40; should be 63) therefore never executes -- digest is never written, busy is never cleared (busy <= 1'b1 at line 211, fault 44) and the DUT stays busy forever. Independently of this stall, 47 more of the 50 documented semantic faults still corrupt the datapath (verified line-by-line against FAULTS.md): message-word extraction uses block[i*32 +: 32] with an explicit byte-swap (faults 06/07) instead of block[511 - i*32 -: 32] with the word as-is; the W schedule uses offsets round-3/-8/-14/-17 (faults 08-11, should be -2/-7/-15/-16); all four sigma functions use wrong rotation/shift amounts (faults 12-23); Ch and Maj are missing terms (faults 24/25); T1 uses g + BigSigma1(e) + Ch(e,g,f) + K[(round+1)&7'd63] (faults 26/27/28, should be h + BigSigma1(e) + Ch(e,f,g) + K[round]); T2 uses BigSigma1(a) - Maj(a,c,b) (faults 29/30); na uses XOR instead of addition (fault 31); the state-shift operands are nb=b, nc=c, nd=b, ne=d+next_t2, nf=f, ng=g, nh=h (faults 32-39, should be nb=a, nc=b, nd=c, ne=d+next_t1, nf=e, ng=f, nh=g); the digest feed-forward uses H0+nb, H2+nb, H3+nc, H4+nf, H7+ng (faults 36/45/46/47/50, should be +na/+nc/+nd/+ne/+nh); and the K table still holds three constants that differ from the FIPS 180-4 values -- K[2]=32'hb5c0fbce (fault 01, correct b5c0fbcf) and the last slots K[59]=32'h8cc70218 / K[60]=32'h90befffb (faults 05/04, correct 8cc70208 / 90befffa; iteration_01 accidentally prescribed the mistyped 8cc70218/90befffb values, so these two faults remain live).",
+    "score_delta": 21.82
+  },
+  {
+    "acceptance_reason": "no_regression",
+    "accepted_rtl": "/home/auralab/nwark/chia-hackathon/uvm_loop/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv",
+    "baseline_quality_score": 79.55,
+    "baseline_tests_failed": 2,
+    "candidate_quality_score": 82.27,
+    "candidate_result": "/home/auralab/nwark/chia-hackathon/uvm_loop/generated/designs/sha256_benchmark_corrupted/rtl_verification/results/candidate_03.json",
+    "candidate_tests_failed": 1,
+    "confidence": "high",
+    "decision_path": "/home/auralab/nwark/chia-hackathon/uvm_loop/generated/designs/sha256_benchmark_corrupted/rtl_verification/decisions/iteration_03.yaml",
+    "iteration": 3,
+    "original_rtl": "/home/auralab/nwark/chia-hackathon/uvm_loop/benchmarks/sha256_benchmark_corrupted/sha256.sv",
+    "original_rtl_modified": false,
+    "result": "accepted",
+    "root_cause": "The DUT still honors a start-while-busy by restarting the in-flight transaction: rtl.sv line 128 uses an un-gated `if (start)`, taking priority over the `else if (busy)` processing branch. The frozen TB grades completion by a fixed-cycle window per start edge (transaction_completes_within_latency requires digest != 0 within [start+64 .. start+70]). Sha256StartWhileBusyRestartsSequence re-asserts start with a different block 10 cycles into the first transaction (RESTART_DELAY_CYCLES=10); the restart aborts the \"abc\" computation and the restarted empty-message computation only writes digest at start2+64 (> start1+70), so the first start's digest is still 0x0 at cycle 76. This trips the assertion ('transaction started at cycle 5 did not produce a non-zero digest within 64..70 cycles (digest still 0x0 at cycle 76)') and produces the scoreboard DIGEST MISMATCH for txn_id=1 with actual_digest=0x0. specification.md section 5 defines intended behavior: 'A transaction begins when start == 1 && DUT is idle', and the verification plan discrepancy DISC-017 (start not gated by busy) records the exact recommended fix 'if (start && !busy)'. Gating start on !busy makes the first transaction complete normally (abc digest inside its valid window), and since digest mismatches are catch reports (not test failures), the StartWhileBusyRestarts test passes. The other currently-failing test (Sha256RandomizedTest) is NOT RTL-caused: the 2 INVALID BLOCK reports (txn 4, 12) come from the frozen golden reference's block_to_digest() using block.index(b'\\x80') to find the padding marker, so canonical one-block paddings whose random message (bytes 0..255) contains an 0x80 byte are mis-rejected -- verified txn_id=12's DUT digest 0x442e6052... equals hashlib.sha256(true_message), i.e., the RTL datapath is correct and only the TB reference-model validator cannot grade it; no RTL change can fix that. The two digest=0 scoreboard mismatches (txn 17/18) are the plan's intended reset_during_processing (p=0.1) injections aborting transactions (mismatch catch reports, not failures).",
+    "score_delta": 2.719999999999999
+  },
+  {
+    "accepted_rtl": "/home/auralab/nwark/chia-hackathon/uvm_loop/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv",
+    "decision_path": "/home/auralab/nwark/chia-hackathon/uvm_loop/generated/designs/sha256_benchmark_corrupted/rtl_verification/decisions/iteration_04.yaml",
+    "iteration": 4,
+    "original_rtl": "/home/auralab/nwark/chia-hackathon/uvm_loop/benchmarks/sha256_benchmark_corrupted/sha256.sv",
+    "original_rtl_modified": false,
+    "result": "template_bug",
+    "root_cause": "Sha256RandomizedTest is the only failing test (runtime_error, returncode 2), and the failure is NOT caused by the RTL. The frozen golden reference model's block_to_digest (reference_model.py / tb/sha256_reference_model.py, lines 41-48) locates the SHA-256 padding marker with `block.index(b\"\\x80\")`, which returns the FIRST occurrence of byte 0x80 anywhere in the block. For the randomized stimulus (byte range 0..255 per the plan), canonical one-block paddings whose message payload contains an 0x80 byte are mis-parsed: the model truncates the message at the payload 0x80, then the length-field check `bit_len != len(message)*8` raises \"Invalid length field in padded block.\" The scoreboard counts these as invalid blocks (INVALID BLOCK for txn_id=4 and txn_id=12), and Sha256RandomizedTest.report_phase raises AssertionError(\"scoreboard contract violations: invalid blocks=2\"), which aborts the cocotb test (TESTS=1 PASS=0 FAIL=1). The RTL datapath is functionally correct: 16/20 randomized transactions directly MATCH the golden reference, and txn_id=12's DUT digest equals hashlib.sha256 of the true message exactly, proving the RTL (not the gradable TB path) computed the right digest. No RTL change can influence the scoreboard's parsing of the observed block, so no RTL repair exists. This matches the iteration-03 decision, which recorded this as a frozen-TB/reference-model limitation to be handled as template_bug/no_repair with no rtl.sv edits."
+  },
+  {
+    "accepted_rtl": "/home/auralab/nwark/chia-hackathon/uvm_loop/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv",
+    "decision_path": "/home/auralab/nwark/chia-hackathon/uvm_loop/generated/designs/sha256_benchmark_corrupted/rtl_verification/decisions/iteration_05.yaml",
+    "iteration": 5,
+    "original_rtl": "/home/auralab/nwark/chia-hackathon/uvm_loop/benchmarks/sha256_benchmark_corrupted/sha256.sv",
+    "original_rtl_modified": false,
+    "result": "template_bug",
+    "root_cause": "Sha256RandomizedTest is the only failing test (status=runtime_error, returncode=2), and the failure is NOT caused by the RTL. The frozen golden reference model's block_to_digest (reference_model.py / tb/sha256_reference_model.py, lines 41-48) locates the SHA-256 padding marker with `block.index(b\"\\x80\")`, which returns the FIRST occurrence of byte 0x80 anywhere in the 64-byte block. For the randomized stimulus (plan constraints: message bytes 0..255, lengths 0..55), canonical one-block paddings whose message payload contains an 0x80 byte are mis-parsed: block_to_digest truncates the message at the payload 0x80, then the length-field check `bit_len != len(message)*8` (lines 52-53) raises \"Invalid length field in padded block.\" The scoreboard (tb/sha256_scoreboard.py lines 183-201) counts such rejections as invalid blocks, and Sha256RandomizedTest.report_phase (sha256_test.py _scoreboard_failures, _allow_invalid_blocks=False) raises AssertionError(\"invalid blocks=2\"), aborting the cocotb test. The RTL datapath is functionally correct (16/20 randomized transactions directly MATCH the golden reference; txn_id=12's DUT digest 0x442e6052b83b029191a7c525b5af30936ad7ad3def210d7ddfe68081351aba29 equals hashlib.sha256 of the true 32-byte message exactly), so no RTL change can reduce invalid_block_count. This matches the iteration-03/iteration-04 decisions (frozen-TB/reference-model limitation; no rtl.sv edits)."
+  },
+  {
+    "accepted_rtl": "/home/auralab/nwark/chia-hackathon/uvm_loop/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv",
+    "decision_path": "/home/auralab/nwark/chia-hackathon/uvm_loop/generated/designs/sha256_benchmark_corrupted/rtl_verification/decisions/iteration_06.yaml",
+    "iteration": 6,
+    "original_rtl": "/home/auralab/nwark/chia-hackathon/uvm_loop/benchmarks/sha256_benchmark_corrupted/sha256.sv",
+    "original_rtl_modified": false,
+    "result": "template_bug",
+    "root_cause": "Sha256RandomizedTest is the only failing test (status=runtime_error, returncode=2; per tb/.chia_sim/Sha256RandomizedTest.xml the cocotb failure is \"AssertionError: uvm_test_top: scoreboard contract violations: invalid blocks=2\"). The failure is NOT caused by the RTL. The frozen golden reference model block_to_digest (reference_model.py and its verbatim copy tb/sha256_reference_model.py, lines 41-48) reconstructs the message with `block.index(b\"\\x80\")`, i.e. the FIRST occurrence of byte 0x80 anywhere in the 64-byte block, and then (lines 51-53) checks `bit_len != len(message)*8`, raising \"Invalid length field in padded block.\" for canonical SHA-256 one-block paddings whose message payload contains an 0x80 byte. The verification plan's randomized_testing_strategy explicitly constrains message_bytes to 0..255 and message_length to 0..55, so such payloads are legal stimulus. The scoreboard (tb/sha256_scoreboard.py lines 183-201) counts each such rejection as invalid_block_count += 1 / error_count += 1, and Sha256RandomizedTest.report_phase (sha256_test.py _scoreboard_failures, _allow_invalid_blocks=False, lines 225-226, 202-207) raises AssertionError(\"invalid blocks=2\"). Deterministic replay of the frozen sequence RNG (seed 24601) reproduces exactly two 0x80-containing messages (txn_id=4, 31-byte payload, 0x80 at byte index 11; txn_id=12, 32-byte payload, 0x80 at byte index 29), and the scoreboard grades only the stimulus block sampled from the DUT input pins -- a value the RTL never influences. No RTL change can reduce invalid_block_count, so no RTL repair exists."
+  }
+]

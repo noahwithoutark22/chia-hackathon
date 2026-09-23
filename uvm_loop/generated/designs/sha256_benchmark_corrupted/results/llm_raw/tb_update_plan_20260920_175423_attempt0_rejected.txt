@@ -1,0 +1,30 @@
+# model: opencode/big-pickle
+# error: Invalid YAML: while scanning a directive
+  in "<unicode string>", line 1, column 1:
+    %Error: /workspace/benchmarks/sh ... 
+    ^
+expected alphabetic or numeric character, but found ':'
+  in "<unicode string>", line 1, column 7:
+    %Error: /workspace/benchmarks/sha256_b ... 
+          ^
+# ---- raw response ----
+Diagnosis complete. The update plan has been written to `/workspace/generated/designs/sha256_benchmark_corrupted/results/tb_update_plan_iteration_0.yaml`.
+
+## Summary of the diagnosis
+
+**Simulation result (primary evidence):** All 11 test cases fail identically in the Verilator build step with `returncode 2`, `clean_exit: false`, zero UVM errors/fatals/mismatches, and no results XML — i.e., the TB never ran.
+
+**Exact failing location:**
+```
+%Error: /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv:10:40: Assignment pattern missed initializing elements: 62
+%Error: /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv:10:40: Assignment pattern missed initializing elements: 63
+%Error: Exiting due to 2 error(s)
+make: *** [Makefile.verilator:65: ... Vtop.mk] Error 1
+```
+
+**How it was grounded:**
+- The failing file is the **DUT RTL** (`sha256.sv` line 10, the `localparam logic [31:0] K [0:63] = '{...}` round-constant array — only 62 of 64 elements initialized).
+- The generated TB is **entirely Python** — no `.sv/.svh/.v/.vh` files exist under `tb/`, the generation manifest lists `compile_files: [sha256.sv]` only, and `CONTRACT.md` confirms no SV interface. Therefore the forbidden parameterized-interface/`uvm_config_db` patterns cannot exist in this TB (consistent with `compatibility_findings: []` and the NONE deterministic scan), and the message is a source-level Verilator diagnostic, not an internal fault.
+- Per the classification rules, a DUT/RTL compilation failure cannot be repaired in the RTL-blind TB stage.
+
+**Verdict:** `non_actionable`, `changes: []`. No generated-TB file needs modification; no RTL/spec/plan changes are proposed.
