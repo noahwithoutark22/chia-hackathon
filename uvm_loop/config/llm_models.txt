@@ -14,6 +14,23 @@
 # models were causing infra issues on a parallel SHA256-benchmark run;
 # big-pickle finished that design's UVM stage quickly and cleanly on the
 # same day. Kept as first choice until nemotron's issue is understood.
+# PAID MODELS -- first preference as of 2026-09-23, by explicit request.
+# Unlike everything below, these bill on every call. Key is the "google" entry
+# in ~/.local/share/opencode/auth.json (Google AI Studio, paid tier); opencode
+# picks it up by provider name, so no opencode.jsonc entry is needed.
+# Measured 2026-09-23 via an opencode smoke test: an 8.5k-token call cost
+# $0.00226875, i.e. roughly $0.27 per 1M input tokens. For scale, the 6.08M-token
+# call seen on 2026-09-22 would cost about $1.60 on its own.
+# Verified live 2026-09-23 through `opencode run --model ...` (returned PONG):
+#   google/gemini-3.1-flash-lite, google/gemini-3.5-flash, google/gemini-3-flash-preview
+# Move these below the free models to stop spending without losing the config.
+google/gemini-3.1-flash-lite
+google/gemini-3.5-flash
+# google/gemini-3-flash-preview -- verified working, held in reserve.
+# google/gemini-2.5-flash -- 404: "no longer available to new users".
+# openrouter/* -- NOT usable: the openrouter key in auth.json returns
+# 401 "User not found" (account gone), and every Gemini model there is paid
+# too, so it offers nothing this route does not. Checked 2026-09-23.
 opencode/big-pickle
 nvidia/nvidia/nemotron-3-super-120b-a12b
 nvidia3/nvidia/nemotron-3-ultra-550b-a55b

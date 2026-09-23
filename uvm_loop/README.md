@@ -139,7 +139,7 @@ an ordered fallback list instead of one hard-coded provider.
 
 | File | Role |
 |---|---|
-| `config/llm_models.txt` | Ordered `provider/model` candidates. `#`-comments record why a model is excluded. |
+| `config/llm_models.txt` | Ordered `provider/model` candidates. `#`-comments record why a model is excluded, and flag the paid ones. |
 | `generated/llm_model_state.json` | `"current"` plus a `"cooldown_until"` map. Safe to hand-edit — clear an entry to force a re-pick. |
 | `generated/llm_model_usage.jsonl` | Append-only log of which model produced which run. |
 
@@ -161,6 +161,24 @@ block forever and never reach the fallback path, so the timeout is converted
 into a recognised failure: the model is cooled down and the process exits
 non-zero, which is what lets the supervisor restart on the next model. See
 [Troubleshooting #2](../docs/TROUBLESHOOTING.md#2-llm-provider-stalls-mid-call).
+
+### Paid models
+
+The list is free-tier by default. `google/gemini-*` are the exception — they
+bill on every call, using the `google` key in `auth.json` (Google AI Studio;
+opencode resolves it by provider name, so no `opencode.jsonc` entry is needed).
+Measured 2026-09-23: about **$0.27 per 1M input tokens**, so a single long
+agentic call can cost over a dollar and an unattended overnight run is real
+money. Their position in the list is the whole control — at the top they bill
+on essentially every call, at the bottom only when every free model is cooled
+down. Moving them is a one-line edit.
+
+Note that `_load_llm_model()` honours `state["current"]` ahead of list order,
+so a reordering does not take effect until that key is cleared:
+
+```bash
+python3 -c "import json;p='generated/llm_model_state.json';d=json.load(open(p));d['current']=None;json.dump(d,open(p,'w'),indent=2)"
+```
 
 ### Adding a model or key
 
