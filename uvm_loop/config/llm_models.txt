@@ -24,10 +24,31 @@
 # Verified live 2026-09-23 through `opencode run --model ...` (returned PONG):
 #   google/gemini-3.1-flash-lite, google/gemini-3.5-flash, google/gemini-3-flash-preview
 # Move these below the free models to stop spending without losing the config.
+# Ordered cheapest-first within this block: a rotation reaches the pricier
+# models last instead of escalating spend on the first rate limit.
 google/gemini-3.1-flash-lite
+google/gemini-3.5-flash-lite
+google/gemini-flash-lite-latest
 google/gemini-3.5-flash
-# google/gemini-3-flash-preview -- verified working, held in reserve.
-# google/gemini-2.5-flash -- 404: "no longer available to new users".
+google/gemini-3.6-flash
+google/gemini-3-flash-preview
+#
+# Verified NOT usable on this key, 2026-09-23 -- each was probed live through
+# `opencode run --model ...` and rejected on streamGenerateContent. They are
+# listed in the catalog and visible to the key, which makes them look
+# available; they are not. Do not re-add without re-probing.
+#   google/gemini-2.5-pro                       PRO - rejected
+#   google/gemini-3.1-pro-preview               PRO - rejected
+#   google/gemini-3.1-pro-preview-customtools   PRO - rejected
+#   google/gemini-2.5-flash       404 "no longer available to new users"
+#   google/gemini-2.5-flash-lite  rejected (same 2.5-family deprecation)
+#   google/gemini-flash-latest    rejected (the -lite-latest alias DOES work)
+#   google/gemini-3.7-flash       timed out at 90s; retry before trusting
+#
+# Deliberately excluded, not failures -- these cannot do agentic code
+# generation, so a rotation into one is a guaranteed dead end:
+#   *-image, *-tts, *-live-*, *-computer-use-*, gemini-embedding-*,
+#   lyria-* (music), veo-* (video), deep-research-*
 # openrouter/* -- NOT usable: the openrouter key in auth.json returns
 # 401 "User not found" (account gone), and every Gemini model there is paid
 # too, so it offers nothing this route does not. Checked 2026-09-23.
