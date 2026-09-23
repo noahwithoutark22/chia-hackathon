@@ -136,11 +136,20 @@ _TRANSIENT_MARKERS = (
     "temporarily unavailable",
     "Overloaded",
     "ServerError",
+    # Gateway errors (502/504) are the proxy in front of the model giving up,
+    # not the model being unusable. Seen 4 times on 2026-09-23, each one
+    # benching a model for a full hour and draining the pool to 4 of 12.
+    "Gateway Timeout",
+    "Gateway Time-out",
+    "Bad Gateway",
 )
 
 
 _MODEL_UNAVAILABLE_MARKERS = (
     "RateLimitError", "Rate limit exceeded",
+    # The bare HTTP reason, for providers that report a 429 without chia's
+    # exception prefix -- e.g. {"status":429,"title":"Too Many Requests"}.
+    "Too Many Requests",
     # Raised by llm_get() when a call exceeds LLM_CALL_TIMEOUT_S.
     "LLM call timed out",
     # Provider/model itself broken or gone, not just throttled (observed live:
