@@ -285,10 +285,30 @@ Seen live: an S-box repair emitted C-style `0x77` literals into SystemVerilog
 (`8'h63,8'h7c,0x77,...`). It was promoted, and the next three iterations all
 scored an identical 55.00 with 0/16 passing.
 
-**Fix.** `_candidate_rtl_built()` in `run14.py` rejects a candidate when every
-test exited with `returncode 2`, regardless of score. Anything less
-unambiguous still falls through to the normal score comparison, so ordinary
-functional failures are unaffected.
+**Fix.** `_candidate_rtl_built()` in `run14.py` rejects a candidate when
+nothing ran, regardless of score. Anything less unambiguous still falls
+through to the normal score comparison.
+
+**`returncode 2` is NOT the discriminator**, although the first version of this
+gate assumed it was. cocotb's make target exits 2 both when the build fails
+*and* when the design builds fine but a test FAILS. Confirmed live on
+`aes128_benchmark_corrupted`:
+
+```
+TESTS=1 PASS=0 FAIL=1
+- :0: Verilog $finish
+make: *** [...TestResetIdle.xml] Error 1        # -> returncode 2
+```
+
+Every test there reported `status: runtime_error`, `returncode: 2` — the exact
+signature above — while having compiled and run perfectly. Since that design is
+deliberately fault-injected, failing tests are its expected starting point, and
+a returncode-only gate rejects every RTL repair as "failed to build" and stalls
+the loop permanently.
+
+Use `results_file_exists` instead: a test that ran writes its results XML, a
+test whose build failed never gets that far. If **any** test produced results,
+the design compiled, whatever it then did.
 
 ## 12. One LLM call costs millions of tokens
 

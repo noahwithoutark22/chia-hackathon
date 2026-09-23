@@ -5560,11 +5560,25 @@ def _candidate_rtl_built(analysis: dict) -> bool:
     repair emitted C-style 0x77 literals into SystemVerilog and was promoted,
     after which no iteration could make progress).
 
-    Only an unambiguous all-tests-failed-to-build result is treated as a
-    non-build; anything else falls through to the existing score comparison.
+    returncode 2 alone does NOT mean a build failure, which an earlier version
+    of this gate assumed. cocotb's make target also exits 2 when the design
+    builds fine and a test simply FAILS -- confirmed live on
+    aes128_benchmark_corrupted, whose log reads "TESTS=1 PASS=0 FAIL=1" and
+    "Verilog $finish" with returncode 2 on every test. Since that design is
+    deliberately fault-injected, failing tests are its expected starting point,
+    and a returncode-only gate would have rejected every RTL repair as
+    "failed to build" and stalled the loop permanently.
+
+    The discriminator is whether a test produced its results file: a test that
+    ran writes one, a test whose build failed never gets that far. So treat the
+    candidate as un-built only when NOTHING ran. Anything else falls through to
+    the existing score comparison.
     """
     tests = (analysis.get("detail") or {}).get("tests") or {}
     if not tests:
+        return True
+    # If any test produced results, the design compiled -- whatever it then did.
+    if any(t.get("results_file_exists") for t in tests.values()):
         return True
     return not all(t.get("returncode") == 2 for t in tests.values())
 
