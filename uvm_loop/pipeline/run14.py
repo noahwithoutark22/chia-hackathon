@@ -3579,12 +3579,28 @@ Now assemble the complete environment:
 MANDATORY SIMULATION MANIFEST:
 Create/update /workspace/{TB_DIR_REL}/generation_manifest.yaml with:
 
+PATHS IN THIS MANIFEST (read before writing it):
+Every path below is resolved against /workspace, NOT against the directory
+the manifest sits in. So write them exactly as they appear under /workspace
+with the leading "/workspace/" removed, e.g.
+
+    benchmarks/<design>/<dut>.sv          CORRECT
+    ../benchmarks/<design>/<dut>.sv       WRONG - "../" climbs out of
+                                          /workspace and the simulation is
+                                          rejected before any test runs with
+                                          "Manifest file escapes workspace"
+    /workspace/benchmarks/<design>/<dut>.sv   WRONG - must be relative
+
+A path must never start with "../" or "/". `top_file` and `compile_files`
+use the SAME form: if they name the same file, the two strings must be
+byte-identical.
+
 top_module: <exact top module name, matching CONTRACT.md>
-top_file: <RTL-relative .sv file containing that module>
+top_file: <path to the .sv file containing that module, in the form above>
 compile_files:
-  - <HDL source file(s) that must be passed directly to the simulator —
-    this is only the existing DUT RTL; there must be no generated
-    SystemVerilog listed here>
+  - <HDL source file(s) that must be passed directly to the simulator,
+    each in the form above — this is only the existing DUT RTL; there
+    must be no generated SystemVerilog listed here>
 test_classes:
   - <exact pyuvm uvm_test class names, selectable via the UVM_TESTNAME
     environment variable read by the top-level cocotb entry point>
