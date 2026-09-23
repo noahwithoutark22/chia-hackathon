@@ -295,9 +295,19 @@ LLM saw deprecated pyuvm APIs and, unsure whether they were fixable, called it
 a template defect.
 
 **Fix.** `scripts/gen_pyuvm_api_reference.py` extracts the real signatures from
-the pyuvm installed in the worker into `config/pyuvm_api_reference.md` (~12KB),
-which `_hard_constraints()` in `run14.py` inlines into every generation prompt,
-with an explicit instruction not to read library source to re-confirm it.
+the pyuvm installed in the worker into `config/pyuvm_api_reference.md` (~12KB,
+~3.1k tokens). `pipeline/pyuvm_reference.py` loads it, and it is inlined —
+with an explicit instruction not to read library source to re-confirm it —
+into every prompt that writes pyuvm code: the six testbench-generation stages
+via `_hard_constraints()` in `run14.py`, and the repair prompt in
+`tb_feedback.py`. Prompts that write no pyuvm, such as plan generation, do not
+carry it; measured output files for those stages show 0% library introspection,
+so there it would be pure added cost.
+
+**Cost arithmetic.** The block is re-sent on every step of the agentic loop, so
+it costs `3.1k x steps` — about 250k tokens if it changes nothing at all, on a
+call that measured 6.08M. The downside is bounded at roughly +4%; the upside is
+removing most of 58 steps *and* the context growth each one caused.
 
 **Regenerate it after any pyuvm upgrade:**
 
