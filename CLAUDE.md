@@ -15,7 +15,7 @@ Both require `conda activate chia_env` (provides `chia`, `ray`) and a running cl
 
 ```bash
 cd uvm_loop
-docker build -t chia-rtl-worker:local -f workers/rtl/Dockerfile .   # README says chia.Dockerfile; the file is Dockerfile
+docker build -t chia-rtl-worker:local -f workers/rtl/Dockerfile .
 make build-sim-image                                               # chia-sim-worker:chia-local
 ./setup.sh                                                         # checks prereqs, picks LLM provider, runs chia up
 python3 -m pipeline.run14 --design-config pipeline/designs/fifo.yaml   # or: make pipeline BENCHMARK=fifo
@@ -26,7 +26,8 @@ python3 -m pytest tests/                                           # single: pyt
 pytest is not installed in the system Python (install it into `chia_env`); `python3 -m` puts `uvm_loop/` on `sys.path`, which the tests need. Likewise run the pipeline as a module (`python3 -m pipeline.run14`) from `uvm_loop/` — imports are `pipeline.*`, `src.*`, `uvm_generator.*` and design YAML paths are repo-relative.
 
 Architecture:
-- `pipeline/run14.py` is the (very large, ~5.5k line) orchestrator and current entrypoint. `run14bak.py`, `run14copyprev.py`, `run15.py`, `*.bak` are snapshots/experiments — don't edit them expecting effect.
+- `pipeline/run14.py` is the (very large, ~7k line) orchestrator and current entrypoint. Keep it the *only* orchestrator in `pipeline/`: dead `run14bak.py` / `run15.py` snapshots used to live beside it, and the in-loop LLM picked the highest-numbered file when improvising validators, silently checking its work against code that was never running. Use a branch or tag for checkpoints instead.
+- Failure modes seen in unattended runs, with signatures and fixes, are in `docs/TROUBLESHOOTING.md` — check there before debugging a stalled or crash-looping run.
 - Remote work is dispatched by Ray resource: `pipeline/functions.py` runs RTL extraction on `rtl_extract` workers and simulation on `sim_worker`; LLM calls go to `opencode_creds`/`opencode_tools`; `verilator_run` is another worker type (see `cluster.yaml`).
 - `src/` holds RTL parsing, plan generation, and the `VerificationPlan` schema; `uvm_generator/` renders `templates/*.j2` and validates output (`verilator_compat.py` rejects SV constructs Verilator can't handle, e.g. parameterized virtual interfaces; `rules.yaml`/`capabilities.yaml` constrain generation).
 - `pipeline/verification_improvement.py`, `tb_feedback.py`, `llm_weakness_analyzer.py` drive the diagnose/repair/improve iterations.

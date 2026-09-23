@@ -1,21 +1,60 @@
 # CHIA — LLM-Driven Hardware Automation
 
-CHIA consists of **two independent LLM-driven loops** — `uvm_loop/` (RTL verification) and `orfs_loop/` (RTL-to-GDS PPA optimization) — plus `rtl_to_gds/`, an orchestrator that chains them end to end (verified RTL from `uvm_loop` flows straight into `orfs_loop`, producing a final GDS). See `CLAUDE.md` for the full architecture notes; each subdirectory also has its own `README.md`.
+Two independent LLM-driven hardware loops, plus an orchestrator that chains
+them into one RTL-to-GDS run.
 
----
+| Directory | What it does |
+|---|---|
+| `uvm_loop/` | Spec + reference model → generated Cocotb/pyUVM testbench → Verilator simulation → iterative testbench and RTL repair until the RTL is verified |
+| `orfs_loop/` | LLM tunes whitelisted OpenROAD-flow-scripts knobs until timing/DRC closure, then DRC/LVS signoff |
+| `rtl_to_gds/` | Runs the UVM loop, gates on its verification verdict, and feeds the accepted RTL into the ORFS loop |
+| `docs/` | [Troubleshooting](docs/TROUBLESHOOTING.md) — every failure mode we hit, with signatures and fixes |
 
-## Getting Started on a New Machine
+Both loops are built on the `chia` agent framework (a Ray cluster of Docker
+workers; LLM access via `chia.models.opencode.OpenCodeLLM`). They share no
+code — treat each subdirectory as its own project, with its own `cluster.yaml`,
+and run commands from inside it.
+
+## Results
+
+From the `paper_eval_20260916` campaign, on deliberately fault-injected
+benchmarks (`*_corrupted`), sky130hd:
+
+| Design | UVM verdict | ORFS | Final GDS |
+|---|---|---|---|
+| `hamming_encoder` | verified at iteration 1 (68 min) | closed (8 min) | yes |
+| `aes128` | verified at iteration 5 (3.4 h) | closed (12 min) | yes |
+| `sha256` | verified at iteration 4 | closed (18.2 h) | yes |
+| `i2c` | **not verified — handoff refused** (11.5 h) | not run | no |
+
+The `i2c` row is the intended behaviour, not a crash. The loop exhausted its
+repair budget and exited through the `no_repair` branch, and the handoff gate
+refused to promote unverified RTL:
+
+```
+RTL is not verified ({'status': 'complete', 'verified': False,
+'rtl_outcome': 'no_repair', 'stop_reason': 'no_repair'}); refusing to send it
+to ORFS. Re-run the UVM stage, or pass --allow-unverified to proceed anyway.
+```
+
+That gate exists because the LLM had previously learned to reach ORFS through
+`no_repair` without passing all tests — see
+[Troubleshooting #4](docs/TROUBLESHOOTING.md#4-no_repair-used-as-a-loophole-to-reach-orfs).
+
+## Setup
 
 ### Prerequisites
 
-- Linux (the flows shell out to Verilator, Yosys, OpenROAD, KLayout inside Docker — these images are Linux-only), with **Docker** installed and the daemon running (your user needs to be able to run `docker` without `sudo`, or adjust the commands below).
-- **Conda/Miniconda**, with a `chia_env` environment that provides:
-  - the **`chia`** CLI/agent framework and **`ray`** (this is a separate dependency, not part of this repo — obtain it from wherever your team distributes it, then `conda activate chia_env` and confirm `chia --help` and `ray --version` both work before continuing)
-  - Python packages the loops import directly: `cocotb`, `pyuvm`, `pytest`, `pyyaml`, `pydantic` (install anything missing with `pip install` inside `chia_env` as errors surface — the loops will fail fast and name the missing module)
-- Enough disk: a single design's ORFS run can produce hundreds of MB of build artifacts under `orfs_runs/`; `generated/designs/` on the UVM side is much smaller.
-- No GPU required.
+- **Linux** with **Docker** running, usable without `sudo` (the flows shell out
+  to Verilator, Yosys, OpenROAD and KLayout inside Linux-only images).
+- **Conda**, with a `chia_env` environment providing the `chia` CLI and `ray`
+  (distributed separately from this repo — confirm `chia --help` and
+  `ray --version` work first), plus `cocotb`, `pyuvm`, `pytest`, `pyyaml`
+  and `pydantic`.
+- Disk: one ORFS run can produce hundreds of MB under `orfs_runs/`.
+- No GPU.
 
-### 1. Clone and run `startup.sh`
+### 1. Clone and bootstrap
 
 ```bash
 git clone https://github.com/noahwithoutark22/chia-hackathon.git
@@ -23,45 +62,50 @@ cd chia-hackathon
 ./startup.sh
 ```
 
-`startup.sh` checks prerequisites (`docker`, `chia`, `ray`), initializes the
-ORFS submodule and its local sky130hd LVS/CDL patch, and creates
-`~/.local/share/opencode/auth.json` and `~/.config/opencode/opencode.jsonc`
-from the templates in `templates/` — with placeholder keys, not real ones.
-It never overwrites a file that already exists, and is safe to re-run.
+`startup.sh` checks prerequisites, initialises the ORFS submodule and its
+sky130hd LVS/CDL patch, and creates the two credential files from
+`templates/` with placeholder keys. It never overwrites an existing file and
+is safe to re-run.
 
-### 2. Fill in your LLM provider credentials
+### 2. Add LLM credentials
 
-The two files `startup.sh` created still have `REPLACE_WITH_...`
-placeholders — edit them with real keys before running anything. See
-`templates/README.md` for the copy this came from if you need to redo it
-by hand.
+Both files `startup.sh` created still contain `REPLACE_WITH_...` placeholders.
 
-- `~/.local/share/opencode/auth.json` — keys for opencode's built-in providers (`opencode`, `nvidia`, and other opencode-catalog providers like the free `opencode/big-pickle`, `opencode/mimo-v2.5-free` all pick up their key from here automatically by provider name).
+- `~/.local/share/opencode/auth.json` — keys for opencode's built-in providers.
+  Catalog models (`opencode/big-pickle`, `opencode/mimo-v2.5-free`, …) pick up
+  their key from here automatically by provider name.
+- `~/.config/opencode/opencode.jsonc` — extra providers, i.e. extra quota
+  buckets. Recommended: a single free-tier key rate-limits quickly. Each custom
+  provider needs its own key inlined in `options.apiKey`.
 
-- `~/.config/opencode/opencode.jsonc` — **extra NVIDIA models / extra quota buckets** (recommended — a single free-tier key rate-limits fast). Custom providers here do *not* pick up `auth.json` keys automatically; each needs its own key inlined in `options.apiKey`. Don't hand-edit this beyond an initial test — once the cluster is up, add providers with:
-  ```bash
-  uvm_loop/scripts/add_llm_provider.sh <base_url> <api_key> <model_name> [slug]
-  ```
-  This registers the provider, copies the file into every running opencode container (it isn't bind-mounted from the host, so a host-only edit never reaches a container), smoke-tests it live, and only adds it to the fallback list below on success.
+Don't hand-edit `opencode.jsonc` beyond a first test. Once the cluster is up:
 
-- Both loops have a fallback-model list (`uvm_loop/config/llm_models.txt`, `orfs_loop/llm_fallback_models.txt`) tried in order when the current model rate-limits, errors, or times out. Comment out any model you've confirmed doesn't work for your account, and put your fastest/most reliable models first. `add_llm_provider.sh` maintains `uvm_loop/config/llm_models.txt` for you; `orfs_loop/llm_fallback_models.txt` still needs manual edits.
+```bash
+uvm_loop/scripts/add_llm_provider.sh <base_url> <api_key> <model_name> [slug]
+```
 
-### 3. Run a loop
+That registers the provider, copies the file into every running opencode
+container (it is not bind-mounted, so a host-only edit never reaches a
+container), smoke-tests it live, and only then adds it to the fallback list.
 
-Each loop is self-contained with its own `cluster.yaml`, Docker image(s), and run commands — see `uvm_loop/README.md` and `orfs_loop/README.md` for full detail. Short version:
+Each loop has a fallback list tried in order when the current model
+rate-limits or errors — `uvm_loop/config/llm_models.txt` (maintained by
+`add_llm_provider.sh`) and `orfs_loop/llm_fallback_models.txt` (manual).
+Put your most reliable models first and comment out ones your account can't use.
+
+### 3. Run one loop
 
 ```bash
 conda activate chia_env
 
-# uvm_loop
 cd uvm_loop
 docker build -t chia-rtl-worker:local -f workers/rtl/Dockerfile .
 make build-sim-image
-./setup.sh                     # checks prereqs, picks LLM provider, brings the cluster up
+./setup.sh
 python3 -m pipeline.run14 --design-config pipeline/designs/fifo.yaml
-cd ..
+```
 
-# orfs_loop
+```bash
 cd orfs_loop
 docker build -f Dockerfile.orfs-run -t chia-orfs-run:local .
 export CHIA_ORFS_REPO=$(pwd)
@@ -70,167 +114,113 @@ python3 orfs_loop.py --design-name riscv32i \
   --design-config-mk /root/OpenROAD-flow-scripts/flow/designs/sky130hd/riscv32i/config.mk \
   --reports-root /root/OpenROAD-flow-scripts/flow/reports/sky130hd/riscv32i/base \
   --max-iterations 6 --objective area --model opencode/big-pickle
-cd ..
 ```
 
 ### 4. Run the combined RTL → GDS pipeline
 
+The combined cluster is required — both loops' containers must be up at once,
+and the per-loop cluster files share container names but use different mounts.
+
 ```bash
 conda activate chia_env
 export CHIA_PROJECT_ROOT=$PWD/uvm_loop
-export CHIA_ORFS_REPO=$PWD/orfs_loop        # or wherever orfs-native-build/ is checked out
-chia up rtl_to_gds/cluster.yaml -y          # combined cluster — needed because both loops' containers must be up together
+export CHIA_ORFS_REPO=$PWD/orfs_loop
+chia up rtl_to_gds/cluster.yaml -y
 
-python3 rtl_to_gds/rtl_to_gds.py --design-config pipeline/designs/fifo.yaml --clock-period 10 \
-  -- --max-iterations 3 --objective area --model opencode/big-pickle --stage-timeout-seconds 7200
+python3 rtl_to_gds/rtl_to_gds.py --design-config pipeline/designs/fifo.yaml \
+  --clock-period 10 \
+  -- --max-iterations 3 --objective area --model opencode/big-pickle \
+     --stage-timeout-seconds 7200
 ```
 
-See `rtl_to_gds/README.md` for the full flag reference (e.g. `--core-utilization` for tiny designs, `--skip-uvm` to reuse an existing verified result, `--prepare-only` to test the handoff without a cluster).
+Arguments after `--` go to `orfs_loop.py`. See
+[`rtl_to_gds/README.md`](rtl_to_gds/README.md) for the full flag reference —
+including `--core-utilization 10` for tiny designs, `--skip-uvm` to reuse an
+existing verified result, and `--prepare-only` to test the handoff with no
+cluster.
 
-### Where things land
+### Where output lands
 
-- `uvm_loop/generated/designs/<design>/` — generated testbench, verification plan, RTL-repair iterations, `rtl_verification/rtl_verification_state.json` (the gate `rtl_to_gds` checks before handing RTL to ORFS).
-- `orfs_loop/orfs_runs/<id>/` (root-owned inside the container) — flow logs, `summary.json`, signoff logs, and `final.gds` once closed.
-- `rtl_to_gds`'s combined run additionally writes `rtl_to_gds.json` linking the final GDS back to the exact verified RTL snapshot it came from.
+Everything below is regenerated by the loops and is gitignored.
 
----
+- `uvm_loop/generated/designs/<design>/` — generated testbench, verification
+  plan, RTL-repair iterations, and
+  `rtl_verification/rtl_verification_state.json`, the gate `rtl_to_gds` checks.
+- `orfs_loop/orfs_runs/<id>/` — flow logs, `summary.json`, signoff logs, and
+  `final.gds` once closed. Root-owned inside the container; remove with
+  `docker exec chia-orfs-$USER-0 rm -rf ...`.
+- `rtl_to_gds.json` — links a final GDS back to the exact verified RTL
+  snapshot it came from, by md5.
 
-## 1. LLM-Driven RTL Verification Loop
+## How the loops work
 
-The verification loop first generates the **verification infrastructure from the specification and reference model**. The generated environment is then used to verify the RTL. Verification failures can be used to guide **RTL modification**, followed by another verification cycle.
+### RTL verification loop
+
+Verification infrastructure is generated from the **specification and
+reference model**, not from the RTL — so the environment can exist before the
+final RTL does, and mismatches are attributed to the RTL rather than baked
+into the testbench. Failures drive RTL repair, then re-verification.
 
 ```text
-        Specification
-              │
-        Reference Model
+  Specification + Reference Model
               │
               ▼
-         CHIA + LLM
-              │
-              ▼
-   Generate Verification
-       Infrastructure
-              │
-              ▼
-      Cocotb + PyUVM
-       Verification TB
-              │
-              ▼
-          Verify RTL
-              │
-        ┌─────┴─────┐
-        │           │
-      PASS        FAIL
-        │           │
-        ▼           ▼
- Verification   Analyze Failure
-   Complete          │
-                     ▼
-                Modify RTL
-                     │
-                     └──────────► Verify RTL
+         CHIA + LLM  ──►  Cocotb + pyUVM testbench
+                                    │
+                                    ▼
+                               Verify RTL
+                                    │
+                            ┌───────┴───────┐
+                          PASS            FAIL
+                            │               │
+                            ▼               ▼
+                       Verified      Analyse → Modify RTL ──┐
+                                                            │
+                            ▲───────────────────────────────┘
 ```
 
-### Key capabilities
+Covers reference-model scoreboarding, directed and randomised stimulus,
+functional coverage, assertions, regression, failure analysis and RTL repair —
+distributed over Ray.
 
-* Specification and reference-model-driven verification generation
-* Automatic Cocotb + PyUVM infrastructure generation
-* Reference-model-based scoreboarding
-* Directed and randomized testing
-* Functional coverage
-* Assertions and corner-case checking
-* Automatic regression
-* Verification failure analysis
-* RTL modification and re-verification
-* Distributed execution through CHIA/Ray
+`spec.md` must describe *intended* behaviour, not what the current RTL does;
+the loop may modify RTL to match the spec.
 
-### Objective
+### RTL-to-GDS optimisation loop
 
-Enable **RTL-independent verification infrastructure generation**, so that the verification environment can be created before the final RTL is available and subsequently used to validate and iteratively improve the RTL.
-
----
-
-## 2. LLM-Driven RTL-to-GDS Optimization Loop
-
-The second loop independently focuses on **physical implementation and PPA optimization**. It repeatedly runs ORFS, analyzes implementation results, and uses the LLM to propose constrained changes to physical-design parameters.
+Runs ORFS, reads back PPA/timing/DRC, and has the LLM propose changes to a
+**closed whitelist** of tunables. The driver owns execution; the LLM has no
+tools and only replies with a JSON tunable diff or `CLOSURE: PASS` /
+`CLOSURE: GIVE_UP`.
 
 ```text
-          RTL
-           │
-           ▼
-      ORFS Flow
-           │
-           ▼
-    PPA / Timing /
-       DRC Results
-           │
-           ▼
-       CHIA + LLM
-           │
-           ▼
-  Optimize Flow Parameters
-           │
-           ▼
-       Next ORFS Run
-           │
-           └──────────────► Repeat
-                              │
-                              ▼
-                     Closure / Best GDS
+  RTL ──► ORFS flow ──► PPA / timing / DRC
+                               │
+                               ▼
+                          CHIA + LLM
+                               │
+                               ▼
+                  constrained tunable changes
+                               │
+                               └──► next run ──► … ──► closure / best GDS
 ```
 
-The CHIA driver controls execution while the LLM proposes changes to a predefined, constrained set of tunable parameters.
+Two nested levels: **iterations** (iteration 1 ends at first closure; each
+later one must close *and* beat the previous `--objective` value) contain
+uncapped **runs** (one flow plus one LLM turn). With `--batch-size N` each
+slot gets its own `FLOW_VARIANT`, which is what keeps concurrent runs from
+sharing paths.
 
-### Key capabilities
+Supports hard parameter locking (`--lock`, enforced in code, not by the
+prompt), per-knob effect tracking across runs, stall diagnosis, and DRC/LVS
+signoff.
 
-* LLM-guided PPA optimization
-* Timing and area optimization
-* Constrained/whitelisted tunables
-* Hard parameter locking
-* Parallel implementation experiments
-* Optimization-effect tracking
-* Stall diagnosis
-* DRC/LVS signoff
-* GDS generation and reporting
-* Ray-based distributed execution
-* Docker-based ORFS environment
+## Status
 
----
+The two loops are developed independently and share no code. `rtl_to_gds/`
+integrates them in one direction today: verified RTL flows from `uvm_loop`
+into `orfs_loop`, gated on the verification verdict. Feeding physical
+implementation feedback back into verification is not implemented.
 
-## Future Integration
-
-The two loops remain **independent during development**:
-
-```text
-┌─────────────────────────────────┐
-│     RTL VERIFICATION LOOP       │
-│                                 │
-│ Spec + Reference Model          │
-│          ↓                      │
-│ Verification Infrastructure     │
-│          ↓                      │
-│       RTL Verification          │
-│          ↓                      │
-│   RTL Modification ↺            │
-└───────────────┬─────────────────┘
-                │
-                │ Future Interface
-                │
-┌───────────────▼─────────────────┐
-│      RTL-to-GDS LOOP            │
-│                                 │
-│          RTL                    │
-│          ↓                      │
-│        ORFS                     │
-│          ↓                      │
-│   PPA / Timing / DRC            │
-│          ↓                      │
-│   LLM Optimization ↺            │
-│          ↓                      │
-│        Best GDS                 │
-└─────────────────────────────────┘
-```
-
-The final objective is to interface the two loops so that a **verified RTL can enter the physical-design optimization loop**, while implementation feedback can eventually be incorporated into the broader hardware development process.
-
-**Status:** Active development
+`orfs_loop/` is a sanitised mirror of a separate private working repo — its
+code, prompts, schemas and sample run should stay byte-identical to it.
