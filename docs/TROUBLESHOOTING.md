@@ -16,7 +16,7 @@ that identifies each one and the fix. Ordered by how much time they cost.
 | 9 | `PDN-0185 Insufficient width` | ORFS | tiny die, default utilization |
 | 10 | Live run breaks after a git command | workflow | branch switch reset the working tree |
 | 11 | Every iteration scores the same, nothing converges | UVM | uncompilable RTL accepted by a score-only gate |
-| 12 | A single LLM call burns millions of tokens | UVM | agent re-derives the pyuvm API from library source |
+| 12 | A single LLM call burns millions of tokens | UVM | agent fell into re-deriving the pyuvm API from library source (rare) |
 | 13 | Model never switches despite repeated provider failures | UVM | retry loops swallowed the provider error |
 
 ---
@@ -282,6 +282,24 @@ Measured on one call: 82 bash tool calls, of which **58 (71%)** were `grep` /
 `site-packages`, 18 (22%) read our own files under `/workspace`, and 6 were
 housekeeping.
 
+**How often this happens — read this before concluding anything.** A survey of
+all 39 agent streams retained on the workers puts that call in perspective:
+
+| Streams | site-packages hits |
+|---|---|
+| 1 (`opencode_out_julhoaye`, 2026-09-22) | 51 |
+| the other 38, spanning a week | 0-6, mostly 0-2 |
+
+So this is a **rare failure mode, not a steady drain**. An early version of this
+entry generalised the one measurement to "every call, every iteration, every
+design"; the data does not support that, and the claim is withdrawn. Most calls
+never introspect the library at all.
+
+The practical consequence: a run showing 0 site-packages hits is *not* evidence
+the fix below worked, because runs scored 0 before it existed too. Confirming
+the fix needs several long generation calls under the same model with and
+without the reference, which no single run provides.
+
 **Cause.** pyuvm 5.0.0's API differs from both older pyuvm and SystemVerilog
 UVM in ways the model does not reliably know — no `uvm_info` function, only
 `run_phase` is `async`, `ConfigDB()` is a singleton with four-argument
@@ -307,8 +325,11 @@ so there it would be pure added cost.
 
 **Cost arithmetic.** The block is re-sent on every step of the agentic loop, so
 it costs `3.1k x steps` — about 250k tokens if it changes nothing at all, on a
-call that measured 6.08M. The downside is bounded at roughly +4%; the upside is
-removing most of 58 steps *and* the context growth each one caused.
+call that measured 6.08M. Since the failure it targets is rare, treat that as
+the *expected* cost and the saving as insurance against a recurrence, not as a
+routine gain. It is kept because it is cheap, because every fact in it is
+verified against the live library, and because the one episode it targets was
+expensive — not because it has been shown to reduce ordinary calls.
 
 **Regenerate it after any pyuvm upgrade:**
 

@@ -183,12 +183,16 @@ then add the verified line to `config/llm_models.txt` with a dated comment.
 ## Prompt cost: the pyuvm API reference
 
 pyuvm 5.0.0's API differs from older pyuvm and from SystemVerilog UVM in ways
-the model does not reliably know, so it used to reverse-engineer the library at
-runtime — **71% of the agent's shell tool calls on a measured run were `grep` /
-`sed` / `inspect` against pyuvm in site-packages**, repeated on every LLM call,
-every iteration, every design. Because the agentic loop re-sends its
-accumulated context on each step, step count drives token spend
-super-linearly; one such call reached 6.08M tokens over 83 steps.
+the model does not reliably know, so it can fall into reverse-engineering the
+library at runtime. On one measured call, **71% of the agent's shell tool calls
+were `grep` / `sed` / `inspect` against pyuvm in site-packages**, and because
+the agentic loop re-sends its accumulated context on each step, that call
+reached 6.08M tokens over 83 steps.
+
+This is rare, not routine: across the 39 agent streams retained on the workers,
+that one call had 51 site-packages hits and the other 38 had 0-6. Treat the
+reference as cheap insurance against a recurrence rather than a routine saving
+— see [Troubleshooting #12](../docs/TROUBLESHOOTING.md#12-one-llm-call-costs-millions-of-tokens).
 
 `config/pyuvm_api_reference.md` holds those signatures instead (~12KB, ~3.1k
 tokens), and `_hard_constraints()` in `run14.py` inlines it into all six
