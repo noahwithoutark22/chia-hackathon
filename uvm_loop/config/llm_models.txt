@@ -70,6 +70,27 @@ nvidia/nvidia/nemotron-3-ultra-550b-a55b
 nvidia8/google/gemma-4-31b-it
 nvidia9/mistralai/mistral-nemotron
 opencode/nemotron-3.5-lightning-free
+
+# --- OpenRouter free tier: LAST RESORT ---------------------------------
+# Key is the "openrouter" entry in auth.json. All four verified live
+# 2026-09-23 through `opencode run --model ...`.
+#
+# Placed last on purpose. OpenRouter caps :free models at 50 requests/day
+# for accounts holding under $10 of credits. The /api/v1/key endpoint does
+# NOT reveal that counter -- it reports dollar spend, which stays at 0
+# because free models cost nothing -- so there is no way to see how much of
+# the daily allowance is left until calls start failing. A loop that makes
+# hundreds of calls would burn the allowance quickly and turn these into
+# dead slots, so they are useful only when everything above is down.
+openrouter/thinkingmachines/inkling:free
+openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+openrouter/cohere/north-mini-code:free
+openrouter/qwen/qwen3.8-27b:free
+# openrouter/z-ai/glm-5.2:free -- probed twice, fails (not the stale-key issue;
+# re-tested after the key was fixed).
+# tencent/hy3:free -- NOT on OpenRouter's free tier; not among its 21 :free
+# models on 2026-09-23. z-ai/glm-5.2 is the nearest GLM-family equivalent and
+# does not work either.
 # opencode/mimo-v2.5-free -- REMOVED 2026-09-23: no longer in the Zen catalog.
 # Zen's free line-up rotates with no public schedule, so an entry that worked
 # once can silently become a dead slot the rotation still tries. Re-check with

@@ -18,6 +18,7 @@ that identifies each one and the fix. Ordered by how much time they cost.
 | 11 | Every iteration scores the same, nothing converges | UVM | uncompilable RTL accepted by a score-only gate |
 | 12 | A single LLM call burns millions of tokens | UVM | agent fell into re-deriving the pyuvm API from library source (rare) |
 | 13 | Model never switches despite repeated provider failures | UVM | retry loops swallowed the provider error |
+| 14 | Providers fail apparently at random, uncorrelated with any model | infra | a worker's bind-mounted `auth.json` is frozen at container-creation time |
 
 ---
 
@@ -431,3 +432,58 @@ loops absorb.
 LLM call must let provider failures through. Retrying a dead provider fails
 identically every time, and catching it locally silently disables the whole
 fallback mechanism.
+
+## 14. A worker can hold a stale copy of auth.json
+
+**Signature.** Provider failures that correlate with nothing — the same model
+works, then fails, then works. `AI_APICallError: User not found` from a
+provider whose key you just replaced. Models that probe healthy on one attempt
+and fail on the next.
+
+**Check every worker, not just one:**
+
+```bash
+for c in $(docker ps --format '{{.Names}}' | grep opencode); do
+  echo -n "$c: "
+  docker exec "$c" python3 -c \
+    'import json;print(sorted(json.load(open("/home/ray/.local/share/opencode/auth.json"))))'
+done
+python3 -c 'import json;print(sorted(json.load(open("'"$HOME"'/.local/share/opencode/auth.json"))))'
+```
+
+Every line must match. Seen live 2026-09-23:
+
+```
+chia-opencode-...-0: ['google', 'nvidia', 'openrouter']                  <- 7 days stale
+chia-opencode-...-1: ['google', 'nvidia', 'nvidia2' ... 'openrouter']
+host:                ['google', 'nvidia', 'nvidia2' ... 'openrouter']
+```
+
+**Cause.** `auth.json` is bind-mounted as a **file**, so the mount is bound to
+that file's *inode*. Editors and key-rotation tools usually write a new file
+and rename it over the old one, which creates a **new inode** — the host now
+has a different file, while every already-running container still sees the
+old one. The container that happened to be restarted for unrelated reasons
+picks up the new key; its siblings do not, and the two silently disagree for
+as long as they stay up.
+
+The failure is intermittent rather than total because Ray schedules across
+workers, so only the fraction of calls landing on the stale worker fail — and
+they fail for credentials the worker does not have, which looks like a
+provider outage rather than a config problem.
+
+**Fix.** Restart the affected worker; the mount re-binds to the current file.
+
+```bash
+docker restart chia-opencode-$USER-0
+```
+
+`docker cp` does **not** work here (`device or resource busy`), and writing
+in place fails too when the mount is read-only.
+
+**Rule.** After changing `auth.json` — adding a provider, rotating a key —
+restart every opencode worker, or verify all of them with the loop above.
+This also invalidates any model probing done meanwhile: a model "failing" on
+the stale worker may be perfectly healthy. Note `opencode.jsonc` has the
+opposite problem: it is not mounted at all and must be copied in with
+`docker cp` (which `scripts/add_llm_provider.sh` does).
