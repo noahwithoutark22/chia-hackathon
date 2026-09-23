@@ -145,8 +145,24 @@ an ordered fallback list instead of one hard-coded provider.
 
 At startup `_load_llm_model()` picks `state["current"]` if it isn't cooled
 down, else the first candidate that isn't. On a rate limit or provider error
-the current model's cooldown is set (`LLM_RATE_LIMIT_COOLDOWN_S`, default 1 h)
-and the process exits non-zero.
+the current model is cooled down and the process exits non-zero.
+
+How long it is benched depends on what failed:
+
+| Failure | Cooldown | Examples |
+|---|---|---|
+| Transient — provider briefly unwell | `LLM_TRANSIENT_COOLDOWN_S`, 180 s | `Internal error encountered`, `experiencing high demand`, `Service temporarily overloaded` |
+| Persistent — provider unusable | `LLM_RATE_LIMIT_COOLDOWN_S`, 1 h | 429 rate limits, auth failures, a model returning 404 |
+
+The split exists because a flat hour is wrong for a blip: on 2026-09-23 two
+Google 500s benched both paid Gemini models — deliberately first in the list —
+for an hour each, while the run fell back to free models nobody chose. Both
+recovered in seconds.
+
+Transient markers are also part of `_MODEL_UNAVAILABLE_MARKERS`. They have to
+be: a text matching no marker is treated as ordinary bad output, so the model
+is never cooled down *or* switched away from. The two lists answer different
+questions — *is this the provider's fault* and *for how long*.
 
 **Fallback only engages under the supervisor.** A bare `run14` process reads
 the model once at startup and keeps it for its lifetime, so a rate limit just

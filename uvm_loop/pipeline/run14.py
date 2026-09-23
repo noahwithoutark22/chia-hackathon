@@ -53,6 +53,10 @@ LLM_MODELS_FILE = HOST_WORKSPACE / "config" / "llm_models.txt"
 LLM_MODEL_STATE = HOST_WORKSPACE / "generated" / "llm_model_state.json"
 LLM_MODEL_LOG = HOST_WORKSPACE / "generated" / "llm_model_usage.jsonl"
 LLM_RATE_LIMIT_COOLDOWN_S = int(os.environ.get("LLM_RATE_LIMIT_COOLDOWN_S", "3600"))
+# Transient provider faults (a 500, an overload) recover in seconds, so parking
+# the model for the full hour above costs far more than the fault does --
+# especially for a paid model the operator put first on purpose.
+LLM_TRANSIENT_COOLDOWN_S = int(os.environ.get("LLM_TRANSIENT_COOLDOWN_S", "180"))
 # Wall-clock ceiling for a single LLM call. chia's get() blocks forever if the
 # remote OpenCodeLLM actor deadlocks (observed live: the agent emits
 # step_finish/reason=tool-calls and the tool round-trip never returns), so no
@@ -114,6 +118,27 @@ def _load_llm_model() -> str:
     return chosen
 
 
+# Provider faults that mean "this provider is briefly unwell",
+# not "this provider is unusable". Observed live 2026-09-23: Google returned
+# "Internal error encountered" and "experiencing high demand" within a minute
+# of each other, and the flat one-hour cooldown benched both paid Gemini models
+# -- the operator's explicit first preference -- for an hour over a blip, while
+# the run fell back to free models nobody chose. These recover in seconds, so
+# they get LLM_TRANSIENT_COOLDOWN_S instead.
+#
+# Match on distinctive phrases only. A bare "500"/"503" would collide with
+# token counts, timestamps and ids in the same exception text.
+_TRANSIENT_MARKERS = (
+    "Internal error encountered",
+    "experiencing high demand",
+    "Service temporarily overloaded",
+    "service_unavailable",
+    "temporarily unavailable",
+    "Overloaded",
+    "ServerError",
+)
+
+
 _MODEL_UNAVAILABLE_MARKERS = (
     "RateLimitError", "Rate limit exceeded",
     # Raised by llm_get() when a call exceeds LLM_CALL_TIMEOUT_S.
@@ -137,8 +162,12 @@ _MODEL_UNAVAILABLE_MARKERS = (
     # markers above and so never cooled the model down. Treat it the same
     # as a rate limit so a restart tries a genuinely different model.
     "unexpected tokens remaining in message header",
+    # Transient faults count as model-unavailable too: without this they match
+    # no marker, so _record_llm_rate_limit() returns early and the model is
+    # never cooled down or switched away from. They only differ in how LONG
+    # they are benched, which _record_llm_rate_limit() decides separately.
+    *_TRANSIENT_MARKERS,
 )
-
 
 def _is_model_unavailable(exc: BaseException) -> bool:
     """True when the failure is the provider dying, not bad model output.
@@ -161,8 +190,10 @@ def _record_llm_rate_limit(exc: BaseException) -> None:
     if not any(marker in text for marker in _MODEL_UNAVAILABLE_MARKERS):
         return
     model = _SELECTED_LLM_MODEL or _load_llm_model()
+    transient = any(marker in text for marker in _TRANSIENT_MARKERS)
+    cooldown = LLM_TRANSIENT_COOLDOWN_S if transient else LLM_RATE_LIMIT_COOLDOWN_S
     state = json.loads(LLM_MODEL_STATE.read_text()) if LLM_MODEL_STATE.exists() else {}
-    until = time.time() + LLM_RATE_LIMIT_COOLDOWN_S
+    until = time.time() + cooldown
     state.setdefault("cooldown_until", {})[model] = until
     state["current"] = None
     LLM_MODEL_STATE.write_text(json.dumps(state, indent=2))
@@ -171,9 +202,11 @@ def _record_llm_rate_limit(exc: BaseException) -> None:
             "time": time.strftime("%Y-%m-%dT%H:%M:%S"),
             "event": "rate_limited",
             "model": model,
+            "kind": "transient" if transient else "persistent",
             "cooldown_until": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(until)),
         }) + "\n")
-    print(f"LLM model {model} unavailable/rate-limited; cooling down for {LLM_RATE_LIMIT_COOLDOWN_S}s")
+    kind = "briefly unwell" if transient else "unavailable/rate-limited"
+    print(f"LLM model {model} {kind}; cooling down for {cooldown}s")
 
 
 def _opencode_log_failure(since_epoch: float, model: str) -> str | None:
