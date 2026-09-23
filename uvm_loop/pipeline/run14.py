@@ -5377,6 +5377,26 @@ RTL source.
 """.strip()
 
 
+def _candidate_rtl_built(analysis: dict) -> bool:
+    """False when the candidate RTL never compiled.
+
+    A build failure makes every test exit with returncode 2 before it runs, so
+    the candidate's quality score comes out identical to the baseline's -- which
+    the score-only non-regression check below reads as "no regression" and
+    promotes. Accepting RTL that does not compile poisons every later iteration,
+    because each one starts from the accepted snapshot (observed live: an S-box
+    repair emitted C-style 0x77 literals into SystemVerilog and was promoted,
+    after which no iteration could make progress).
+
+    Only an unambiguous all-tests-failed-to-build result is treated as a
+    non-build; anything else falls through to the existing score comparison.
+    """
+    tests = (analysis.get("detail") or {}).get("tests") or {}
+    if not tests:
+        return True
+    return not all(t.get("returncode") == 2 for t in tests.values())
+
+
 def run_rtl_verification_loop():
     """Verify the frozen accepted TB against RTL without modifying benchmark RTL.
 
@@ -6293,7 +6313,14 @@ def run_rtl_verification_loop():
         print(f"Candidate score report: {candidate_score_path}")
 
         candidate_passed = candidate_analysis.get("verdict") == "pass"
-        non_regression = candidate_score >= baseline_score
+        candidate_built = _candidate_rtl_built(candidate_analysis)
+        if not candidate_built:
+            print(
+                "Candidate RTL failed to build (every test exited with "
+                "returncode 2) -- rejecting despite an equal quality score, "
+                "which only ties because no test actually ran."
+            )
+        non_regression = candidate_built and candidate_score >= baseline_score
 
         if candidate_passed or non_regression:
             # Promotion occurs only between generated snapshots.

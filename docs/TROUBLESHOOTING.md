@@ -15,6 +15,7 @@ that identifies each one and the fix. Ordered by how much time they cost.
 | 8 | LVS "fails" but the design is fine | ORFS | benign netgen fold vs genuine mismatch |
 | 9 | `PDN-0185 Insufficient width` | ORFS | tiny die, default utilization |
 | 10 | Live run breaks after a git command | workflow | branch switch reset the working tree |
+| 11 | Every iteration scores the same, nothing converges | UVM | uncompilable RTL accepted by a score-only gate |
 
 ---
 
@@ -234,3 +235,32 @@ done
 
 An ORFS flow run that finishes in seconds means something is wrong — every run
 does `make clean_all` first, so a real run is never that fast.
+
+## 11. RTL that does not compile gets accepted
+
+**Signature.** Every RTL-verification iteration reports the same quality score
+with `tests_passed: 0`, and `candidate_verification_result.yaml` shows every
+test with `status: runtime_error` and `returncode: 2`. The run makes repairs
+and accepts them, but nothing ever improves.
+
+```bash
+# confirm: does the accepted snapshot actually build?
+docker exec <sim-worker> verilator --lint-only -Wno-lint \
+  /workspace/generated/designs/<design>/rtl_verification/accepted/<top>.sv
+```
+
+**Cause.** A build failure makes every test exit with `returncode 2` *before
+running*, so the candidate's quality score comes out identical to the
+baseline's. The acceptance check was `candidate_score >= baseline_score`, which
+reads that tie as "no regression" and promotes it. Since each iteration starts
+from the accepted snapshot, one uncompilable promotion poisons every later
+iteration.
+
+Seen live: an S-box repair emitted C-style `0x77` literals into SystemVerilog
+(`8'h63,8'h7c,0x77,...`). It was promoted, and the next three iterations all
+scored an identical 55.00 with 0/16 passing.
+
+**Fix.** `_candidate_rtl_built()` in `run14.py` rejects a candidate when every
+test exited with `returncode 2`, regardless of score. Anything less
+unambiguous still falls through to the normal score comparison, so ordinary
+functional failures are unaffected.
