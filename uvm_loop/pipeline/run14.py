@@ -3581,19 +3581,19 @@ Create/update /workspace/{TB_DIR_REL}/generation_manifest.yaml with:
 
 PATHS IN THIS MANIFEST (read before writing it):
 Every path below is resolved against /workspace, NOT against the directory
-the manifest sits in. So write them exactly as they appear under /workspace
-with the leading "/workspace/" removed, e.g.
+the manifest sits in. Two forms work:
 
-    benchmarks/<design>/<dut>.sv          CORRECT
-    ../benchmarks/<design>/<dut>.sv       WRONG - "../" climbs out of
-                                          /workspace and the simulation is
-                                          rejected before any test runs with
-                                          "Manifest file escapes workspace"
-    /workspace/benchmarks/<design>/<dut>.sv   WRONG - must be relative
+    benchmarks/<design>/<dut>.sv              CORRECT (preferred)
+    /workspace/benchmarks/<design>/<dut>.sv   CORRECT (also accepted)
 
-A path must never start with "../" or "/". `top_file` and `compile_files`
-use the SAME form: if they name the same file, the two strings must be
-byte-identical.
+    ../benchmarks/<design>/<dut>.sv           WRONG - "../" climbs out of
+                                              /workspace, and the simulation
+                                              is rejected before any test
+                                              runs with the error
+                                              "Manifest file escapes workspace"
+
+A path must never contain "../". `top_file` and `compile_files` must use the
+SAME form: if they name the same file, the two strings must be byte-identical.
 
 top_module: <exact top module name, matching CONTRACT.md>
 top_file: <path to the .sv file containing that module, in the form above>
