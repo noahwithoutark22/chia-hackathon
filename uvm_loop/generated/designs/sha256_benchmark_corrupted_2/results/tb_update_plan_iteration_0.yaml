@@ -1,0 +1,43 @@
+version: '1.0'
+verdict: non_actionable
+root_cause:
+  category: compile
+  summary: 'Verilator cannot compile the DUT RTL: the localparam logic [31:0] K [0:63]
+    round-constant array in sha256.sv line 10 initializes only 62 of its 64 elements
+    (Assignment pattern missed initializing elements 62 and 63), so the build aborts
+    before any generated-TB cocotb/pyuvm code runs.'
+  evidence: 'All 11 generated tests fail identically at the Verilator build step
+
+    (status runtime_error, returncode 2, clean_exit false; 0 UVM errors,
+
+    0 UVM fatals, 0 scoreboard mismatches; results_file_exists false).
+
+    The failures originate in the read-only DUT source, not the Python TB:
+
+    %Error: /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv:10:40: Assignment
+    pattern missed initializing elements: 62
+
+    %Error: /workspace/benchmarks/sha256_benchmark_corrupted/sha256.sv:10:40: Assignment
+    pattern missed initializing elements: 63
+
+    %Error: Exiting due to 2 error(s)
+
+    make: *** [Makefile.verilator:65: ... Vtop.mk] Error 1'
+changes: []
+validation:
+  tests:
+  - Sha256ResetInitializationTest
+  - Sha256EmptyMessageTest
+  - Sha256SingleByteATest
+  - Sha256AbcMessageTest
+  - Sha256HelloWorldTest
+  - Sha256QuickBrownFoxTest
+  - Sha256BackToBackTransactionsTest
+  - Sha256StartWhileBusyRestartsTest
+  - Sha256DoneBehaviorContinuousTest
+  - Sha256CornerTest
+  - Sha256RandomizedTest
+  requirements:
+  - build succeeds
+  - no UVM_ERROR or UVM_FATAL
+  - no reference-model mismatch

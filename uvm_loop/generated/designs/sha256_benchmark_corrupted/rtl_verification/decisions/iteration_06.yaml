@@ -1,0 +1,64 @@
+schema_version: '1.0'
+action: template_bug
+root_cause: 'Sha256RandomizedTest is the only failing test (status=runtime_error,
+  returncode=2; per tb/.chia_sim/Sha256RandomizedTest.xml the cocotb failure is "AssertionError:
+  uvm_test_top: scoreboard contract violations: invalid blocks=2"). The failure is
+  NOT caused by the RTL. The frozen golden reference model block_to_digest (reference_model.py
+  and its verbatim copy tb/sha256_reference_model.py, lines 41-48) reconstructs the
+  message with `block.index(b"\x80")`, i.e. the FIRST occurrence of byte 0x80 anywhere
+  in the 64-byte block, and then (lines 51-53) checks `bit_len != len(message)*8`,
+  raising "Invalid length field in padded block." for canonical SHA-256 one-block
+  paddings whose message payload contains an 0x80 byte. The verification plan''s randomized_testing_strategy
+  explicitly constrains message_bytes to 0..255 and message_length to 0..55, so such
+  payloads are legal stimulus. The scoreboard (tb/sha256_scoreboard.py lines 183-201)
+  counts each such rejection as invalid_block_count += 1 / error_count += 1, and Sha256RandomizedTest.report_phase
+  (sha256_test.py _scoreboard_failures, _allow_invalid_blocks=False, lines 225-226,
+  202-207) raises AssertionError("invalid blocks=2"). Deterministic replay of the
+  frozen sequence RNG (seed 24601) reproduces exactly two 0x80-containing messages
+  (txn_id=4, 31-byte payload, 0x80 at byte index 11; txn_id=12, 32-byte payload, 0x80
+  at byte index 29), and the scoreboard grades only the stimulus block sampled from
+  the DUT input pins -- a value the RTL never influences. No RTL change can reduce
+  invalid_block_count, so no RTL repair exists.'
+evidence:
+- 'simulation_result.json (authoritative): 10/11 tests pass; Sha256RandomizedTest
+  has status=runtime_error, returncode=2, clean_exit=false, uvm_errors=0, assertion_failures=0.
+  Its XML results file reports "invalid blocks=2" as the AssertionError, i.e. the
+  test is failed ONLY by invalid_block_count=2.'
+- 'Log excerpt for the randomized run: "MATCH txn_id=1: digest=0xb4b5bbaa...", "MATCH
+  txn_id=2: digest=0xa5f181fa...", "MATCH txn_id=3: digest=0xe4a6d0dd...", then "ERROR
+  ... INVALID BLOCK for txn_id=4: reference model rejected the padded block (Invalid
+  length field in padded block.). observed digest=0x0000...0000 ... block=0xe7f462383cd9ed8b73822b80a65dfa6422d641eb2a07fac1110120aa70fef98...".
+  block 0xe7f462...f98 is verified to be the canonical pad of a 31-byte message containing
+  0x80 at byte index 11 (replayed with random.Random(24601)); the observed digest=0
+  is the plan''s reset_during_processing injection (p=0.1) on txn_id=4, which resets
+  digest to 0 per specification.md (reset clears digest).'
+- 'Independent RTL emulation (mirroring rtl.sv: W[i] loaded big-endian from block[511-i*32
+  -: 32], rounds 0..63, feed-forward H0..H7 + a..h, 32-bit modular arithmetic): all
+  20 replayed one-block pads produce digests exactly equal to hashlib.sha256(true_message),
+  including txn_id=12 whose DUT digest is 0x442e6052b83b029191a7c525b5af30936ad7ad3def210d7ddfe68081351aba29.
+  The emulation reproduces the recorded MATCH digests byte-for-byte for txn_id=1..3
+  (b4b5bbaafef3bf861840b8d00f4d0015b024afa799d1912bfc022c4727bf8c34, a5f181fa0ca9110eac4b94f0e0942f86ab09a6119199aa4728f5685e1455a8bc,
+  e4a6d0dd2c1d74f93c0a5697ed106dee2cc862f7be3f2c5c094b43b9e5bee112), confirming the
+  rtl.sv datapath is functionally correct SHA-256.'
+- 'Deterministic seeded replay (seed 24601, ranges 0..55 / 0..255 from verification_plan.yaml
+  randomized_testing_strategy): exactly 2 of 20 messages contain 0x80 -> block_to_digest
+  raises "Invalid length field in padded block." for both (txn_id=4 and txn_id=12),
+  giving invalid_block=2; 3 reset injections (txn 4, 17, 18), of which the two on
+  parseable blocks (txn 17, 18) yield the two digest=0 MISMATCH catch reports (mismatch_count
+  is a catch report that never fails a test per sha256_test.py grading semantics).
+  20 txns = 16 MATCH + 2 MISMATCH + 2 INVALID.'
+- 'Source grounding re-checked in this workspace: rtl.sv is byte-identical to the
+  simulated /rtl_verification/accepted/sha256.sv (diff clean). The padded blocks are
+  composed by the FROZEN stimulus (tb/sha256_sequences.py canonical_one_block_pad)
+  and observed by the monitor from the DUT input bus (tb/sha256_monitor.py _begin_transaction
+  reads the input `block` pin at the start edge), so the scoreboard grades a DUT INPUT,
+  and no RTL modification can alter what block_to_digest sees or whether it raises.
+  The scoreboard''s invalid-block path returns before consulting the DUT digest.'
+- 'All 10 other tests pass (including reset_initialization, done_behavior_continuous,
+  start_while_busy_restarts, corner test) with assertion_failures=0 everywhere; no
+  structural RTL violation is flagged in any test. The done=1-continuous and start-gated-on-!busy
+  behaviors differ from the sequence/TB docstrings'' DISC-xxx assumptions but are
+  plan-documented (pass criteria: "RTL holds done=1 continuously"; reset values done=1/digest=0)
+  and cause no failure, so they are not repaired.'
+confidence: high
+changes: []

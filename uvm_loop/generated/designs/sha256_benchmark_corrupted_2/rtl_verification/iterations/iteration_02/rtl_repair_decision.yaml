@@ -1,0 +1,114 @@
+schema_version: '1.0'
+action: repair
+root_cause: 'The DUT never completes a single SHA-256 transaction, so digest stays
+  0x0 and every non-reset test fails Sha256Assertions.check_transaction_completes_within_latency
+  ("transaction started at cycle 5 did not produce a non-zero digest within 64..70
+  cycles (digest still 0x0000...0000 at cycle 76)"). Root mechanism: the round-control
+  path cannot reach the digest-assignment state. On start the RTL loads round with
+  7''d1 (line 157, fault 49) and advances it by 2 (round <= round + 2''d2, line 214,
+  fault 41), so round visits only odd values (1,3,...,63,65,...) and never equals
+  62; the completion block gated on if (round == 62) (line 199, fault 40; should be
+  63) therefore never executes -- digest is never written, busy is never cleared (busy
+  <= 1''b1 at line 211, fault 44) and the DUT stays busy forever. Independently of
+  this stall, 47 more of the 50 documented semantic faults still corrupt the datapath
+  (verified line-by-line against FAULTS.md): message-word extraction uses block[i*32
+  +: 32] with an explicit byte-swap (faults 06/07) instead of block[511 - i*32 -:
+  32] with the word as-is; the W schedule uses offsets round-3/-8/-14/-17 (faults
+  08-11, should be -2/-7/-15/-16); all four sigma functions use wrong rotation/shift
+  amounts (faults 12-23); Ch and Maj are missing terms (faults 24/25); T1 uses g +
+  BigSigma1(e) + Ch(e,g,f) + K[(round+1)&7''d63] (faults 26/27/28, should be h + BigSigma1(e)
+  + Ch(e,f,g) + K[round]); T2 uses BigSigma1(a) - Maj(a,c,b) (faults 29/30); na uses
+  XOR instead of addition (fault 31); the state-shift operands are nb=b, nc=c, nd=b,
+  ne=d+next_t2, nf=f, ng=g, nh=h (faults 32-39, should be nb=a, nc=b, nd=c, ne=d+next_t1,
+  nf=e, ng=f, nh=g); the digest feed-forward uses H0+nb, H2+nb, H3+nc, H4+nf, H7+ng
+  (faults 36/45/46/47/50, should be +na/+nc/+nd/+ne/+nh); and the K table still holds
+  three constants that differ from the FIPS 180-4 values -- K[2]=32''hb5c0fbce (fault
+  01, correct b5c0fbcf) and the last slots K[59]=32''h8cc70218 / K[60]=32''h90befffb
+  (faults 05/04, correct 8cc70208 / 90befffa; iteration_01 accidentally prescribed
+  the mistyped 8cc70218/90befffb values, so these two faults remain live).'
+evidence:
+- 'simulation_result.json (authoritative): Sha256ResetInitializationTest status=pass;
+  the other 10 tests (Sha256EmptyMessageTest, Sha256SingleByteATest, Sha256AbcMessageTest,
+  Sha256HelloWorldTest, Sha256QuickBrownFoxTest, Sha256BackToBackTransactionsTest,
+  Sha256StartWhileBusyRestartsTest, Sha256DoneBehaviorContinuousTest, Sha256CornerTest,
+  Sha256RandomizedTest) all report status=runtime_error, returncode=2, clean_exit=false
+  with 0 scoreboard mismatches -- consistent with the identical assertion failure
+  in every XML: "transaction_completes_within_latency violated: transaction started
+  at cycle 5 did not produce a non-zero digest within 64..70 cycles (digest still
+  0x0000...0000 at cycle 76). The RTL never reaches its completion state (digest assignment
+  gated on round==62, DISC-008/014)".'
+- 'rtl.sv (byte-identical to the simulated /rtl_verification/accepted/sha256.sv, confirmed
+  by diff) contains each corrupted expression above at the stated lines: K[2]=b5c0fbce
+  (L11), K[59]=8cc70218 (L25), K[60]=90befffb (L26), block[i*32 +: 32] + byte-swap
+  (L130-136), round<=7''d1 (L157), schedule round-3/-8/-14/-17 (L165-168), Ch/Maj
+  lacking terms (L56/L64), sigma rotations (L70/76/82/88), next_t1=g+...+Ch(e,g,f)
+  +K[(round+1)&7''d63] (L173-177), next_t2=BigSigma1(a)-Maj(a,c,b) (L179), na=XOR
+  (L181), state shifts nb=b/nc=c/nd=b/ne=d+next_t2/nf=f/ng=g/nh=h (L182-188), digest
+  feed-forward operands (L201-208), completion gated on round==62 (L199), busy<=1''b1
+  at completion (L211), round advance +2''d2 (L214).'
+- 'FAULTS.md ground truth: the 50-fault manifest gives the golden correct_version
+  for every corrupted expression; the remaining live faults are 01, 04, 05, 06, 07,
+  08-23, 24, 25, 26-39, 40, 41, 44, 45, 46, 47, 49, 50 (faults 02, 03 and the K-table
+  shape/compile issue were already repaired in iteration_01, confirmed present and
+  correct at K[10], K[31], K[33], K[34]).'
+- 'Faults 42 (if(start) start-while-busy), 43 (default done<=1''b1), 48 (reset done<=1''b1)
+  are intentionally NOT fixed: the frozen TB codifies them as expected behavior (CONTRACT.md:
+  done is pinned high and start is not gated by busy; the reset test, reset_sets_done_high,
+  done_behavior_continuous and Sha256StartWhileBusyRestartsTest all depend on done==1).'
+- 'Independent functional validation: a cycle-accurate Python model of the REPAIRED
+  datapath (correct FIPS K table incl. K[2]=b5c0fbcf, K[59]=8cc70208, K[60]=90befffa;
+  big-endian W extraction without byte swap; corrected sigma/Ch/Maj/T1/T2/state and
+  digest feed-forward; round 0..63, one round per cycle) reproduces hashlib.sha256
+  digests for all reference TEST_VECTORS (empty, "a", "abc", "hello world", "quick
+  brown fox", 55-byte max) plus 300 random one-block messages. Timing: with round
+  starting at 0 and advancing by 1 to terminal round 63, the digest assignment falls
+  at start+64..65 -- inside the assertion band [start+64, start+70] (EXPECTED_LATENCY_CYCLES=64,
+  COMPLETION_MARGIN_CYCLES=70), and the monitor samples the final, stable digest at
+  start+70 which equals the reference-model digest.'
+confidence: high
+changes:
+- file: rtl.sv
+  action: modify
+  instructions:
+  - 'K table: fix the three remaining round constants -- line 11 K[2]: 32''hb5c0fbce
+    -> 32''hb5c0fbcf; line 25 K[59]: 32''h8cc70218 -> 32''h8cc70208; line 26 K[60]:
+    32''h90befffb -> 32''h90befffa. All other K entries match the FIPS 180-4 table.'
+  - 'Message words (faults 06/07): line 130 change `message_word = block[i*32 +: 32];`
+    to `message_word = block[511 - i*32 -: 32];` and replace the byte-swap concatenation
+    of lines 131-136 with a direct assignment `W[i] <= message_word;`.'
+  - 'W schedule (faults 08-11): lines 165-168 change `SmallSigma1(W[round-3]) + W[round-8]
+    + SmallSigma0(W[round-14]) + W[round-17]` to `SmallSigma1(W[round-2]) + W[round-7]
+    + SmallSigma0(W[round-15]) + W[round-16]`.'
+  - 'Sigma functions (faults 12-23): line 70 BigSigma0 -> `rotr(x,2) ^ rotr(x,13)
+    ^ rotr(x,22)`; line 76 BigSigma1 -> `rotr(x,6) ^ rotr(x,11) ^ rotr(x,25)`; line
+    82 SmallSigma0 -> `rotr(x,7) ^ rotr(x,18) ^ (x >> 3)`; line 88 SmallSigma1 ->
+    `rotr(x,17) ^ rotr(x,19) ^ (x >> 10)`.'
+  - 'Ch/Maj (faults 24/25): line 56 Ch -> `Ch = (x & y) ^ (~x & z);`; line 64 Maj
+    -> `Maj = (x & y) ^ (x & z) ^ (y & z);`.'
+  - 'T1 (faults 26/27/28): lines 173-177 change `next_t1 = g + BigSigma1(e) + Ch(e,g,f)
+    + K[(round+1) & 7''d63] + next_w;` to `next_t1 = h + BigSigma1(e) + Ch(e,f,g)
+    + K[round] + next_w;`.'
+  - 'T2 (faults 29/30): line 179 change `next_t2 = BigSigma1(a) - Maj(a,c,b);` to
+    `next_t2 = BigSigma0(a) + Maj(a,b,c);`.'
+  - 'State update (faults 31-39): line 181 `na = next_t1 ^ next_t2;` -> `na = next_t1
+    + next_t2;`; line 182 `nb = b;` -> `nb = a;`; line 183 `nc = c;` -> `nc = b;`;
+    line 184 `nd = b;` -> `nd = c;`; line 185 `ne = d + next_t2;` -> `ne = d + next_t1;`;
+    line 186 `nf = f;` -> `nf = e;`; line 187 `ng = g;` -> `ng = f;`; line 188 `nh
+    = h;` -> `nh = g;`.'
+  - 'Round control (faults 49/40/41): line 157 `round <= 7''d1;` -> `round <= 7''d0;`;
+    line 199 `if (round == 62)` -> `if (round == 63)`; line 214 `round <= round +
+    2''d2;` -> `round <= round + 1''b1;`.'
+  - 'Completion (fault 44): line 211 (inside the round==63 completion block) `busy
+    <= 1''b1;` -> `busy <= 1''b0;` so the DUT deasserts busy exactly once after the
+    64th round; this also guarantees digest_holds_until_next (digest is written only
+    at round 63 and then remains stable until the next start).'
+  - 'Digest feed-forward (faults 45/50/36/46/47): lines 201-208 change the digest
+    concatenation operands to `32''h6a09e667 + na, 32''hbb67ae85 + nb, 32''h3c6ef372
+    + nc, 32''ha54ff53a + nd, 32''h510e527f + ne, 32''h9b05688c + nf, 32''h1f83d9ab
+    + ng, 32''h5be0cd19 + nh`.'
+  - 'DO NOT modify: the reset-branch `done <= 1''b1;` (line 100), the default `done
+    <= 1''b1;` (line 126), or the unguarded `if (start)` (line 128) -- the frozen
+    TB requires done==1 (disk-reset, reset_sets_done_high, done_behavior_continuous)
+    and start-while-busy restart semantics, and changing any of these would break
+    the passing reset test and the codified contract tests. No other artifacts (spec,
+    reference model, verification plan, TB) are touched.'

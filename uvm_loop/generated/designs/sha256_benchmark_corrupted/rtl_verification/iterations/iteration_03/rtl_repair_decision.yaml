@@ -1,0 +1,80 @@
+schema_version: '1.0'
+action: repair
+root_cause: 'The DUT still honors a start-while-busy by restarting the in-flight transaction:
+  rtl.sv line 128 uses an un-gated `if (start)`, taking priority over the `else if
+  (busy)` processing branch. The frozen TB grades completion by a fixed-cycle window
+  per start edge (transaction_completes_within_latency requires digest != 0 within
+  [start+64 .. start+70]). Sha256StartWhileBusyRestartsSequence re-asserts start with
+  a different block 10 cycles into the first transaction (RESTART_DELAY_CYCLES=10);
+  the restart aborts the "abc" computation and the restarted empty-message computation
+  only writes digest at start2+64 (> start1+70), so the first start''s digest is still
+  0x0 at cycle 76. This trips the assertion (''transaction started at cycle 5 did
+  not produce a non-zero digest within 64..70 cycles (digest still 0x0 at cycle 76)'')
+  and produces the scoreboard DIGEST MISMATCH for txn_id=1 with actual_digest=0x0.
+  specification.md section 5 defines intended behavior: ''A transaction begins when
+  start == 1 && DUT is idle'', and the verification plan discrepancy DISC-017 (start
+  not gated by busy) records the exact recommended fix ''if (start && !busy)''. Gating
+  start on !busy makes the first transaction complete normally (abc digest inside
+  its valid window), and since digest mismatches are catch reports (not test failures),
+  the StartWhileBusyRestarts test passes. The other currently-failing test (Sha256RandomizedTest)
+  is NOT RTL-caused: the 2 INVALID BLOCK reports (txn 4, 12) come from the frozen
+  golden reference''s block_to_digest() using block.index(b''\x80'') to find the padding
+  marker, so canonical one-block paddings whose random message (bytes 0..255) contains
+  an 0x80 byte are mis-rejected -- verified txn_id=12''s DUT digest 0x442e6052...
+  equals hashlib.sha256(true_message), i.e., the RTL datapath is correct and only
+  the TB reference-model validator cannot grade it; no RTL change can fix that. The
+  two digest=0 scoreboard mismatches (txn 17/18) are the plan''s intended reset_during_processing
+  (p=0.1) injections aborting transactions (mismatch catch reports, not failures).'
+evidence:
+- 'simulation_result.json (authoritative) + tb/.chia_sim/Sha256StartWhileBusyRestartsTest.xml:
+  test status=runtime_error, failure=''transaction_completes_within_latency violated:
+  transaction started at cycle 5 did not produce a non-zero digest within 64..70 cycles
+  (digest still 0x0000...0000 at cycle 76)''; scoreboard log shows ''DIGEST MISMATCH
+  txn_id=1: block=0x6162638000... actual_digest=0x0000...0000 cycle_of_mismatch=79
+  (sampled 70 cycles after start edge)''.'
+- 'Sequence timing (sha256_sequences.py Sha256StartWhileBusyRestartsSequence): first
+  start (abc) -> wait 1 -> wait RESTART_DELAY_CYCLES=10 -> second start (empty) while
+  DUT is still processing. With line 128 `if (start)` un-gated, the second edge restarts
+  the DUT, so the first start''s digest can never appear in its [start+64, start+70]
+  band.'
+- 'specification.md section 5: ''A transaction begins when: start == 1 && DUT is idle''
+  -- the intended behavior is to ignore start while busy; verification_plan.yaml DISC-017
+  (rtl: ''if (start) executes regardless of busy state'') documents the deviation
+  and recommends ''Gate start with !busy: if (start && !busy)''.'
+- 'Datapath correctness is independent of this failure: 9/11 tests pass; directed
+  KATs match the golden reference (Sha256AbcMessageTest MATCH digest=0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
+  at cycle 79); Sha256RandomizedTest matched 16/20 digests.'
+- 'Sha256RandomizedTest failure is TB/reference-model, not RTL: both INVALID BLOCK
+  reports (''Invalid length field in padded block.'', txn 4 and 12) are canonical
+  one-block paddings whose messages contain byte 0x80; reference_model.py block_to_digest
+  finds the bogus marker with block.index(b''\x80''). Independent check: txn_id=12''s
+  observed DUT digest 0x442e6052b83b029191a7c525b5af30936ad7ad3def210d7ddfe68081351aba29
+  equals hashlib.sha256(block[:32]).hexdigest(), proving the RTL computed the correct
+  digest and only the TB''s padding validator is at fault. The DIGEST MISMATCH txn
+  17/18 (actual=0) correspond to the plan''s reset_during_processing injections aborting
+  in-flight transactions -- intended catch reports, not failures.'
+- 'The start-gating repair preserves all currently passing tests: back_to_back and
+  randomized back-to-back starts occur >=70 cycles after the prior start (DUT idle
+  after start+65), corner reset_during_processing clears latency windows on reset,
+  and the retained done<=1''b1 reset/default behavior (required by Sha256ResetInitializationTest,
+  reset_sets_done_high, done_behavior_continuous) is untouched.'
+confidence: high
+changes:
+- file: rtl.sv
+  action: modify
+  instructions:
+  - 'Gate transaction acceptance on the DUT being idle: change line 128 `if (start)
+    begin` to `if (start && !busy) begin` (matches specification.md section 5 ''start
+    == 1 && DUT is idle'' and verification-plan DISC-017''s recorded recommendation).
+    This makes a start-while-busy be ignored instead of aborting/restarting the in-flight
+    transaction, so every accepted start completes its 64-round compression within
+    the frozen TB''s fixed [start+64, start+70] latency window.'
+  - 'Do not modify anything else: keep `done <= 1''b1` on reset (line 100) and the
+    default `done <= 1''b1` (line 126), keep the datapath (K/W/Ch/Maj/sigma/T1/T2/state/feed-forward,
+    round 0..63 with `round == 63` completion), and leave `busy <= 1''b0` at completion
+    -- the frozen TB codifies done==1 continuity and start-while-busy is the only
+    remaining RTL-caused failure in this iteration.'
+  - 'Note: the Sha256RandomizedTest failure (invalid_block_count=2 from reference-model
+    rejection of 0x80-containing messages) is a frozen-TB/reference-model limitation
+    and is not addressable by any RTL change; it should be handled in a later stage
+    (template_bug/no_repair), not by rtl.sv edits.'

@@ -1,0 +1,49 @@
+schema_version: '1.0'
+action: repair
+root_cause: 'RTL defect DIS-20 (per verification_plan.yaml lines 1404-1415): rtl.sv
+  lines 45-48 hardwire the open-drain drive controls `assign sda_oe = 1''b1; assign
+  scl_oe = 1''b1; assign sda_out = 1''b0; assign scl_out = 1''b0;`. The controller
+  therefore always actively drives SDA/SCL low and never releases them. Because the
+  frozen TB models the bus as open-drain with an external pull-up (i2c_pins.py resolve_sda_level/resolve_scl_level:
+  oe==0 => pull-up high, oe==1 => driven value), every idle cycle resolves SDA to
+  0, violating specification section 10 ("Release: output-enable = 0, external pull-up
+  drives line high") and the frozen plan item `a_open_drain_release`.'
+evidence:
+- 'simulation_result.json: all 15 tests (ResetIdleCheckTest, WriteBasicTest, WriteZeroTest,
+  WriteMaxTest, ReadBasicTest, ReadMaxTest, WriteAddrNackTest, WriteDataNackTest,
+  ReadAddrNackTest, StartWhileBusyTest, ResetDuringTransactionTest, DonePulseCheckTest,
+  AddressMsbFirstCheckTest, I2CCornerTest, I2CRandomTest) report status=runtime_error,
+  returncode=2, counts all zero, and every log terminates at 140.00ns with the identical
+  message: "[assertion a_open_drain_release] FAILED: SDA resolved level 0 while busy==0
+  (sda_oe=1, sda_out=0); the line must be released (driven high via pull-up) while
+  idle" (raised in tb/i2c_assertions.py _check_a_open_drain_release, lines 866-890).'
+- "Trigger is the first idle rising edge after reset (reset asserted ~130ns; failure\
+  \ at 140ns), before any transaction stimulus \u2014 so the fault is purely the idle\
+  \ drive state, exactly matching the hardwired oe=1/out=0 assignments in rtl.sv lines\
+  \ 45-48."
+- The assertion is spec-grounded (specification.md section 10) and TB-grounded (verification_plan.yaml
+  item a_open_drain_release lines 1241-1247; tb/CONTRACT.md lines 791 and 818-826
+  list it as an always-on pin checker designed to catch the hardwired-low outputs).
+  The reference model is transaction-level and does not model sda_oe/scl_oe, so it
+  neither supports nor contradicts; the specification defines the intended behavior,
+  which the RTL violates.
+- 'This is a genuine RTL defect, not a TB/toolchain/infrastructure issue: the cocotb+pyuvm
+  testbench compiled and ran cleanly (only deprecation warnings), and the assertion''s
+  pull-up bus model directly implements spec section 10. Additional discrepancies
+  DIS-01..DIS-19 documented in verification_plan.yaml remain potential later failures
+  but are NOT demonstrably exercised by this simulation evidence (every test aborts
+  at 140ns), so they are out of scope for this smallest repair.'
+confidence: high
+changes:
+- file: rtl.sv
+  action: modify
+  instructions:
+  - 'Gate the SDA/SCL drive-enables on the busy status so the open-drain lines are
+    released while the controller is idle. Replace the hardwired continuous assignments
+    (rtl.sv lines 45-46): `assign sda_oe = 1''b1; assign scl_oe = 1''b1;` with `assign
+    sda_oe = busy; assign scl_oe = busy;`. Keep `assign sda_out = 1''b0; assign scl_out
+    = 1''b0;`.'
+  - 'Result: whenever busy==0 (idle/reset), sda_oe/scl_oe deassert to 0 and the external
+    pull-up (i2c_pins.py resolve_sda_level/resolve_scl_level) drives SDA/SCL high,
+    satisfying spec section 10 and the a_open_drain_release assertion; during an active
+    transaction (busy==1) the lines are driven low exactly as before.'

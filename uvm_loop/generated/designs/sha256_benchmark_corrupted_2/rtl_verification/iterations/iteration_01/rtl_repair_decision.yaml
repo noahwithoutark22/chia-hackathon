@@ -1,0 +1,80 @@
+schema_version: '1.0'
+action: repair
+root_cause: "The SHA-256 round-constant table K is malformed in rtl.sv: the declaration\
+  \ `localparam logic [31:0] K [0:63]` requires 64 initializers, but the assignment-pattern\
+  \ body (lines 10-27) supplies only 62 constants. Indices 62 and 63 are left uninitialized,\
+  \ so Verilator rejects the RTL at elaboration with 'Assignment pattern missed initializing\
+  \ elements: 62/63', which aborts the build for every test before any simulation\
+  \ runs. The list is additionally corrupted against the FIPS 180-4 constants mandated\
+  \ by specification.md \xA73: index 10 is 243185bf (should be 243185be), index 31\
+  \ is 14292977 (should be 14292967), and constants 2e1b2138 (K[33]) and 4d2c6dfc\
+  \ (K[34]) are deleted, shifting all indices \u226533 down by two."
+evidence:
+- 'simulation_result.json: all 11 tests (Sha256ResetInitializationTest ... Sha256RandomizedTest)
+  report status=runtime_error, category=runtime_error, returncode=2, results_file_exists=false,
+  and every log shows the identical Verilator build failure: ''%Error: .../sha256.sv:10:40:
+  Assignment pattern missed initializing elements: 62'' and '': 63'', then ''%Error:
+  Exiting due to 2 error(s)'' followed by `make: *** ... Vtop.mk Error 1`. Scoreboard/assertion
+  counts are all 0 because the DUT never compiled.'
+- 'Source grounding: the RTL under analysis (rtl.sv, byte-identical to the simulated
+  /rtl_verification/accepted/sha256.sv, confirmed by diff) declares an unpacked array
+  `logic [31:0] K [0:63]` (64 elements) yet the initializer body (lines 11-26) contains
+  exactly 62 `32''h...` literals (counted). Verilator 5.042 (as captured in the log)
+  requires every element of an assignment pattern to be initialized when the array
+  has no default, producing errors for K[62] and K[63].'
+- "Spec grounding: specification.md \xA73.2 requires 'The 64 SHA-256 round constants\
+  \ K[0..63]' per FIPS 180-4. Comparing the 62 present RTL constants against the FIPS\
+  \ 180-4 table shows the only in-list diffs are K[10] 243185bf vs 243185be and K[31]\
+  \ 14292977 vs 14292967, and that 2e1b2138/4d2c6dfc (K[33]/K[34]) are absent with\
+  \ the tail shifted, so appending two arbitrary values would compile but leave every\
+  \ K[\u226533] wrong; restoring the full standard table is required for intended\
+  \ behavior."
+- 'TB/infrastructure not implicated: the failing step is Verilator elaborating the
+  DUT source itself (note: In instance ''sha256''); the cocotb/pyuvm harness, Makefile,
+  and verilator flags never execute. This is an RTL defect (defective constant declaration),
+  not a TB or template bug.'
+confidence: high
+changes:
+- file: rtl.sv
+  action: modify
+  instructions:
+  - 'Replace the entire K localparam initializer (lines 10-27) with the complete 64-entry
+    FIPS 180-4 round-constant table in index order, ensuring the `localparam logic
+    [31:0] K [0:63]` array gets all 64 initializers:
+
+    32''h428a2f98, 32''h71374491, 32''hb5c0fbce, 32''he9b5dba5,
+
+    32''h3956c25b, 32''h59f111f1, 32''h923f82a4, 32''hab1c5ed5,
+
+    32''hd807aa98, 32''h12835b01, 32''h243185be, 32''h550c7dc3,
+
+    32''h72be5d74, 32''h80deb1fe, 32''h9bdc06a7, 32''hc19bf174,
+
+    32''he49b69c1, 32''hefbe4786, 32''h0fc19dc6, 32''h240ca1cc,
+
+    32''h2de92c6f, 32''h4a7484aa, 32''h5cb0a9dc, 32''h76f988da,
+
+    32''h983e5152, 32''ha831c66d, 32''hb00327c8, 32''hbf597fc7,
+
+    32''hc6e00bf3, 32''hd5a79147, 32''h06ca6351, 32''h14292967,
+
+    32''h27b70a85, 32''h2e1b2138, 32''h4d2c6dfc, 32''h53380d13,
+
+    32''h650a7354, 32''h766a0abb, 32''h81c2c92e, 32''h92722c85,
+
+    32''ha2bfe8a1, 32''ha81a664b, 32''hc24b8b70, 32''hc76c51a3,
+
+    32''hd192e819, 32''hd6990624, 32''hf40e3585, 32''h106aa070,
+
+    32''h19a4c116, 32''h1e376c08, 32''h2748774c, 32''h34b0bcb5,
+
+    32''h391c0cb3, 32''h4ed8aa4a, 32''h5b9cca4f, 32''h682e6ff3,
+
+    32''h748f82ee, 32''h78a5636f, 32''h84c87814, 32''h8cc70218,
+
+    32''h90befffb, 32''ha4506ceb, 32''hbef9a3f7, 32''hc67178f2'
+  - "This explicitly fixes the demonstrated compile error (K[62]=bef9a3f7 and K[63]=c67178f2\
+    \ now present) and simultaneously corrects the two in-place bit errors (K[10]\
+    \ 243185be, K[31] 14292967) and the two deleted constants (2e1b2138, 4d2c6dfc)\
+    \ so every K[\u226533] value is no longer shifted, matching specification.md's\
+    \ required FIPS 180-4 constants. No other logic in the module is touched."

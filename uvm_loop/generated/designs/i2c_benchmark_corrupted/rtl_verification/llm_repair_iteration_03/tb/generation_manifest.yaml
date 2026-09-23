@@ -1,0 +1,100 @@
+# i2c_master cocotb+pyuvm testbench -- generation manifest (stage-6 INTEGRATION).
+#
+# This manifest is the authoritative runtime contract for the generated
+# environment and is consumed by workers/sim/run.py.  The top module, RTL
+# file(s), the Python cocotb test module, and the exact pyuvm test class
+# names selectable via UVM_TESTNAME are listed here; `scenarios` maps each
+# directed verification-plan scenario id (TC-01..TC-13, CONTRACT.md §9) to
+# its stimulus sequence and test classes.
+
+top_module: i2c_master
+top_file: benchmarks/i2c_benchmark_corrupted/i2c_master.sv
+
+# Only the DUT RTL is compiled.  Every other part of the testbench is
+# Python (cocotb 2.1.0 + pyuvm 5.0.0); there is no generated SV source.
+compile_files:
+  - benchmarks/i2c_benchmark_corrupted/i2c_master.sv
+
+# Exact runtime pyuvm test class names (selectable via UVM_TESTNAME and
+# resolved by test_top.py through pyuvm's factory).  The 13 directed tests
+# map 1:1 to plan directed_test_scenarios; I2CCornerTest and I2CRandomTest
+# realize the plan's corner_cases / randomized_testing_strategy strategies.
+test_classes:
+  - ResetIdleCheckTest
+  - WriteBasicTest
+  - WriteZeroTest
+  - WriteMaxTest
+  - ReadBasicTest
+  - ReadMaxTest
+  - WriteAddrNackTest
+  - WriteDataNackTest
+  - ReadAddrNackTest
+  - StartWhileBusyTest
+  - ResetDuringTransactionTest
+  - DonePulseCheckTest
+  - AddressMsbFirstCheckTest
+  - I2CCornerTest
+  - I2CRandomTest
+
+# Top-level Python cocotb test module (without .py).
+python_test_module: test_top
+
+# Authoritative mapping between the accepted verification plan
+# (directed_test_scenarios, keyed by the exact scenario id from
+# CONTRACT.md §9) and the generated directed environment.  The corner_case
+# (I2CCornerTest) and randomized (I2CRandomTest) test classes above
+# intentionally have NO scenarios entry (separate verification strategies,
+# CONTRACT.md §9).
+scenarios:
+  - id: TC-01
+    name: reset_idle_check
+    sequence: ResetIdleCheckSequence
+    test: ResetIdleCheckTest
+  - id: TC-02
+    name: write_basic
+    sequence: WriteBasicSequence
+    test: WriteBasicTest
+  - id: TC-03
+    name: write_zero
+    sequence: WriteZeroSequence
+    test: WriteZeroTest
+  - id: TC-04
+    name: write_max
+    sequence: WriteMaxSequence
+    test: WriteMaxTest
+  - id: TC-05
+    name: read_basic
+    sequence: ReadBasicSequence
+    test: ReadBasicTest
+  - id: TC-06
+    name: read_max
+    sequence: ReadMaxSequence
+    test: ReadMaxTest
+  - id: TC-07
+    name: write_addr_nack
+    sequence: WriteAddrNackSequence
+    test: WriteAddrNackTest
+  - id: TC-08
+    name: write_data_nack
+    sequence: WriteDataNackSequence
+    test: WriteDataNackTest
+  - id: TC-09
+    name: read_addr_nack
+    sequence: ReadAddrNackSequence
+    test: ReadAddrNackTest
+  - id: TC-10
+    name: start_while_busy
+    sequence: StartWhileBusySequence
+    test: StartWhileBusyTest
+  - id: TC-11
+    name: reset_during_transaction
+    sequence: ResetDuringTransactionSequence
+    test: ResetDuringTransactionTest
+  - id: TC-12
+    name: done_pulse_check
+    sequence: DonePulseCheckSequence
+    test: DonePulseCheckTest
+  - id: TC-13
+    name: address_msb_first_check
+    sequence: AddressMsbFirstCheckSequence
+    test: AddressMsbFirstCheckTest

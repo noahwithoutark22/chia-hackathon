@@ -1,0 +1,438 @@
+schema_version: '1.0'
+iteration: 1
+quality_score: 55.0
+metrics:
+  tests_total: 11
+  tests_passed: 0
+  tests_failed: 11
+  functional_coverage:
+    available: false
+    percentage: null
+  planned_coverage_points: 3
+  generated_coverage_points: 3
+  planned_coverage_crosses: 1
+  generated_coverage_crosses: 1
+  python_assertions: 9
+  checker_coroutines: 0
+  test_classes: 12
+  sequences: 16
+  planned_assertions: 3
+  test_health_score: 0.0
+  coverage_quality_score: 100.0
+  assertion_quality_score: 100.0
+  scenario_quality_score: 0.0
+  scenario_coverage:
+    planned: 9
+    generated: 9
+    executed: 0
+    score: 0.0
+    planned_ids:
+    - abc_message
+    - back_to_back_transactions
+    - done_behavior_continuous
+    - empty_message
+    - hello_world
+    - quick_brown_fox
+    - reset_initialization
+    - single_byte_a
+    - start_while_busy_restarts
+    generated_ids:
+    - abc_message
+    - back_to_back_transactions
+    - done_behavior_continuous
+    - empty_message
+    - hello_world
+    - quick_brown_fox
+    - reset_initialization
+    - single_byte_a
+    - start_while_busy_restarts
+    executed_ids: []
+  parameter_coverage:
+    available: false
+    score: 100.0
+    planned: {}
+    observed: {}
+  tb_quality_score: 55.0
+weaknesses:
+- id: W-TEST-HEALTH
+  category: test_health
+  severity: high
+  description: 11 of 11 runnable tests did not complete successfully.
+  evidence:
+    passed: 0
+    total: 11
+- id: W-SCENARIO-COVERAGE
+  category: stimulus
+  severity: medium
+  description: Planned scenarios are not all represented by successfully executed
+    generated tests.
+  scenarios:
+  - abc_message
+  - back_to_back_transactions
+  - done_behavior_continuous
+  - empty_message
+  - hello_world
+  - quick_brown_fox
+  - reset_initialization
+  - single_byte_a
+  - start_while_busy_restarts
+  evidence:
+    planned: 9
+    generated: 9
+    executed: 0
+- id: W-COVERAGE-METRIC
+  category: measurement
+  severity: medium
+  description: No machine-readable functional coverage percentage was observed in
+    simulation output.
+  action: Add deterministic coverage export/reporting to the TB without weakening
+    existing checks.
+authoritative_inputs:
+- specification
+- reference_model
+- verification_plan
+rtl_exposed_to_llm: false
+simulation_evidence:
+  status: functional_failure
+  tests:
+    Sha256ResetInitializationTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "rm -f /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256ResetInitializationTest.xml\n\
+        /usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/13a60f3fcbfd\
+        \ --top-module sha256 --timing -Wno-fatal  --timescale 1ns/1ps --vpi --public-flat-rw\
+        \ --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs\
+        \ -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"\
+        \  /workspace/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv\
+        \ /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n\
+        %Error: /workspace/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv:10:40:\
+        \ Assignment pattern missed initializing elements: 62\n                  \
+        \                                                                        \
+        \               : ... note: In instance 'sha256'\n   10 |     localparam logic\
+        \ [31:0] K [0:63] = '{\n      |                                        ^~\n\
+        \        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042\
+        \ for more assistance.\n%Error: /workspace/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv:10:40:\
+        \ Assignment pattern missed initializing elements: 63\n                  \
+        \                                                                        \
+        \               : ... note: In instance 'sha256'\n   10 |     localparam logic\
+        \ [31:0] K [0:63] = '{\n      |                                        ^~\n\
+        %Error: Exiting due to 2 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65:\
+        \ /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/13a60f3fcbfd/Vtop.mk]\
+        \ Error 1\n"
+    Sha256EmptyMessageTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "rm -f /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256EmptyMessageTest.xml\n\
+        /usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/13a60f3fcbfd\
+        \ --top-module sha256 --timing -Wno-fatal  --timescale 1ns/1ps --vpi --public-flat-rw\
+        \ --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs\
+        \ -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"\
+        \  /workspace/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv\
+        \ /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n\
+        %Error: /workspace/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv:10:40:\
+        \ Assignment pattern missed initializing elements: 62\n                  \
+        \                                                                        \
+        \               : ... note: In instance 'sha256'\n   10 |     localparam logic\
+        \ [31:0] K [0:63] = '{\n      |                                        ^~\n\
+        \        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042\
+        \ for more assistance.\n%Error: /workspace/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv:10:40:\
+        \ Assignment pattern missed initializing elements: 63\n                  \
+        \                                                                        \
+        \               : ... note: In instance 'sha256'\n   10 |     localparam logic\
+        \ [31:0] K [0:63] = '{\n      |                                        ^~\n\
+        %Error: Exiting due to 2 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65:\
+        \ /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/13a60f3fcbfd/Vtop.mk]\
+        \ Error 1\n"
+    Sha256SingleByteATest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "rm -f /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256SingleByteATest.xml\n\
+        /usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/13a60f3fcbfd\
+        \ --top-module sha256 --timing -Wno-fatal  --timescale 1ns/1ps --vpi --public-flat-rw\
+        \ --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs\
+        \ -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"\
+        \  /workspace/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv\
+        \ /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n\
+        %Error: /workspace/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv:10:40:\
+        \ Assignment pattern missed initializing elements: 62\n                  \
+        \                                                                        \
+        \               : ... note: In instance 'sha256'\n   10 |     localparam logic\
+        \ [31:0] K [0:63] = '{\n      |                                        ^~\n\
+        \        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042\
+        \ for more assistance.\n%Error: /workspace/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv:10:40:\
+        \ Assignment pattern missed initializing elements: 63\n                  \
+        \                                                                        \
+        \               : ... note: In instance 'sha256'\n   10 |     localparam logic\
+        \ [31:0] K [0:63] = '{\n      |                                        ^~\n\
+        %Error: Exiting due to 2 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65:\
+        \ /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/13a60f3fcbfd/Vtop.mk]\
+        \ Error 1\n"
+    Sha256AbcMessageTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "rm -f /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256AbcMessageTest.xml\n\
+        /usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/13a60f3fcbfd\
+        \ --top-module sha256 --timing -Wno-fatal  --timescale 1ns/1ps --vpi --public-flat-rw\
+        \ --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs\
+        \ -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"\
+        \  /workspace/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv\
+        \ /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n\
+        %Error: /workspace/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv:10:40:\
+        \ Assignment pattern missed initializing elements: 62\n                  \
+        \                                                                        \
+        \               : ... note: In instance 'sha256'\n   10 |     localparam logic\
+        \ [31:0] K [0:63] = '{\n      |                                        ^~\n\
+        \        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042\
+        \ for more assistance.\n%Error: /workspace/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv:10:40:\
+        \ Assignment pattern missed initializing elements: 63\n                  \
+        \                                                                        \
+        \               : ... note: In instance 'sha256'\n   10 |     localparam logic\
+        \ [31:0] K [0:63] = '{\n      |                                        ^~\n\
+        %Error: Exiting due to 2 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65:\
+        \ /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/13a60f3fcbfd/Vtop.mk]\
+        \ Error 1\n"
+    Sha256HelloWorldTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "rm -f /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256HelloWorldTest.xml\n\
+        /usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/13a60f3fcbfd\
+        \ --top-module sha256 --timing -Wno-fatal  --timescale 1ns/1ps --vpi --public-flat-rw\
+        \ --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs\
+        \ -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"\
+        \  /workspace/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv\
+        \ /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n\
+        %Error: /workspace/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv:10:40:\
+        \ Assignment pattern missed initializing elements: 62\n                  \
+        \                                                                        \
+        \               : ... note: In instance 'sha256'\n   10 |     localparam logic\
+        \ [31:0] K [0:63] = '{\n      |                                        ^~\n\
+        \        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042\
+        \ for more assistance.\n%Error: /workspace/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv:10:40:\
+        \ Assignment pattern missed initializing elements: 63\n                  \
+        \                                                                        \
+        \               : ... note: In instance 'sha256'\n   10 |     localparam logic\
+        \ [31:0] K [0:63] = '{\n      |                                        ^~\n\
+        %Error: Exiting due to 2 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65:\
+        \ /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/13a60f3fcbfd/Vtop.mk]\
+        \ Error 1\n"
+    Sha256QuickBrownFoxTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "rm -f /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256QuickBrownFoxTest.xml\n\
+        /usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/13a60f3fcbfd\
+        \ --top-module sha256 --timing -Wno-fatal  --timescale 1ns/1ps --vpi --public-flat-rw\
+        \ --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs\
+        \ -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"\
+        \  /workspace/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv\
+        \ /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n\
+        %Error: /workspace/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv:10:40:\
+        \ Assignment pattern missed initializing elements: 62\n                  \
+        \                                                                        \
+        \               : ... note: In instance 'sha256'\n   10 |     localparam logic\
+        \ [31:0] K [0:63] = '{\n      |                                        ^~\n\
+        \        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042\
+        \ for more assistance.\n%Error: /workspace/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv:10:40:\
+        \ Assignment pattern missed initializing elements: 63\n                  \
+        \                                                                        \
+        \               : ... note: In instance 'sha256'\n   10 |     localparam logic\
+        \ [31:0] K [0:63] = '{\n      |                                        ^~\n\
+        %Error: Exiting due to 2 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65:\
+        \ /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/13a60f3fcbfd/Vtop.mk]\
+        \ Error 1\n"
+    Sha256BackToBackTransactionsTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "rm -f /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256BackToBackTransactionsTest.xml\n\
+        /usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/13a60f3fcbfd\
+        \ --top-module sha256 --timing -Wno-fatal  --timescale 1ns/1ps --vpi --public-flat-rw\
+        \ --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs\
+        \ -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"\
+        \  /workspace/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv\
+        \ /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n\
+        %Error: /workspace/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv:10:40:\
+        \ Assignment pattern missed initializing elements: 62\n                  \
+        \                                                                        \
+        \               : ... note: In instance 'sha256'\n   10 |     localparam logic\
+        \ [31:0] K [0:63] = '{\n      |                                        ^~\n\
+        \        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042\
+        \ for more assistance.\n%Error: /workspace/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv:10:40:\
+        \ Assignment pattern missed initializing elements: 63\n                  \
+        \                                                                        \
+        \               : ... note: In instance 'sha256'\n   10 |     localparam logic\
+        \ [31:0] K [0:63] = '{\n      |                                        ^~\n\
+        %Error: Exiting due to 2 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65:\
+        \ /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/13a60f3fcbfd/Vtop.mk]\
+        \ Error 1\n"
+    Sha256StartWhileBusyRestartsTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "rm -f /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256StartWhileBusyRestartsTest.xml\n\
+        /usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/13a60f3fcbfd\
+        \ --top-module sha256 --timing -Wno-fatal  --timescale 1ns/1ps --vpi --public-flat-rw\
+        \ --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs\
+        \ -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"\
+        \  /workspace/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv\
+        \ /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n\
+        %Error: /workspace/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv:10:40:\
+        \ Assignment pattern missed initializing elements: 62\n                  \
+        \                                                                        \
+        \               : ... note: In instance 'sha256'\n   10 |     localparam logic\
+        \ [31:0] K [0:63] = '{\n      |                                        ^~\n\
+        \        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042\
+        \ for more assistance.\n%Error: /workspace/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv:10:40:\
+        \ Assignment pattern missed initializing elements: 63\n                  \
+        \                                                                        \
+        \               : ... note: In instance 'sha256'\n   10 |     localparam logic\
+        \ [31:0] K [0:63] = '{\n      |                                        ^~\n\
+        %Error: Exiting due to 2 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65:\
+        \ /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/13a60f3fcbfd/Vtop.mk]\
+        \ Error 1\n"
+    Sha256DoneBehaviorContinuousTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "rm -f /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256DoneBehaviorContinuousTest.xml\n\
+        /usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/13a60f3fcbfd\
+        \ --top-module sha256 --timing -Wno-fatal  --timescale 1ns/1ps --vpi --public-flat-rw\
+        \ --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs\
+        \ -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"\
+        \  /workspace/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv\
+        \ /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n\
+        %Error: /workspace/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv:10:40:\
+        \ Assignment pattern missed initializing elements: 62\n                  \
+        \                                                                        \
+        \               : ... note: In instance 'sha256'\n   10 |     localparam logic\
+        \ [31:0] K [0:63] = '{\n      |                                        ^~\n\
+        \        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042\
+        \ for more assistance.\n%Error: /workspace/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv:10:40:\
+        \ Assignment pattern missed initializing elements: 63\n                  \
+        \                                                                        \
+        \               : ... note: In instance 'sha256'\n   10 |     localparam logic\
+        \ [31:0] K [0:63] = '{\n      |                                        ^~\n\
+        %Error: Exiting due to 2 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65:\
+        \ /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/13a60f3fcbfd/Vtop.mk]\
+        \ Error 1\n"
+    Sha256CornerTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "rm -f /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256CornerTest.xml\n\
+        /usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/13a60f3fcbfd\
+        \ --top-module sha256 --timing -Wno-fatal  --timescale 1ns/1ps --vpi --public-flat-rw\
+        \ --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs\
+        \ -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"\
+        \  /workspace/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv\
+        \ /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n\
+        %Error: /workspace/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv:10:40:\
+        \ Assignment pattern missed initializing elements: 62\n                  \
+        \                                                                        \
+        \               : ... note: In instance 'sha256'\n   10 |     localparam logic\
+        \ [31:0] K [0:63] = '{\n      |                                        ^~\n\
+        \        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042\
+        \ for more assistance.\n%Error: /workspace/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv:10:40:\
+        \ Assignment pattern missed initializing elements: 63\n                  \
+        \                                                                        \
+        \               : ... note: In instance 'sha256'\n   10 |     localparam logic\
+        \ [31:0] K [0:63] = '{\n      |                                        ^~\n\
+        %Error: Exiting due to 2 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65:\
+        \ /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/13a60f3fcbfd/Vtop.mk]\
+        \ Error 1\n"
+    Sha256RandomizedTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "rm -f /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256RandomizedTest.xml\n\
+        /usr/local/bin/verilator -cc --exe -Mdir /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/13a60f3fcbfd\
+        \ --top-module sha256 --timing -Wno-fatal  --timescale 1ns/1ps --vpi --public-flat-rw\
+        \ --prefix Vtop -o Vtop -LDFLAGS \"-Wl,-rpath,/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs\
+        \ -L/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/libs -lcocotbvpi_verilator\"\
+        \  /workspace/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv\
+        \ /home/ray/anaconda3/lib/python3.10/site-packages/cocotb/share/lib/verilator/verilator.cpp\n\
+        %Error: /workspace/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv:10:40:\
+        \ Assignment pattern missed initializing elements: 62\n                  \
+        \                                                                        \
+        \               : ... note: In instance 'sha256'\n   10 |     localparam logic\
+        \ [31:0] K [0:63] = '{\n      |                                        ^~\n\
+        \        ... See the manual at https://verilator.org/verilator_doc.html?v=5.042\
+        \ for more assistance.\n%Error: /workspace/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv:10:40:\
+        \ Assignment pattern missed initializing elements: 63\n                  \
+        \                                                                        \
+        \               : ... note: In instance 'sha256'\n   10 |     localparam logic\
+        \ [31:0] K [0:63] = '{\n      |                                        ^~\n\
+        %Error: Exiting due to 2 error(s)\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:65:\
+        \ /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/build/13a60f3fcbfd/Vtop.mk]\
+        \ Error 1\n"

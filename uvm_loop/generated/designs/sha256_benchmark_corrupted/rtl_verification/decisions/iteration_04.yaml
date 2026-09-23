@@ -1,0 +1,60 @@
+schema_version: '1.0'
+action: template_bug
+root_cause: 'Sha256RandomizedTest is the only failing test (runtime_error, returncode
+  2), and the failure is NOT caused by the RTL. The frozen golden reference model''s
+  block_to_digest (reference_model.py / tb/sha256_reference_model.py, lines 41-48)
+  locates the SHA-256 padding marker with `block.index(b"\x80")`, which returns the
+  FIRST occurrence of byte 0x80 anywhere in the block. For the randomized stimulus
+  (byte range 0..255 per the plan), canonical one-block paddings whose message payload
+  contains an 0x80 byte are mis-parsed: the model truncates the message at the payload
+  0x80, then the length-field check `bit_len != len(message)*8` raises "Invalid length
+  field in padded block." The scoreboard counts these as invalid blocks (INVALID BLOCK
+  for txn_id=4 and txn_id=12), and Sha256RandomizedTest.report_phase raises AssertionError("scoreboard
+  contract violations: invalid blocks=2"), which aborts the cocotb test (TESTS=1 PASS=0
+  FAIL=1). The RTL datapath is functionally correct: 16/20 randomized transactions
+  directly MATCH the golden reference, and txn_id=12''s DUT digest equals hashlib.sha256
+  of the true message exactly, proving the RTL (not the gradable TB path) computed
+  the right digest. No RTL change can influence the scoreboard''s parsing of the observed
+  block, so no RTL repair exists. This matches the iteration-03 decision, which recorded
+  this as a frozen-TB/reference-model limitation to be handled as template_bug/no_repair
+  with no rtl.sv edits.'
+evidence:
+- 'simulation_result.json (authoritative): 10/11 tests pass; Sha256RandomizedTest
+  has status=runtime_error, returncode=2, clean_exit=false, uvm_errors=0, assertion_failures=0.
+  Log shows INVALID BLOCK txn_id=4 and txn_id=12 ("reference model rejected the padded
+  block (Invalid length field in padded block.)"), final scoreboard summary "txn_count=20
+  match=16 mismatch=2 invalid_block=2 order_error=0 error_count=2", then "TEST FAILED:
+  invalid blocks=2" -> AssertionError raised in sha256_test.py report_phase (line
+  204) -> test FAIL.'
+- 'txn_id=12 block=0xf5df83470ea569d95de9120aaaf95f4fa5e082202df03a2eb9e03cbdda80297980
+  00...01 00 (0x0000000000000100): canonical one-block padding of the 32-byte message
+  f5..79 whose payload contains 0x80 at byte index 29. block.index(b"\x80") returns
+  29, len(truncated)*8=232 != 256 (length field), hence the false rejection. Deterministic
+  replay of the frozen sequence RNG (seed 24601, DEFAULT_RANDOM_SEED) reproduces this
+  exact message, confirming the stimulus block is byte-for-byte canonical.'
+- 'Independent verification of RTL correctness: hashlib.sha256(f5df83470ea569d95de9120a
+  aaf95f4fa5e082202df03a2eb9e03cbdda802979) = 0x442e6052b83b029191a7c525b5af30936ad7ad
+  3def210d7ddfe68081351aba29, which is EXACTLY the DUT digest the scoreboard observed
+  for txn_id=12 -- i.e., the RTL computed the correct SHA-256 digest while the TB''s
+  golden reference could not grade it.'
+- 'txn_id=4 block=0xe7f462383cd9ed8b73822b80a65dfa6422d641eb2a07fac1110120aa70fef9800
+  00...0f8 (0x00000000000000f8): canonical one-block padding of a 31-byte message
+  whose payload contains 0x80 at byte index 11; block.index(b"\x80")=11, 11*8=88 !=
+  248. Its observed digest=0 is additionally explained by the plan''s reset_during_processing
+  injection (p=0.1): the seeded replay shows reset_inj=True for txn 4, and txns 17/18
+  (digest=0, DIGEST MISMATCH) likewise carry reset_inj=True -- intended abort injections,
+  i.e., catch reports, not RTL defects.'
+- 16/20 randomized transactions (txns 1,2,3,5-11,13-16,19,20) MATCH the golden reference
+  exactly across message lengths 3..55 bytes, and all directed KATs match (e.g., abc
+  txn MATCH=0xba7816bf...015ad; back-to-back 2/2 match), demonstrating the RTL W-message-schedule,
+  compression rounds, and feed-forward digest are correct over the full single-block
+  range. No assertion checker fired (assertion_failures=0), so no structural RTL violation
+  is present in this run.
+- 'Source grounding: reference_model.py block_to_digest uses `block.index(b"\x80")`
+  to find the padding marker and then requires `bit_len == len(message)*8`; this is
+  the exact mechanism that rejects canonical 0x80-containing messages. The monitor
+  captures the block from the DUT input pins (driver-settled, start-edge sampled),
+  so the scoreboard grades the stimulus block -- the RTL has no influence over block_to_digest''s
+  parsing, and no RTL change can reduce invalid_block_count.'
+confidence: high
+changes: []
