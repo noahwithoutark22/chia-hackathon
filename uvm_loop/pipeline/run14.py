@@ -3998,10 +3998,13 @@ def generate_and_validate_uvm(llm, bash, canonical_plan):
                 f"[DIAGNOSIS] LLM reported failure: {diagnosis_response.stderr}",
                 flush=True,
             )
-            raise RuntimeError(
-                "TB diagnosis LLM failed:\n"
-                f"{diagnosis_response.stderr}"
-            )
+            # Must go through the shared helper: a bare
+            # "TB diagnosis LLM failed:\n" with the empty stderr that
+            # OpenCodeLLM.prompt() returns on a swallowed timeout matches no
+            # marker, so the model is never cooled down and every supervisor
+            # restart re-picks the same dead provider. Observed live
+            # 2026-09-23: 35 identical failures, one every 17 seconds.
+            _raise_on_llm_failure(diagnosis_response, "TB diagnosis")
 
         update_plan_path = (
             HOST_WORKSPACE
@@ -4191,10 +4194,7 @@ REPAIR REQUIREMENTS:
         finally:
             repair_bash.stop()
         if not repair_response.success:
-            raise RuntimeError(
-                "TB repair LLM failed:\n"
-                f"{repair_response.stderr}"
-            )
+            _raise_on_llm_failure(repair_response, "TB repair")
 
         changed = collect_tb_changes(repair_workspace / "tb", tb_dir)
         if not changed:
@@ -4284,10 +4284,7 @@ def generate_llm_weakness_report(
         bash.stop()
 
     if not response.success:
-        raise RuntimeError(
-            "Verification analysis LLM failed:\n"
-            f"{response.stderr}"
-        )
+        _raise_on_llm_failure(response, "verification analysis")
 
     raw_report = response.result or ""
     report_path = analysis_root / "weakness_report.yaml"
@@ -4768,10 +4765,7 @@ def run_verification_improvement_loop(llm_unused, bash_unused, canonical_plan):
             decision_bash.stop()
 
         if not decision_response.success:
-            raise RuntimeError(
-                "Verification improvement decision LLM failed:\n"
-                f"{decision_response.stderr}"
-            )
+            _raise_on_llm_failure(decision_response, "verification improvement decision")
 
         decision = save_improvement_decision(
             decision_path,
@@ -4851,10 +4845,7 @@ def run_verification_improvement_loop(llm_unused, bash_unused, canonical_plan):
                 )
             )
             if not response.success:
-                raise RuntimeError(
-                    "Verification improvement LLM failed:\n"
-                    f"{response.stderr}"
-                )
+                _raise_on_llm_failure(response, "verification improvement")
             changed = collect_tb_changes(
                 improvement_root / "tb",
                 tb_dir,
@@ -5864,9 +5855,7 @@ def run_rtl_verification_loop():
             analysis_bash.stop()
 
         if not response.success:
-            raise RuntimeError(
-                f"RTL failure-analysis LLM failed:\n{response.stderr}"
-            )
+            _raise_on_llm_failure(response, "RTL failure-analysis")
 
         decision_path = decisions_dir / f"iteration_{iteration:02d}.yaml"
         decision_text = ensure_valid_rtl_repair_decision_yaml(
@@ -6050,10 +6039,7 @@ def run_rtl_verification_loop():
                     retry_bash.stop()
 
                 if not retry_response.success:
-                    raise RuntimeError(
-                        "RTL non-actionable retry LLM failed:\n"
-                        f"{retry_response.stderr}"
-                    )
+                    _raise_on_llm_failure(retry_response, "RTL non-actionable retry")
 
                 retry_decision_path = (
                     decisions_dir
@@ -6356,9 +6342,7 @@ def run_rtl_verification_loop():
             repair_bash.stop()
 
         if not repair_response.success:
-            raise RuntimeError(
-                f"RTL repair LLM failed:\n{repair_response.stderr}"
-            )
+            _raise_on_llm_failure(repair_response, "RTL repair")
 
         candidate_rtl = repair_workspace / "rtl.sv"
         if not candidate_rtl.exists():
