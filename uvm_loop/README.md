@@ -37,7 +37,9 @@ uvm_loop/
 ├── src/                     # RTL parsing, plan generation, VerificationPlan schema
 ├── uvm_generator/           # renders templates/*.j2, validates output
 ├── workers/{rtl,sim}/       # worker images
-├── config/llm_models.txt    # ordered LLM fallback list
+├── config/
+│   ├── llm_models.txt       # ordered LLM fallback list
+│   └── pyuvm_api_reference.md   # generated; inlined into every prompt
 ├── scripts/                 # add_llm_provider.sh and helpers
 ├── tests/                   # pytest suite
 ├── generated/               # all run output (gitignored)
@@ -177,6 +179,39 @@ with its key inlined in `options.apiKey` (custom providers do **not** inherit
 is not bind-mounted, unlike `auth.json`), smoke-test with a 60–90 s timeout
 (some models are slow only on a cold first call — retry once before excluding),
 then add the verified line to `config/llm_models.txt` with a dated comment.
+
+## Prompt cost: the pyuvm API reference
+
+pyuvm 5.0.0's API differs from older pyuvm and from SystemVerilog UVM in ways
+the model does not reliably know, so it used to reverse-engineer the library at
+runtime — **71% of the agent's shell tool calls on a measured run were `grep` /
+`sed` / `inspect` against pyuvm in site-packages**, repeated on every LLM call,
+every iteration, every design. Because the agentic loop re-sends its
+accumulated context on each step, step count drives token spend
+super-linearly; one such call reached 6.08M tokens over 83 steps.
+
+`config/pyuvm_api_reference.md` holds those signatures instead (~12KB, ~3.1k
+tokens), and `_hard_constraints()` in `run14.py` inlines it into all six
+generation prompts, telling the agent not to read library source to re-confirm
+them.
+
+**Regenerate after any pyuvm upgrade** — it must be produced in a worker,
+which is where pyuvm is installed:
+
+```bash
+docker exec chia-sim-$USER-0 python3 /workspace/scripts/gen_pyuvm_api_reference.py \
+  > config/pyuvm_api_reference.md
+```
+
+The generator refuses to emit if the installed library contradicts its
+hand-written preamble: it re-checks every claim against the live pyuvm and
+*exercises* the risky ones (it really calls `raise_objection()`, really
+round-trips a value through `ConfigDB`) rather than trusting signatures. A
+stale reference would be the same trap as a dead orchestrator snapshot
+(Troubleshooting #7), so failing loudly beats shipping a lie. If the file is
+missing, `run14` prints a note and carries on with the old behaviour.
+
+See [Troubleshooting #12](../docs/TROUBLESHOOTING.md#12-one-llm-call-costs-millions-of-tokens).
 
 ## Tests
 

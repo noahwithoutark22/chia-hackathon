@@ -16,6 +16,7 @@ that identifies each one and the fix. Ordered by how much time they cost.
 | 9 | `PDN-0185 Insufficient width` | ORFS | tiny die, default utilization |
 | 10 | Live run breaks after a git command | workflow | branch switch reset the working tree |
 | 11 | Every iteration scores the same, nothing converges | UVM | uncompilable RTL accepted by a score-only gate |
+| 12 | A single LLM call burns millions of tokens | UVM | agent re-derives the pyuvm API from library source |
 
 ---
 
@@ -264,3 +265,52 @@ scored an identical 55.00 with 0/16 passing.
 test exited with `returncode 2`, regardless of score. Anything less
 unambiguous still falls through to the normal score comparison, so ordinary
 functional failures are unaffected.
+
+## 12. One LLM call costs millions of tokens
+
+**Signature.** A single call runs to 80+ agent steps and several million
+tokens. Most of the steps are shell commands reading installed library source:
+
+```bash
+# count what the agent's tool calls actually touched
+grep -o '"command":"[^"]*"' <opencode output file> | grep -c site-packages
+```
+
+Measured on one call: 82 bash tool calls, of which **58 (71%)** were `grep` /
+`sed` / `python3 -c "import inspect"` against pyuvm and cocotb in
+`site-packages`, 18 (22%) read our own files under `/workspace`, and 6 were
+housekeeping.
+
+**Cause.** pyuvm 5.0.0's API differs from both older pyuvm and SystemVerilog
+UVM in ways the model does not reliably know — no `uvm_info` function, only
+`run_phase` is `async`, `ConfigDB()` is a singleton with four-argument
+`set`/`get`. Rather than guess, the agent reverse-engineers the library. Those
+are static facts about a pinned version, but the agent has no memory across
+calls, so it rediscovers them on every call, every iteration, every design. The
+cost is worse than linear: the agentic loop re-sends the accumulated context on
+each step, so step count drives token spend quadratically.
+
+This is also the root of [#6](#6-template_bug-misclassification) — the analysis
+LLM saw deprecated pyuvm APIs and, unsure whether they were fixable, called it
+a template defect.
+
+**Fix.** `scripts/gen_pyuvm_api_reference.py` extracts the real signatures from
+the pyuvm installed in the worker into `config/pyuvm_api_reference.md` (~12KB),
+which `_hard_constraints()` in `run14.py` inlines into every generation prompt,
+with an explicit instruction not to read library source to re-confirm it.
+
+**Regenerate it after any pyuvm upgrade:**
+
+```bash
+docker exec chia-sim-$USER-0 python3 /workspace/scripts/gen_pyuvm_api_reference.py \
+  > uvm_loop/config/pyuvm_api_reference.md
+```
+
+A reference describing a version the workers no longer have is the same
+stale-guidance trap as [#7](#7-dead-snapshots-mislead-the-in-loop-llm), so the
+generator hard-fails if the installed library contradicts its hand-written
+preamble rather than emitting a reference that lies.
+
+**Not fixed.** The remaining 22% — the agent re-reading files under
+`/workspace` whose paths the orchestrator already knows — would need those
+contents front-loaded into the prompts. Unmeasured, and a larger change.

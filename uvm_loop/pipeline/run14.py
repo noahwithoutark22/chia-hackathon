@@ -1,4 +1,5 @@
 from pathlib import Path
+import functools
 import ast
 import json
 import sys
@@ -49,6 +50,12 @@ CONTAINER_WORKSPACE = "/workspace"
 
 
 LLM_MODELS_FILE = HOST_WORKSPACE / "config" / "llm_models.txt"
+# Pre-extracted pyuvm API surface, inlined into every generation prompt. Without
+# it the agent rediscovers the same signatures by grepping pyuvm's source in
+# site-packages: 71% of its shell tool calls, on every LLM call, of every
+# iteration, of every design. Regenerate with
+# scripts/gen_pyuvm_api_reference.py after any pyuvm upgrade.
+PYUVM_API_REFERENCE_FILE = HOST_WORKSPACE / "config" / "pyuvm_api_reference.md"
 LLM_MODEL_STATE = HOST_WORKSPACE / "generated" / "llm_model_state.json"
 LLM_MODEL_LOG = HOST_WORKSPACE / "generated" / "llm_model_usage.jsonl"
 LLM_RATE_LIMIT_COOLDOWN_S = int(os.environ.get("LLM_RATE_LIMIT_COOLDOWN_S", "3600"))
@@ -2898,8 +2905,34 @@ Do NOT add text before or after the YAML.
 # assertions}.py instead of aes128_benchmark_corrupted's own tb dir.
 # =========================================================
 
+@functools.lru_cache(maxsize=1)
+def _pyuvm_api_reference() -> str:
+    """The generated pyuvm reference, or empty if it has not been generated.
+
+    Absence is not fatal -- the agent falls back to reading the library at
+    runtime, which is what it did before this existed. It is only slow.
+    """
+    try:
+        text = PYUVM_API_REFERENCE_FILE.read_text().strip()
+    except OSError:
+        print(
+            f"NOTE: {PYUVM_API_REFERENCE_FILE} is missing; generation prompts "
+            "will omit the pyuvm API reference and the agent will re-derive it "
+            "from library source (slow). Regenerate with "
+            "scripts/gen_pyuvm_api_reference.py."
+        )
+        return ""
+    return (
+        "\nPYUVM API REFERENCE (authoritative for the pyuvm installed in the\n"
+        "simulator worker -- trust it over anything you remember, and do NOT\n"
+        "spend tool calls reading pyuvm's source to re-confirm it):\n\n"
+        f"{text}\n"
+    )
+
+
 def _hard_constraints() -> str:
     return f"""
+{_pyuvm_api_reference()}
 COCOTB + PYUVM COMPATIBILITY REQUIREMENTS (HARD, apply to every file you write):
 - The testbench is implemented entirely in Python using cocotb + pyuvm.
   Do NOT generate any SystemVerilog UVM code: no SystemVerilog
