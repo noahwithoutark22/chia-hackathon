@@ -3206,10 +3206,7 @@ def run_stage(llm, bash, prompt, stage_name, tools=None):
         )
     )
     if not response.success:
-        raise RuntimeError(
-            f"OpenCode UVM generation stage '{stage_name}' failed:\n"
-            f"{response.stderr}"
-        )
+        _raise_on_llm_failure(response, f"UVM generation stage '{stage_name}'")
     print(f"\n===== UVM GENERATION: {stage_name.upper()} =====")
     print((response.result or "").strip())
     return response
@@ -5574,7 +5571,20 @@ def _candidate_rtl_built(analysis: dict) -> bool:
     candidate as un-built only when NOTHING ran. Anything else falls through to
     the existing score comparison.
     """
-    tests = (analysis.get("detail") or {}).get("tests") or {}
+    detail = analysis.get("detail") or {}
+    # analyze_results() nests `detail` two different ways. For a functional
+    # failure it is the raw simulation data, so tests sit at detail["tests"];
+    # for validation_error / build_failure it is
+    # {"status", "category", "data"} and the tests sit at
+    # detail["data"]["tests"]. Reading only the first shape meant this gate
+    # saw an empty dict and returned True -- "built" -- for exactly the two
+    # statuses that mean the design did NOT build.
+    tests = detail.get("tests")
+    if tests is None:
+        tests = (detail.get("data") or {}).get("tests")
+    if detail.get("status") in {"validation_error", "build_failure"}:
+        return False
+    tests = tests or {}
     if not tests:
         return True
     # If any test produced results, the design compiled -- whatever it then did.
