@@ -133,6 +133,22 @@ _MODEL_UNAVAILABLE_MARKERS = (
 )
 
 
+def _is_model_unavailable(exc: BaseException) -> bool:
+    """True when the failure is the provider dying, not bad model output.
+
+    The retry loops below exist to absorb a model that produced unusable YAML;
+    retrying makes sense there because the next sample may be fine. A dead or
+    throttled provider is the opposite: every retry fails identically, and
+    catching it locally also hides it from _record_llm_rate_limit(), so the
+    model is never cooled down and the supervisor never gets the non-zero exit
+    it needs to switch. Observed live: one rate limit burned three 30-minute
+    LLM_CALL_TIMEOUT_S windows inside candidate-plan generation while the
+    fallback list sat idle with nine usable models.
+    """
+    text = f"{repr(exc)} {exc}"
+    return any(marker in text for marker in _MODEL_UNAVAILABLE_MARKERS)
+
+
 def _record_llm_rate_limit(exc: BaseException) -> None:
     text = f"{repr(exc)} {exc}"
     if not any(marker in text for marker in _MODEL_UNAVAILABLE_MARKERS):
@@ -6655,6 +6671,8 @@ def main():
                         print(f"✓ Candidate saved to: {candidate_path}")
                     break
                 except RuntimeError as exc:
+                    if _is_model_unavailable(exc):
+                        raise   # provider is down; cool it down and let the supervisor switch
                     if regen_attempt >= MAX_CANDIDATE_REGEN_ATTEMPTS:
                         raise
                     print(
@@ -6826,6 +6844,8 @@ def main():
                                 max_attempts=5,
                             )
                         except RuntimeError as exc:
+                            if _is_model_unavailable(exc):
+                                raise   # provider is down, not bad output
                             # Syntax-repair exhausted its own 5 attempts on
                             # this repair output. Don't let that crash the
                             # whole process: fold it into this loop's own
@@ -6922,6 +6942,8 @@ def main():
                         max_attempts=5,
                     )
                 except RuntimeError as exc:
+                    if _is_model_unavailable(exc):
+                        raise   # provider is down, not bad output
                     # Same crash-loop shape as the schema-repair site above:
                     # don't let syntax-repair exhaustion on this repair
                     # attempt's output crash the whole process. Fold it

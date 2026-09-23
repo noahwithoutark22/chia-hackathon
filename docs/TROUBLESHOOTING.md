@@ -17,6 +17,7 @@ that identifies each one and the fix. Ordered by how much time they cost.
 | 10 | Live run breaks after a git command | workflow | branch switch reset the working tree |
 | 11 | Every iteration scores the same, nothing converges | UVM | uncompilable RTL accepted by a score-only gate |
 | 12 | A single LLM call burns millions of tokens | UVM | agent re-derives the pyuvm API from library source |
+| 13 | Model never switches despite repeated provider failures | UVM | retry loops swallowed the provider error |
 
 ---
 
@@ -324,3 +325,45 @@ preamble rather than emitting a reference that lies.
 **Not fixed.** The remaining 22% — the agent re-reading files under
 `/workspace` whose paths the orchestrator already knows — would need those
 contents front-loaded into the prompts. Unmeasured, and a larger change.
+
+## 13. A retry loop swallows the provider failure
+
+**Signature.** The log repeats a stage attempt with a provider-shaped reason,
+the model never changes, and `generated/llm_model_state.json` shows no new
+cooldown:
+
+```
+⚠ Candidate plan structurally invalid on attempt 1/3 (syntax-repair exhausted):
+  LLM call timed out after 1800s during LLM call; cooling down this model...
+  Discarding it and generating a fresh candidate from scratch.
+
+[2/4] Generating verification plan (attempt 2/3)...
+```
+
+Note the contradiction inside that message: the exception *says* it is cooling
+the model down, and the very next line retries the same one.
+
+**Cause.** The fixes for [#2](#2-llm-provider-stalls-mid-call) and
+[#3](#3-ensure_valid_yaml-crash-loop) interact badly. #3 wrapped three
+`ensure_valid_yaml()` call sites in `except RuntimeError` so one unusable
+generation costs a retry instead of the process. #2 later made a dead provider
+*also* surface as a `RuntimeError`. Those handlers cannot tell the two apart,
+so provider death was absorbed as if it were bad model output: the exception
+never reached `_record_llm_rate_limit()`, the model was never cooled down, and
+the process never exited non-zero, which is the only thing that makes the
+supervisor switch models.
+
+Seen live 2026-09-23: `opencode/big-pickle` rate-limited **8 seconds** into a
+call, opencode hung instead of erroring, and the 1800s timeout fired into this
+handler — which retried the same rate-limited model. Three attempts would have
+cost 90 minutes while nine usable models sat idle in the fallback list.
+
+**Fix.** `_is_model_unavailable(exc)` in `run14.py` matches the exception
+against `_MODEL_UNAVAILABLE_MARKERS`, and all three handlers re-raise when it
+is true. Bad-output retries are unaffected — that is still exactly what those
+loops absorb.
+
+**Rule for new retry loops.** A handler that catches `RuntimeError` around an
+LLM call must let provider failures through. Retrying a dead provider fails
+identically every time, and catching it locally silently disables the whole
+fallback mechanism.
