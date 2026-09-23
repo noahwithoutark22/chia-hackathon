@@ -153,7 +153,9 @@ the model once at startup and keeps it for its lifetime, so a rate limit just
 kills the run. Only a restart re-reads the state file. `orfs_loop.py` takes a
 single-shot `--model` flag and does not share this mechanism.
 
-Every LLM call is bounded by `LLM_CALL_TIMEOUT_S` (default 1800 s). A provider
+Every LLM call is bounded by `LLM_CALL_TIMEOUT_S` (default 1800 s), and
+aborted sooner when opencode's own log already shows the provider failed —
+`LLM_FAILFAST_POLL_S` / `LLM_FAILFAST_GRACE_S`, `0` to disable. A provider
 that stalls silently — returning nothing, raising nothing — would otherwise
 block forever and never reach the fallback path, so the timeout is converted
 into a recognised failure: the model is cooled down and the process exits

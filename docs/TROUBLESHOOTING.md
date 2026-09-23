@@ -86,11 +86,34 @@ Because chia's `get()` blocks indefinitely, neither case raised anything, so
 the model was never cooled down and the supervisor never got the non-zero exit
 it needs to switch models.
 
-**Fix.** `llm_get()` in `run14.py` bounds every LLM call with
-`LLM_CALL_TIMEOUT_S` (default 1800 s) and converts a timeout into a
+**Fix, part 1 — the ceiling.** `llm_get()` in `run14.py` bounds every LLM call
+with `LLM_CALL_TIMEOUT_S` (default 1800 s) and converts a timeout into a
 `RuntimeError` matching `_MODEL_UNAVAILABLE_MARKERS`. That cools the model
 down, exits non-zero, and the supervisor restart picks the next candidate from
-`config/llm_models.txt` — automatically.
+`config/llm_models.txt` — automatically. Without it a hung opencode runs for
+`LLM_TIMEOUT_SECONDS x LLM_RETRIES` = 2400 x 5 = **3.3 hours**, since chia
+retries its own subprocess timeout.
+
+**Fix, part 2 — failing fast.** The ceiling is correct but expensive: on
+2026-09-23 `opencode/big-pickle` logged `Rate limit exceeded` **one second**
+into a call and then hung, three separate times, each costing the full 30
+minutes. The verdict was knowable immediately — it was in opencode's own log
+the whole time.
+
+So `llm_get()` now polls while it waits. Every `LLM_FAILFAST_POLL_S` (20 s),
+after a `LLM_FAILFAST_GRACE_S` (60 s) grace period, `_opencode_log_failure()`
+reads each opencode container's log for a `level=ERROR` `stream error` that is
+both **newer than this call** and **names the model this call is using**. On a
+hit it cancels the Ray task and raises `Provider returned error ...`, which is
+already in the marker list — so the same cooldown-and-switch path runs, in
+seconds instead of half an hour.
+
+Both filters matter. Without the timestamp test every later call would trip
+over an old error; without the model test a failure by one provider would
+condemn another. The check is best-effort throughout — missing docker, a
+missing container or an unreadable log all return `None` and leave the call on
+its normal ceiling, because this must never turn a working call into a
+failure. Set `LLM_FAILFAST_POLL_S=0` to disable it.
 
 **Manual override**, if you need to force a switch sooner. Each process caches
 its model at startup, so edit the state *and* restart:

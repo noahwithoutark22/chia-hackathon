@@ -58,6 +58,13 @@ LLM_RATE_LIMIT_COOLDOWN_S = int(os.environ.get("LLM_RATE_LIMIT_COOLDOWN_S", "360
 # step_finish/reason=tool-calls and the tool round-trip never returns), so no
 # exception is ever raised and the model-fallback path never engages.
 LLM_CALL_TIMEOUT_S = int(os.environ.get("LLM_CALL_TIMEOUT_S", "1800"))
+# While a call is in flight, how often to ask opencode's own log whether the
+# provider has already failed, and how long to leave it alone first. The grace
+# period exists so a model that is merely slow to produce its first token is
+# never mistaken for a dead one. Set LLM_FAILFAST_POLL_S=0 to disable the
+# early-abort check and fall back to the plain ceiling.
+LLM_FAILFAST_POLL_S = int(os.environ.get("LLM_FAILFAST_POLL_S", "20"))
+LLM_FAILFAST_GRACE_S = int(os.environ.get("LLM_FAILFAST_GRACE_S", "60"))
 _SELECTED_LLM_MODEL: str | None = None
 
 
@@ -169,22 +176,111 @@ def _record_llm_rate_limit(exc: BaseException) -> None:
     print(f"LLM model {model} unavailable/rate-limited; cooling down for {LLM_RATE_LIMIT_COOLDOWN_S}s")
 
 
+def _opencode_log_failure(since_epoch: float, model: str) -> str | None:
+    """Return a provider error opencode logged after *since_epoch*, else None.
+
+    opencode writes the real verdict to its own log within a second or two of a
+    call starting, then -- for some providers -- hangs instead of exiting, so
+    nothing surfaces through chia at all. Reading that log is the only way to
+    learn early what the call already knows.
+
+    Best-effort by construction: any missing docker, container or log just
+    returns None and leaves the caller on its normal timeout. This must never
+    turn a working call into a failure, so it only reports errors that are
+    newer than the call and name the model the call is using.
+    """
+    stamp = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(since_epoch))
+    # opencode timestamps are UTC ISO-8601 and sort lexicographically, so a
+    # string compare is a correct "newer than" test without parsing.
+    script = (
+        'L=/home/ray/.local/share/opencode/log/opencode.log; [ -f "$L" ] || exit 0; '
+        'tail -400 "$L" | grep "level=ERROR" | grep "stream error" | tail -5'
+    )
+    try:
+        names = subprocess.run(
+            ["docker", "ps", "--filter", "name=opencode", "--format", "{{.Names}}"],
+            capture_output=True, text=True, timeout=15,
+        ).stdout.split()
+    except (OSError, subprocess.SubprocessError):
+        return None
+    short_model = model.split("/")[-1]
+    for name in names:
+        try:
+            out = subprocess.run(
+                ["docker", "exec", name, "sh", "-c", script],
+                capture_output=True, text=True, timeout=20,
+            ).stdout
+        except (OSError, subprocess.SubprocessError):
+            continue
+        for line in out.splitlines():
+            ts = line.partition("timestamp=")[2][:19]
+            if not ts or ts < stamp:
+                continue
+            if short_model and short_model not in line:
+                continue
+            detail = line.partition("error.error=")[2].strip('" ')[:200]
+            return detail or line.strip()[:200]
+    return None
+
+
 def llm_get(ref, stage: str = "LLM call"):
-    """get() an LLM ObjectRef with a wall-clock ceiling.
+    """get() an LLM ObjectRef with a wall-clock ceiling and an early abort.
 
     A stalled provider that never returns would otherwise block forever: the
     call raises nothing, so _record_llm_rate_limit() never sees an exception,
     the model is never cooled down, and the supervisor never gets the non-zero
     exit it needs to restart on a different model. Converting the timeout into
     a recognised failure is what makes the existing fallback chain automatic.
+
+    The ceiling alone is expensive, though. Observed live: opencode/big-pickle
+    logged "Rate limit exceeded" one second into a call and then hung, and the
+    whole LLM_CALL_TIMEOUT_S window elapsed before anything moved -- three
+    times in one afternoon. So while waiting, poll opencode's own log: once it
+    has recorded a provider error for this model that is newer than this call,
+    there is nothing left to wait for. Cancel and fail with a marker text, in
+    seconds rather than half an hour.
     """
-    try:
-        return get(ref, timeout=LLM_CALL_TIMEOUT_S)
-    except GetTimeoutError as exc:
+    started = time.time()
+    deadline = started + LLM_CALL_TIMEOUT_S
+    if LLM_FAILFAST_POLL_S <= 0:      # early abort disabled; plain ceiling only
+        try:
+            return get(ref, timeout=LLM_CALL_TIMEOUT_S)
+        except GetTimeoutError as exc:
+            raise RuntimeError(
+                f"LLM call timed out after {LLM_CALL_TIMEOUT_S}s during {stage}; "
+                "cooling down this model so the next restart picks another"
+            ) from exc
+    while True:
+        remaining = deadline - time.time()
+        if remaining <= 0:
+            raise RuntimeError(
+                f"LLM call timed out after {LLM_CALL_TIMEOUT_S}s during {stage}; "
+                "cooling down this model so the next restart picks another"
+            )
+        try:
+            return get(ref, timeout=min(LLM_FAILFAST_POLL_S, remaining))
+        except GetTimeoutError:
+            pass
+        # A healthy call can be slow to produce its first token; only look once
+        # the grace period has passed, so a slow start is never mistaken for a
+        # dead provider.
+        if time.time() - started < LLM_FAILFAST_GRACE_S:
+            continue
+        model = _SELECTED_LLM_MODEL or _load_llm_model()
+        detail = _opencode_log_failure(started, model)
+        if detail is None:
+            continue
+        try:
+            ray.cancel(ref, force=True)
+        except Exception:      # cancellation is best-effort; we exit regardless
+            pass
+        waited = int(time.time() - started)
         raise RuntimeError(
-            f"LLM call timed out after {LLM_CALL_TIMEOUT_S}s during {stage}; "
-            "cooling down this model so the next restart picks another"
-        ) from exc
+            f"Provider returned error for {model} after {waited}s during "
+            f"{stage}: {detail}. Failing fast instead of waiting out the "
+            f"{LLM_CALL_TIMEOUT_S}s ceiling; cooling down this model so the "
+            "next restart picks another"
+        )
 
 
 def _raise_on_llm_failure(response, stage: str) -> None:
