@@ -261,7 +261,16 @@ def _opencode_log_failure(since_epoch: float, model: str) -> str | None:
             if short_model and short_model not in line:
                 continue
             detail = line.partition("error.error=")[2].strip('" ')[:200]
-            return detail or line.strip()[:200]
+            if detail:
+                return detail
+            # No error.error= field. Fall back to the END of the line, not the
+            # start: opencode puts timestamp/run/session metadata first and the
+            # message last, so a head-truncation returns "timestamp=... run=..."
+            # with no error phrase in it at all. That is not merely unhelpful --
+            # _record_llm_rate_limit() classifies on this text, so a transient
+            # fault whose phrase got truncated away is billed as persistent and
+            # benches a healthy model for an hour instead of three minutes.
+            return line.strip()[-200:]
     return None
 
 
