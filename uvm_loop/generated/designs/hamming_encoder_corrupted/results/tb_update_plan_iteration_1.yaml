@@ -1,0 +1,24 @@
+version: '1.0'
+verdict: generation_bug
+root_cause:
+  category: sequence
+  summary: check_codeword method in sequences.py calls .integer on DUT output without
+    handling ValueError from unresolved bits (x/z)
+  evidence: Corrupted RTL leaves codeword[10] unassigned, producing x/z in simulation.
+    Monitor and scoreboard catch ValueError, but sequence's inline check does not,
+    causing unhandled Python exception that crashes all tests before scoreboard comparison.
+changes:
+- file: sequences.py
+  action: modify
+  reason: Add try/except handling in check_codeword to match pattern used in monitor.py
+    and scoreboard.py for handling unresolved bits
+  instructions:
+  - Wrap the .integer call in check_codeword (line 44) with try/except ValueError
+  - On ValueError, log warning and return False instead of crashing
+validation:
+  tests:
+  - run all TB tests
+  requirements:
+  - build succeeds
+  - no UVM_ERROR or UVM_FATAL
+  - no reference-model mismatch

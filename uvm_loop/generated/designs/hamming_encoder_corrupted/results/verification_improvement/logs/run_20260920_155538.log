@@ -1,0 +1,150 @@
+==============================================================================
+Starting run14
+Time          : 2026-09-20T15:55:38+05:30
+Project       : /home/auralab/Desktop/chia-hackathon/uvm_loop
+Design config : pipeline/designs/hamming_encoder_corrupted.yaml
+Design        : hamming_encoder_corrupted
+Max iterations: 40
+Run log       : /home/auralab/Desktop/chia-hackathon/uvm_loop/generated/designs/hamming_encoder_corrupted/results/verification_improvement/logs/run_20260920_155538.log
+==============================================================================
+
+=========================================================
+ CHIA verification run: hamming_encoder_corrupted
+=========================================================
+  RTL:          benchmarks/hamming_encoder_benchmark_corrupted/hamming_encoder.sv
+  Specification:benchmarks/hamming_encoder_benchmark_corrupted/hamming_spec.md
+  Reference:    benchmarks/hamming_encoder_benchmark_corrupted/hamming_reference_model.py
+  Generated TB: generated/designs/hamming_encoder_corrupted/tb
+  Plan:         generated/designs/hamming_encoder_corrupted/plans/verification_plan.yaml
+2026-09-20 15:55:39,143	INFO worker.py:1810 -- Connecting to existing Ray cluster at address: 172.16.36.158:6379...
+2026-09-20 15:55:39,169	INFO worker.py:2004 -- Connected to Ray cluster. View the dashboard at [1m[32m127.0.0.1:8265 [39m[22m
+/home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/ray/_private/worker.py:2052: FutureWarning: Tip: In future versions of Ray, Ray will no longer override accelerator visible devices env var if num_gpus=0 or num_gpus=None (default). To enable this behavior and turn off this error message, set RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
+  warnings.warn(
+/home/auralab/miniconda3/envs/chia_env/lib/python3.10/site-packages/pydantic_settings/sources/utils.py:47: IncompleteFieldDefinitionWarning: Field 'lifespan' has an incomplete definition: its annotation contains an unresolved forward reference, so settings sources may fail to correctly resolve its value. Call `model_rebuild()` on the model where the field is defined, once all the referenced types are defined.
+  warnings.warn(
+[36m(_ToolServerActor pid=310384)[0m INFO:     Started server process [310384]
+[36m(_ToolServerActor pid=310384)[0m INFO:     Waiting for application startup.
+[36m(_ToolServerActor pid=310384)[0m INFO:     Application startup complete.
+[36m(_ToolServerActor pid=310384)[0m INFO:     Uvicorn running on http://172.16.36.158:8000 (Press CTRL+C to quit)
+verification_workspace started at 172.16.36.158:8000 on node 1d5a3b8801be99d40ff1a4a2f086df666140040bbfe13a83a9196516
+LLM model selected: nvidia3/nvidia/nemotron-3-ultra-550b-a55b
+OpenCodeLLM is experimental: only exercised by unit tests so far, not validated in production.
+
+[1/4] Extracting RTL information...
+RTL information: /workspace/generated/designs/hamming_encoder_corrupted/rtl/rtl_info.json
+
+[2/4] Generating verification plan...
+[36m(extract_rtl pid=43159)[0m Wrote concise RTL information to /workspace/generated/designs/hamming_encoder_corrupted/rtl/rtl_info.json
+[36m(extract_rtl pid=43159)[0m 
+[36m(_ToolServerActor pid=310384)[0m INFO:     172.16.36.158:34010 - "POST /verification_workspace/mcp HTTP/1.1" 200 OK
+[36m(_ToolServerActor pid=310384)[0m INFO:     172.16.36.158:34010 - "POST /verification_workspace/mcp HTTP/1.1" 202 Accepted
+[36m(_ToolServerActor pid=310384)[0m INFO:     172.16.36.158:34010 - "GET /verification_workspace/mcp HTTP/1.1" 200 OK
+[36m(_ToolServerActor pid=310384)[0m INFO:     172.16.36.158:34018 - "POST /verification_workspace/mcp HTTP/1.1" 200 OK
+
+⚠ Invalid YAML from candidate generation:
+Invalid YAML: while scanning an alias
+  in "<unicode string>", line 3, column 3:
+    - **dut**: Name, file, description
+      ^
+expected alphabetic or numeric character, but found '*'
+  in "<unicode string>", line 3, column 4:
+    - **dut**: Name, file, description
+       ^
+YAML syntax repair attempt 1/5...
+✓ YAML repaired successfully for candidate generation.
+
+✓ Candidate verification plan generated.
+✓ Candidate saved to: /home/auralab/Desktop/chia-hackathon/uvm_loop/generated/designs/hamming_encoder_corrupted/plans/candidate_verification_plan.yaml
+
+[3/4] Reviewing verification plan (attempt 1)...
+[36m(_ToolServerActor pid=310384)[0m INFO:     172.16.36.158:59918 - "POST /verification_workspace/mcp HTTP/1.1" 200 OK
+[36m(_ToolServerActor pid=310384)[0m INFO:     172.16.36.158:59918 - "POST /verification_workspace/mcp HTTP/1.1" 202 Accepted
+[36m(_ToolServerActor pid=310384)[0m INFO:     172.16.36.158:59918 - "GET /verification_workspace/mcp HTTP/1.1" 200 OK
+[36m(_ToolServerActor pid=310384)[0m INFO:     172.16.36.158:59922 - "POST /verification_workspace/mcp HTTP/1.1" 200 OK
+
+===== REVIEW =====
+ISSUES_FOUND
+
+1. **Empty DUT identity fields**: The candidate plan has `dut.name: ""`, `dut.file: ""`, `dut.description: ""`. The RTL and rtl_info.json both confirm the module name is `hamming_encoder`. A testbench generator would not know which module to instantiate.
+
+2. **Incorrect clock/reset description**: The plan states `clock_and_reset: "Clock/reset for testbench infrastructure (DUT is combinational)"`. The RTL has no clock or reset ports. The spec explicitly states: "The encoder is purely combinational. No clock, reset, handshake, or external memory is required." This mischaracterization could cause a generator to add spurious clock/reset connections to the DUT.
+
+3. **Reset glitch injection for a reset-less DUT**: The `randomized_testing_strategy` includes "reset/input glitch injection". The DUT has no reset signal (purely combinational). Injecting reset glitches is not possible and would cause a generator to drive a non-existent signal.
+
+✗ Verification plan rejected.
+
+Repairing candidate plan...
+Repair attempt 1/5...
+
+⚠ Invalid YAML from semantic repair:
+Invalid YAML: while scanning for the next token
+found character '`' that cannot start any token
+  in "<unicode string>", line 3, column 43:
+     ...  DUT identity fields** - Fixed: `dut.name`, `dut.file`, and `dut ... 
+                                         ^
+YAML syntax repair attempt 1/5...
+✓ YAML repaired successfully for semantic repair.
+Updated candidate saved to: /home/auralab/Desktop/chia-hackathon/uvm_loop/generated/designs/hamming_encoder_corrupted/plans/candidate_verification_plan.yaml
+
+[3/4] Reviewing verification plan (attempt 2)...
+[36m(_ToolServerActor pid=310384)[0m INFO:     172.16.36.158:43906 - "POST /verification_workspace/mcp HTTP/1.1" 200 OK
+[36m(_ToolServerActor pid=310384)[0m INFO:     172.16.36.158:43906 - "POST /verification_workspace/mcp HTTP/1.1" 202 Accepted
+[36m(_ToolServerActor pid=310384)[0m INFO:     172.16.36.158:43906 - "GET /verification_workspace/mcp HTTP/1.1" 200 OK
+[36m(_ToolServerActor pid=310384)[0m INFO:     172.16.36.158:43910 - "POST /verification_workspace/mcp HTTP/1.1" 200 OK
+
+===== REVIEW =====
+ISSUES_FOUND
+
+1. **Reference model file name is incorrect**: The candidate plan states `file: "hamming_encoder_ref.py"` but the actual reference model file is `hamming_reference_model.py` (per the benchmark directory and spec section 7). A testbench generator would fail to locate the reference model.
+
+2. **Missing parity position 64 in reference model logic description**: The candidate describes parity bits at "positions 1,2,4,8,16,32" but both the spec (section 3, 14-15) and RTL (`is_parity_position` function) include position 64 as the 7th Hamming parity position. The reference model `PARITY_POSITIONS = {1, 2, 4, 8, 16, 32, 64}` confirms this.
+
+3. **Semantically incorrect "duration_cycles" for combinational DUT**: The randomized testing strategy specifies `duration_cycles: [1, 3]` for input glitch injection. The DUT is purely combinational with no clock (spec section 2: "The encoder is purely combinational. No clock, reset, handshake..."). "Cycles" implies clocked behavior; a testbench generator would incorrectly model temporal glitch injection over clock cycles that don't exist.
+
+✗ Verification plan rejected.
+
+Repairing candidate plan...
+Repair attempt 2/5...
+
+⚠ Invalid YAML from semantic repair:
+Plan must be a YAML mapping.
+YAML syntax repair attempt 1/5...
+
+⚠ Invalid YAML from semantic repair:
+Missing required top-level field: dut.
+YAML syntax repair attempt 2/5...
+
+⚠ Invalid YAML from semantic repair:
+Missing required top-level field: parameters.
+YAML syntax repair attempt 3/5...
+
+⚠ Invalid YAML from semantic repair:
+Missing required top-level field: clock_and_reset.
+YAML syntax repair attempt 4/5...
+
+⚠ Invalid YAML from semantic repair:
+Missing required top-level field: ports.
+YAML syntax repair attempt 5/5...
+[36m(_ToolServerActor pid=310384)[0m INFO:     Shutting down
+Traceback (most recent call last):
+  File "/home/auralab/miniconda3/envs/chia_env/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/home/auralab/miniconda3/envs/chia_env/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "/home/auralab/Desktop/chia-hackathon/uvm_loop/pipeline/run14.py", line 6564, in <module>
+    f"\n⚠ Candidate plan structurally invalid on attempt "
+  File "/home/auralab/Desktop/chia-hackathon/uvm_loop/pipeline/run14.py", line 6535, in main
+    candidate = ensure_valid_yaml(
+  File "/home/auralab/Desktop/chia-hackathon/uvm_loop/pipeline/run14.py", line 2730, in ensure_valid_yaml
+    
+RuntimeError: Unable to produce valid YAML for semantic repair after 5 syntax-repair attempts.
+
+Last YAML error:
+Missing required top-level field: functional_behavior.
+------------------------------------------------------------------------------
+run14 exit status: 1
+Time: 2026-09-20T16:18:33+05:30
+Status: PROCESS FAILURE
+Supervisor: restarting after 10s.
+------------------------------------------------------------------------------
+

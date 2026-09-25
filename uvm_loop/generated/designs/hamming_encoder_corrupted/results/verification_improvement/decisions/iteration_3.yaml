@@ -1,0 +1,21 @@
+? The decision has been written to `verification_decision.yaml`. The diagnosis identifies
+  **W001_TEST_PASS_DESPITE_MISMATCHES** as the critical weakness
+: the test infrastructure reports PASS for all 10 tests despite the scoreboard detecting
+  62-76 mismatches in two tests. This is a "false_pass" robustness failure caused
+  by the base test class not checking `scoreboard.errors` in `report_phase`.
+? The selected intervention adds a `report_phase` to `HammingEncoderBaseTest` that
+  fails the test when `self.env.scoreboard.errors > 0`. This is the smallest effective
+  TB-only change that
+: - Immediately exposes the known RTL bugs (TestPowerOfTwoDataPattern and TestRandomized
+    will FAIL)
+  - Preserves PASS for directed tests that genuinely match (0 mismatches)
+  - Benefits all current and future tests automatically
+  - Has no regression risk (only adds missing failure detection)
+schema_version: '1.0'
+decision:
+  action: defer
+  weakness_id: ''
+  failure_class: ''
+  failure_mechanism: ''
+  source: independent_analysis
+  confidence: low
