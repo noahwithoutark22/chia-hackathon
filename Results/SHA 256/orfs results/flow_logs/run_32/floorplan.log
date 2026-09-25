@@ -1,0 +1,307 @@
+make: Entering directory '/root/OpenROAD-flow-scripts/flow'
+/root/OpenROAD-flow-scripts/flow/scripts/flow.sh 2_1_floorplan floorplan
+Running floorplan.tcl, stage 2_1_floorplan
+read_liberty /root/OpenROAD-flow-scripts/flow/platforms/sky130hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
+read_db ./results/sky130hd/chia_sha256_benchmark_corrupted/slot0/1_synth.odb
+read_sdc ./results/sky130hd/chia_sha256_benchmark_corrupted/slot0/1_synth.sdc
+source /root/OpenROAD-flow-scripts/flow/platforms/sky130hd/setRC.tcl
+Master sky130_ef_sc_hd__decap_12 is loaded but not used in the design
+
+==========================================================================
+Floorplan check_setup
+--------------------------------------------------------------------------
+number instances in verilog is 15170
+[INFO IFP-0107] Defining die area using utilization: 50.00% and aspect ratio: 1.
+[WARNING IFP-0028] Core area lower left (1.000, 1.000) snapped to (1.380, 2.720).
+[INFO IFP-0001] Added 211 rows of 1251 site unithd.
+[INFO IFP-0100] Die BBox:  (  0.000  0.000 ) ( 578.080 578.080 ) um
+[INFO IFP-0101] Core BBox: (  1.380  2.720 ) ( 576.840 576.640 ) um
+[INFO IFP-0102] Core area:                       330268.003 um^2
+[INFO IFP-0103] Total instances area:            165934.144 um^2
+[INFO IFP-0104] Effective utilization:                0.502
+[INFO IFP-0105] Number of instances:                  15170
+source /root/OpenROAD-flow-scripts/flow/platforms/sky130hd/make_tracks.tcl
+source /root/OpenROAD-flow-scripts/flow/platforms/sky130hd/fastroute.tcl
+Repair tie lo fanout...
+Repair tie hi fanout...
+[INFO RSZ-0042] Inserted 1 tie sky130_fd_sc_hd__conb_1 instances.
+repair_timing -setup_margin 0.25 -hold_margin 0 -repair_tns 100 -match_cell_footprint -setup -skip_last_gasp -sequence unbuffer,sizeup,swap,vt_swap -verbose
+[WARNING EST-0027] no estimated parasitics. Using wire load models.
+[INFO RSZ-0100] Repair move sequence: UnbufferMove SizeUpMove SwapPinsMove 
+[INFO RSZ-0094] Found 72 endpoints with setup violations.
+[INFO RSZ-0099] Repairing 72 out of 72 (100.00%) violating endpoints...
+   Iter   | Removed | Resized | Inserted | Cloned |  Pin  |   Area   |    WNS   |   StTNS    |   EnTNS    |  Viol  |  Worst  
+          | Buffers |  Gates  | Buffers  |  Gates | Swaps |          |          |            |            | Endpts | St/EnPt 
+------------------------------------------------------------------------------------------------------------------------------
+       0* |       0 |       0 |        0 |      0 |     0 |    +0.0% |   -1.583 |       -2.5 |      -40.4 |     72 | digest\[255\]$_DFFE_PN0P_/D
+      10* |       0 |       9 |        0 |      0 |     0 |    +0.0% |   -1.251 |       -2.0 |      -22.5 |     72 | digest\[255\]$_DFFE_PN0P_/D
+      20* |       0 |      19 |        0 |      0 |     0 |    +0.0% |   -1.068 |       -1.8 |      -15.1 |     72 | digest\[255\]$_DFFE_PN0P_/D
+      30* |       0 |      29 |        0 |      0 |     0 |    +0.0% |   -0.903 |       -1.6 |       -9.8 |     72 | digest\[255\]$_DFFE_PN0P_/D
+      40* |       0 |      39 |        0 |      0 |     0 |    +0.0% |   -0.686 |       -1.2 |       -5.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+      50* |       0 |      49 |        0 |      0 |     0 |    +0.0% |   -0.579 |       -1.1 |       -3.4 |     72 | digest\[255\]$_DFFE_PN0P_/D
+      60* |       0 |      59 |        0 |      0 |     0 |    +0.0% |   -0.297 |       -0.4 |       -0.9 |     72 | digest\[255\]$_DFFE_PN0P_/D
+      70* |       0 |      69 |        0 |      0 |     0 |    +0.1% |   -0.166 |       -0.2 |       -0.3 |     72 | digest\[255\]$_DFFE_PN0P_/D
+      80* |       0 |      79 |        0 |      0 |     0 |    +0.1% |   -0.026 |       -0.0 |       -0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+      90* |       0 |      88 |        0 |      0 |     1 |    +0.1% |    0.061 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     100* |       0 |      96 |        0 |      0 |     3 |    +0.1% |    0.156 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     106* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     107* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     108* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     109* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     110* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     110* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     111* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     112* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     113* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     114* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     115* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     116* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     117* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     118* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     119* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     120* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     120* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     121* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     122* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     123* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     124* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     125* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     126* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     127* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     128* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     129* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     130* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     130* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     131* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     132* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     133* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     134* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     135* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     136* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     137* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     138* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     139* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     140* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     140* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     141* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     142* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     143* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     144* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     145* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     146* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     147* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     148* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     149* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     150* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     150* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     151* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     152* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     153* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     154* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     155* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     156* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     157* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     158* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     159* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     160* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     160* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     161* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     162* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     163* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     164* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     165* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     166* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     167* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     168* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     169* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     170* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     170* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     171* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     172* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     173* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     174* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     175* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     176* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     177* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+     177* |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |     72 | digest\[255\]$_DFFE_PN0P_/D
+    final |       0 |     100 |        0 |      0 |     5 |    +0.1% |    0.257 |        0.0 |        0.0 |      0 | digest\[255\]$_DFFE_PN0P_/D
+------------------------------------------------------------------------------------------------------------------------------
+[INFO RSZ-0051] Resized 100 instances: 100 up, 0 up match, 0 down, 0 VT
+[INFO RSZ-0043] Swapped pins on 5 instances.
+[INFO RSZ-0505] Runtime: 4.43s
+Default units for flow
+ time 1ns
+ capacitance 1pF
+ resistance 1kohm
+ voltage 1v
+ current 1mA
+ power 1nW
+ distance 1um
+   Layer   | Unit Resistance | Unit Capacitance 
+           |       (kohm/um) |          (pF/um)
+------------------------------------------------
+       li1 |        7.18e-02 |         1.50e-04
+      met1 |        1.21e-03 |         1.72e-04
+      met2 |        1.22e-03 |         1.36e-04
+      met3 |        1.66e-04 |         2.15e-04
+      met4 |        1.68e-04 |         1.48e-04
+      met5 |        1.84e-05 |         1.54e-04
+------------------------------------------------
+
+   Layer   | Via Resistance 
+           |         (kohm) 
+----------------------------
+      mcon |       9.25e-03 
+       via |       4.50e-03 
+      via2 |       3.37e-03 
+      via3 |       3.77e-04 
+      via4 |       5.80e-06 
+----------------------------
+Report metrics stage 2, floorplan final...
+
+==========================================================================
+floorplan final report_design_area
+--------------------------------------------------------------------------
+Design area 166109 um^2 50% utilization.
+write_db ./results/sky130hd/chia_sha256_benchmark_corrupted/slot0/2_1_floorplan.odb
+write_sdc -no_timestamp ./results/sky130hd/chia_sha256_benchmark_corrupted/slot0/2_1_floorplan.sdc
+Log                       Ext     Elapsed/s Peak Memory/MB sha1sum result [0:20)
+2_1_floorplan             .odb            7            201 bd608957d35daaf6a70f
+2_1_floorplan             .sdc                             993cdb37873c80db32c3
+/root/OpenROAD-flow-scripts/flow/scripts/flow.sh 2_2_floorplan_macro macro_place
+Running macro_place.tcl, stage 2_2_floorplan_macro
+read_liberty /root/OpenROAD-flow-scripts/flow/platforms/sky130hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
+read_db ./results/sky130hd/chia_sha256_benchmark_corrupted/slot0/2_1_floorplan.odb
+read_sdc ./results/sky130hd/chia_sha256_benchmark_corrupted/slot0/2_1_floorplan.sdc
+source /root/OpenROAD-flow-scripts/flow/platforms/sky130hd/setRC.tcl
+No macros found: Skipping macro_placement
+Design area 166109 um^2 50% utilization.
+write_db ./results/sky130hd/chia_sha256_benchmark_corrupted/slot0/2_2_floorplan_macro.odb
+Log                       Ext     Elapsed/s Peak Memory/MB sha1sum result [0:20)
+2_2_floorplan_macro       .odb            0            147 bd608957d35daaf6a70f
+/root/OpenROAD-flow-scripts/flow/scripts/flow.sh 2_3_floorplan_tapcell tapcell
+Running tapcell.tcl, stage 2_3_floorplan_tapcell
+read_liberty /root/OpenROAD-flow-scripts/flow/platforms/sky130hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
+read_db ./results/sky130hd/chia_sha256_benchmark_corrupted/slot0/2_2_floorplan_macro.odb
+read_sdc ./results/sky130hd/chia_sha256_benchmark_corrupted/slot0/2_1_floorplan.sdc
+source /root/OpenROAD-flow-scripts/flow/platforms/sky130hd/setRC.tcl
+[INFO TAP-0005] Inserted 4366 tapcells.
+Design area 171572 um^2 52% utilization.
+write_db ./results/sky130hd/chia_sha256_benchmark_corrupted/slot0/2_3_floorplan_tapcell.odb
+Log                       Ext     Elapsed/s Peak Memory/MB sha1sum result [0:20)
+2_3_floorplan_tapcell     .odb            0            140 03a710d369b4bdad2ef3
+/root/OpenROAD-flow-scripts/flow/scripts/flow.sh 2_4_floorplan_pdn pdn
+Running pdn.tcl, stage 2_4_floorplan_pdn
+read_liberty /root/OpenROAD-flow-scripts/flow/platforms/sky130hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
+read_db ./results/sky130hd/chia_sha256_benchmark_corrupted/slot0/2_3_floorplan_tapcell.odb
+read_sdc ./results/sky130hd/chia_sha256_benchmark_corrupted/slot0/2_1_floorplan.sdc
+source /root/OpenROAD-flow-scripts/flow/platforms/sky130hd/setRC.tcl
+[WARNING PDN-1051] No instances found for grid (CORE_macro_grid_1).
+[WARNING PDN-1051] No instances found for grid (CORE_macro_grid_2).
+[INFO PDN-0001] Inserting grid: grid
+[INFO PDN-0500] Runtime: 0.07s
+Design area 171572 um^2 52% utilization.
+write_db ./results/sky130hd/chia_sha256_benchmark_corrupted/slot0/2_4_floorplan_pdn.odb
+Log                       Ext     Elapsed/s Peak Memory/MB sha1sum result [0:20)
+2_4_floorplan_pdn         .odb            0            165 893671a02c5c6f853404
+cp ./results/sky130hd/chia_sha256_benchmark_corrupted/slot0/2_4_floorplan_pdn.odb ./results/sky130hd/chia_sha256_benchmark_corrupted/slot0/2_floorplan.odb
+cp ./results/sky130hd/chia_sha256_benchmark_corrupted/slot0/2_1_floorplan.sdc ./results/sky130hd/chia_sha256_benchmark_corrupted/slot0/2_floorplan.sdc
+make: Leaving directory '/root/OpenROAD-flow-scripts/flow'
+
+STDERR:
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+Elapsed time: 0:07.15[h:]min:sec. CPU time: user 7.04 sys 0.10 (99%). Peak memory: 206840KB.
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+Elapsed time: 0:00.30[h:]min:sec. CPU time: user 0.26 sys 0.04 (97%). Peak memory: 151124KB.
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+Elapsed time: 0:00.29[h:]min:sec. CPU time: user 0.25 sys 0.04 (99%). Peak memory: 143952KB.
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+Elapsed time: 0:00.45[h:]min:sec. CPU time: user 0.39 sys 0.05 (99%). Peak memory: 169520KB.
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)

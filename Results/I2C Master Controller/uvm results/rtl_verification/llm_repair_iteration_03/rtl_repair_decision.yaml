@@ -1,0 +1,62 @@
+schema_version: '1.0'
+action: repair
+root_cause: 'RTL defect (plan DIS-18 + DIS-19, verification_plan.yaml lines 1389-1403;
+  CONTRACT.md lines 268-271): the transaction-engine clock divider can never reach
+  its terminal count for CLK_DIV=4, so the FSM is stuck in IDLE forever. div_cnt is
+  declared only $clog2(CLK_DIV)=2 bits wide (rtl.sv line 40), the advance condition
+  is `div_cnt == CLK_DIV` (line 64) which compares a 0..3 counter against 4 (unreachable),
+  and the counter increments by `2''d2` (line 149), producing the sequence 0->2->0->2->...
+  which never equals the terminal value. Consequently the IDLE arm that honors start
+  (busy<=1) is never executed, busy never rises, and every transaction test times
+  out at the start-acceptance stage.'
+evidence:
+- 'simulation_result.json + tb/.chia_sim/*.xml: 14/15 tests (WriteBasicTest, WriteZeroTest,
+  WriteMaxTest, ReadBasicTest, ReadMaxTest, WriteAddrNackTest, WriteDataNackTest,
+  ReadAddrNackTest, StartWhileBusyTest, ResetDuringTransactionTest, DonePulseCheckTest,
+  AddressMsbFirstCheckTest, I2CCornerTest, I2CRandomTest) all fail identically: ''I2CDriverTimeout[start-acceptance]:
+  busy never rose (0->1) within 64 cycles of the start offer; the DUT did not accept
+  the transaction (hung start)'' raised in tb/i2c_driver.py _wait_busy_rise (lines
+  480-497). Every item shows busy=0 at timeout (e.g. done=0 busy=0 ack_error=0 sda_out=0
+  sda_oe=0 scl_out=0 scl_oe=0).'
+- ResetIdleCheckTest (TC-01) passes with failures=0 (ResetIdleCheckTest.xml) because
+  it only checks reset/idle outputs set directly by the reset arm (busy=0, done=0,
+  ack_error=0, rx_data=0); it never needs the FSM to advance, consistent with a stuck-in-IDLE
+  engine.
+- 'Static RTL trace (rtl.sv lines 64-65 and 148-150): at CLK_DIV=4, div_cnt[1:0] starts
+  at 0; cycle1 div_cnt=0!=4 -> +=2 => 2; cycle2 div_cnt=2!=4 -> 2+2=4 truncated to
+  2 bits => 0; cycle3 0->2, etc. `div_cnt == CLK_DIV` is never true, so the case statement
+  (including the IDLE arm that sets busy<=1 when start) is never reached.'
+- 'Intended behavior defined by specification.md section 9 (''CLK_DIV determines the
+  number of system-clock cycles between transaction engine state advances''), verification_plan.yaml
+  DIS-18 (''The engine advances every CLK_DIV cycles, i.e., the divider counts 0..CLK_DIV-1
+  ... Compare div_cnt against CLK_DIV-1'') and DIS-19 (''Increment div_cnt by one
+  ... the counter can skip the terminal value, stalling the state engine''), and tb/CONTRACT.md
+  lines 268-271 (''The transaction engine never advances for CLK_DIV in {4,8,16} ...
+  terminal count is unreachable (e.g. CLK_DIV=4: 2-bit counter 0->2->0->..., never
+  4). The FSM stays in IDLE; start is never honored and busy never rises.''). The
+  reference model is transaction-level and does not model the divider, so it neither
+  supports nor contradicts; spec+plan+CORRACT define the intended behavior the RTL
+  violates.'
+- 'This is a genuine RTL defect, not a TB/toolchain issue: cocotb+pyuvm compiled and
+  ran cleanly, and the identical failure signature across all 14 stimulus tests is
+  exactly the documented DIS-18/DIS-19 stall. Fixing only DIS-18 or only DIS-19 is
+  insufficient with the 2-bit counter (0..3 never equals 4; +2 sequence 0,2,0,2 never
+  equals 3), so both lines must be repaired together; other discrepancies (DIS-01..14,
+  DIS-16, DIS-17) are not demonstrated by this iteration''s evidence and stay out
+  of scope.'
+confidence: high
+changes:
+- file: rtl.sv
+  action: modify
+  instructions:
+  - 'Fix the divider terminal count (DIS-18): change rtl.sv line 64 `if (div_cnt ==
+    CLK_DIV) begin` to `if (div_cnt == CLK_DIV - 1) begin` so the state engine advances
+    when the counter completes 0..CLK_DIV-1, i.e., every CLK_DIV system-clock cycles
+    per spec section 9.'
+  - 'Fix the divider increment (DIS-19): change rtl.sv line 149 `div_cnt <= div_cnt
+    + 2''d2;` to `div_cnt <= div_cnt + 1''b1;` so the counter counts 0,1,...,CLK_DIV-1
+    and actually reaches the terminal value (with CLK_DIV=4: 0->1->2->3==CLK_DIV-1
+    -> advance and reset, one FSM advance every 4 cycles).'
+  - 'Do not modify any other logic: the IDLE arm that asserts busy on start is correct
+    once the FSM can advance, and the DIV divider repair is the minimal change that
+    unblocks transaction acceptance demonstrated by this iteration''s failures.'

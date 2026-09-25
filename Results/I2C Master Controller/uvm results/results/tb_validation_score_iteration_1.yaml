@@ -1,0 +1,1307 @@
+schema_version: '1.0'
+iteration: 1
+quality_score: 55.0
+metrics:
+  tests_total: 15
+  tests_passed: 0
+  tests_failed: 15
+  functional_coverage:
+    available: false
+    percentage: null
+  planned_coverage_points: 12
+  generated_coverage_points: 12
+  planned_coverage_crosses: 4
+  generated_coverage_crosses: 4
+  python_assertions: 105
+  checker_coroutines: 15
+  test_classes: 16
+  sequences: 14
+  planned_assertions: 15
+  test_health_score: 0.0
+  coverage_quality_score: 100.0
+  assertion_quality_score: 100.0
+  scenario_quality_score: 0.0
+  scenario_coverage:
+    planned: 13
+    generated: 13
+    executed: 0
+    score: 0.0
+    planned_ids:
+    - TC-01
+    - TC-02
+    - TC-03
+    - TC-04
+    - TC-05
+    - TC-06
+    - TC-07
+    - TC-08
+    - TC-09
+    - TC-10
+    - TC-11
+    - TC-12
+    - TC-13
+    generated_ids:
+    - TC-01
+    - TC-02
+    - TC-03
+    - TC-04
+    - TC-05
+    - TC-06
+    - TC-07
+    - TC-08
+    - TC-09
+    - TC-10
+    - TC-11
+    - TC-12
+    - TC-13
+    executed_ids: []
+  parameter_coverage:
+    available: false
+    score: 100.0
+    planned: {}
+    observed: {}
+  tb_quality_score: 55.0
+weaknesses:
+- id: W-TEST-HEALTH
+  category: test_health
+  severity: high
+  description: 15 of 15 runnable tests did not complete successfully.
+  evidence:
+    passed: 0
+    total: 15
+- id: W-SCENARIO-COVERAGE
+  category: stimulus
+  severity: medium
+  description: Planned scenarios are not all represented by successfully executed
+    generated tests.
+  scenarios:
+  - TC-01
+  - TC-02
+  - TC-03
+  - TC-04
+  - TC-05
+  - TC-06
+  - TC-07
+  - TC-08
+  - TC-09
+  - TC-10
+  - TC-11
+  - TC-12
+  - TC-13
+  evidence:
+    planned: 13
+    generated: 13
+    executed: 0
+- id: W-COVERAGE-METRIC
+  category: measurement
+  severity: medium
+  description: No machine-readable functional coverage percentage was observed in
+    simulation output.
+  action: Add deterministic coverage export/reporting to the TB without weakening
+    existing checks.
+authoritative_inputs:
+- specification
+- reference_model
+- verification_plan
+rtl_exposed_to_llm: false
+simulation_evidence:
+  status: functional_failure
+  tests:
+    ResetIdleCheckTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: " ..rupted/tb/i2c_scoreboard.py(352) [uvm_test_top.i2c_env.i2c_scoreboard]:\
+        \ connected monitor ap/hung_ap/reset_ap -> scoreboard FIFOs\n    90.00ns INFO\
+        \     ..orrupted/tb/i2c_coverage.py(632) [uvm_test_top.i2c_env.i2c_coverage]:\
+        \ connected monitor ap/reset_ap -> coverage FIFOs\n    90.00ns INFO     ..ark_corrupted/tb/i2c_env.py(147)\
+        \ [uvm_test_top.i2c_env]: I2CEnv connect_phase: 'i2c_driver' set; monitor\
+        \ ap/hung_ap/reset_ap wired into scoreboard and coverage sampler\n    90.00ns\
+        \ INFO     ..upted/tb/i2c_assertions.py(1194) [uvm_test_top.i2c_env]: WATCHDOG:\
+        \ armed for 10000 clock cycles\n   100.00ns WARNING  py.warnings         \
+        \               /workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_pins.py:165:\
+        \ DeprecationWarning: `logic_array.binstr` getter is deprecated. Use `str(logic_array)`\
+        \ instead.\n                                                          if hasattr(pin_value,\
+        \ \"binstr\"):\n   130.00ns INFO     .._corrupted/tb/i2c_driver.py(231) [uvm_test_top.i2c_env.i2c_agent.driver]:\
+        \ reset asserted for 4 cycles\n   140.00ns ERROR    ..rupted/tb/i2c_assertions.py(454)\
+        \ [uvm_test_top.i2c_env]: [assertion a_open_drain_release] FAILED: SDA resolved\
+        \ level 0 while busy==0 (sda_oe=1, sda_out=0); the line must be released (driven\
+        \ high via pull-up) while idle\n   140.00ns WARNING  py.warnings         \
+        \               /workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_env.py:180:\
+        \ DeprecationWarning: `task.kill()` is deprecated in favor of `task.cancel()`\n\
+        \                                                          self._watchdog_task.kill()\n\
+        \   top.cg_transaction : <cocotb_coverage.coverage.CoverItem object at 0x7645cc11dea0>,\
+        \ coverage=0, size=28 \n      top.cg_transaction.bin_ack_error : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7645cc11d660>, coverage=0, size=2 \n      top.cg_transaction.bin_rw\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7645cc11faf0>, coverage=0,\
+        \ size=2 \n      top.cg_transaction.bin_rx_data : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7645cc11cb20>, coverage=0, size=2 \n      top.cg_transaction.bin_slave_addr\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7645cc11fb20>, coverage=0,\
+        \ size=3 \n      top.cg_transaction.bin_tx_data : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7645cc11e590>, coverage=0, size=3 \n      top.cg_transaction.cross_addr_rw\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x7645cc11f340>, coverage=0,\
+        \ size=6 \n      top.cg_transaction.cross_data_ack : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x7645cc11fe20>, coverage=0, size=6 \n      top.cg_transaction.cross_rw_ack_error\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x7645cc11e770>, coverage=0,\
+        \ size=4 \n   top.cg_control_protocol : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7645cc11db10>, coverage=1, size=13 \n      top.cg_control_protocol.bin_addr_ack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7645cc11e560>, coverage=0,\
+        \ size=2 \n      top.cg_control_protocol.bin_busy : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7645cc11d630>, coverage=0, size=1 \n      top.cg_control_protocol.bin_data_ack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7645cc11c850>, coverage=0,\
+        \ size=2 \n      top.cg_control_protocol.bin_done : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7645cc11ee90>, coverage=1, size=1 \n      top.cg_control_protocol.bin_master_nack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7645cc11ca00>, coverage=0,\
+        \ size=1 \n      top.cg_control_protocol.bin_reset_injected : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7645cc11ed70>, coverage=0, size=1 \n      top.cg_control_protocol.bin_start_while_busy\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7645cc11e020>, coverage=0,\
+        \ size=1 \n      top.cg_control_protocol.cross_addr_data_ack : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x7645cc11ffd0>, coverage=0, size=4 \n   140.00ns WARNING  cocotb.regression\
+        \                  test_top.i2c_tb_top failed\n                          \
+        \                              Traceback (most recent call last):\n      \
+        \                                                    File \"/workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_assertions.py\"\
+        , line 878, in _check_a_open_drain_release\n                             \
+        \                               self._fail(\n                            \
+        \                              File \"/workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_assertions.py\"\
+        , line 455, in _fail\n                                                   \
+        \         raise AssertionError(f\"assertion '{name}' failed: {message}\")\n\
+        \                                                        AssertionError: assertion\
+        \ 'a_open_drain_release' failed: SDA resolved level 0 while busy==0 (sda_oe=1,\
+        \ sda_out=0); the line must be released (driven high via pull-up) while idle\n\
+        \   140.00ns INFO     cocotb.regression                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.i2c_tb_top\
+        \            FAIL         140.00           0.02       9148.02  **\n      \
+        \                                                  **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=0\
+        \ FAIL=1 SKIP=0                140.00           0.02       8953.85  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:74:\
+        \ /workspace/generated/designs/i2c_benchmark_corrupted/tb/.chia_sim/ResetIdleCheckTest.xml]\
+        \ Error 1\n"
+    WriteBasicTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "     ..rupted/tb/i2c_scoreboard.py(352) [uvm_test_top.i2c_env.i2c_scoreboard]:\
+        \ connected monitor ap/hung_ap/reset_ap -> scoreboard FIFOs\n    90.00ns INFO\
+        \     ..orrupted/tb/i2c_coverage.py(632) [uvm_test_top.i2c_env.i2c_coverage]:\
+        \ connected monitor ap/reset_ap -> coverage FIFOs\n    90.00ns INFO     ..ark_corrupted/tb/i2c_env.py(147)\
+        \ [uvm_test_top.i2c_env]: I2CEnv connect_phase: 'i2c_driver' set; monitor\
+        \ ap/hung_ap/reset_ap wired into scoreboard and coverage sampler\n    90.00ns\
+        \ INFO     ..upted/tb/i2c_assertions.py(1194) [uvm_test_top.i2c_env]: WATCHDOG:\
+        \ armed for 10000 clock cycles\n   100.00ns WARNING  py.warnings         \
+        \               /workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_pins.py:165:\
+        \ DeprecationWarning: `logic_array.binstr` getter is deprecated. Use `str(logic_array)`\
+        \ instead.\n                                                          if hasattr(pin_value,\
+        \ \"binstr\"):\n   130.00ns INFO     .._corrupted/tb/i2c_driver.py(231) [uvm_test_top.i2c_env.i2c_agent.driver]:\
+        \ reset asserted for 4 cycles\n   140.00ns ERROR    ..rupted/tb/i2c_assertions.py(454)\
+        \ [uvm_test_top.i2c_env]: [assertion a_open_drain_release] FAILED: SDA resolved\
+        \ level 0 while busy==0 (sda_oe=1, sda_out=0); the line must be released (driven\
+        \ high via pull-up) while idle\n   140.00ns WARNING  py.warnings         \
+        \               /workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_env.py:180:\
+        \ DeprecationWarning: `task.kill()` is deprecated in favor of `task.cancel()`\n\
+        \                                                          self._watchdog_task.kill()\n\
+        \   top.cg_transaction : <cocotb_coverage.coverage.CoverItem object at 0x7bf4ed34d000>,\
+        \ coverage=0, size=28 \n      top.cg_transaction.bin_ack_error : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7bf4ed34d7b0>, coverage=0, size=2 \n      top.cg_transaction.bin_rw\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7bf4ed34d2d0>, coverage=0,\
+        \ size=2 \n      top.cg_transaction.bin_rx_data : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7bf4ed34e650>, coverage=0, size=2 \n      top.cg_transaction.bin_slave_addr\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7bf4ed34d180>, coverage=0,\
+        \ size=3 \n      top.cg_transaction.bin_tx_data : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7bf4ed34d750>, coverage=0, size=3 \n      top.cg_transaction.cross_addr_rw\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x7bf4ed34e6e0>, coverage=0,\
+        \ size=6 \n      top.cg_transaction.cross_data_ack : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x7bf4ed34e620>, coverage=0, size=6 \n      top.cg_transaction.cross_rw_ack_error\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x7bf4ed34e710>, coverage=0,\
+        \ size=4 \n   top.cg_control_protocol : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7bf4ed34c580>, coverage=1, size=13 \n      top.cg_control_protocol.bin_addr_ack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7bf4ed34c640>, coverage=0,\
+        \ size=2 \n      top.cg_control_protocol.bin_busy : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7bf4ed34c3a0>, coverage=0, size=1 \n      top.cg_control_protocol.bin_data_ack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7bf4ed34c610>, coverage=0,\
+        \ size=2 \n      top.cg_control_protocol.bin_done : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7bf4ed34c460>, coverage=1, size=1 \n      top.cg_control_protocol.bin_master_nack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7bf4ed34c2e0>, coverage=0,\
+        \ size=1 \n      top.cg_control_protocol.bin_reset_injected : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7bf4ed34c2b0>, coverage=0, size=1 \n      top.cg_control_protocol.bin_start_while_busy\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7bf4ed34c6a0>, coverage=0,\
+        \ size=1 \n      top.cg_control_protocol.cross_addr_data_ack : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x7bf4ed34c910>, coverage=0, size=4 \n   140.00ns WARNING  cocotb.regression\
+        \                  test_top.i2c_tb_top failed\n                          \
+        \                              Traceback (most recent call last):\n      \
+        \                                                    File \"/workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_assertions.py\"\
+        , line 878, in _check_a_open_drain_release\n                             \
+        \                               self._fail(\n                            \
+        \                              File \"/workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_assertions.py\"\
+        , line 455, in _fail\n                                                   \
+        \         raise AssertionError(f\"assertion '{name}' failed: {message}\")\n\
+        \                                                        AssertionError: assertion\
+        \ 'a_open_drain_release' failed: SDA resolved level 0 while busy==0 (sda_oe=1,\
+        \ sda_out=0); the line must be released (driven high via pull-up) while idle\n\
+        \   140.00ns INFO     cocotb.regression                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.i2c_tb_top\
+        \            FAIL         140.00           0.02       7194.37  **\n      \
+        \                                                  **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=0\
+        \ FAIL=1 SKIP=0                140.00           0.02       7069.16  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:74:\
+        \ /workspace/generated/designs/i2c_benchmark_corrupted/tb/.chia_sim/WriteBasicTest.xml]\
+        \ Error 1\n"
+    WriteZeroTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "O     ..rupted/tb/i2c_scoreboard.py(352) [uvm_test_top.i2c_env.i2c_scoreboard]:\
+        \ connected monitor ap/hung_ap/reset_ap -> scoreboard FIFOs\n    90.00ns INFO\
+        \     ..orrupted/tb/i2c_coverage.py(632) [uvm_test_top.i2c_env.i2c_coverage]:\
+        \ connected monitor ap/reset_ap -> coverage FIFOs\n    90.00ns INFO     ..ark_corrupted/tb/i2c_env.py(147)\
+        \ [uvm_test_top.i2c_env]: I2CEnv connect_phase: 'i2c_driver' set; monitor\
+        \ ap/hung_ap/reset_ap wired into scoreboard and coverage sampler\n    90.00ns\
+        \ INFO     ..upted/tb/i2c_assertions.py(1194) [uvm_test_top.i2c_env]: WATCHDOG:\
+        \ armed for 10000 clock cycles\n   100.00ns WARNING  py.warnings         \
+        \               /workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_pins.py:165:\
+        \ DeprecationWarning: `logic_array.binstr` getter is deprecated. Use `str(logic_array)`\
+        \ instead.\n                                                          if hasattr(pin_value,\
+        \ \"binstr\"):\n   130.00ns INFO     .._corrupted/tb/i2c_driver.py(231) [uvm_test_top.i2c_env.i2c_agent.driver]:\
+        \ reset asserted for 4 cycles\n   140.00ns ERROR    ..rupted/tb/i2c_assertions.py(454)\
+        \ [uvm_test_top.i2c_env]: [assertion a_open_drain_release] FAILED: SDA resolved\
+        \ level 0 while busy==0 (sda_oe=1, sda_out=0); the line must be released (driven\
+        \ high via pull-up) while idle\n   140.00ns WARNING  py.warnings         \
+        \               /workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_env.py:180:\
+        \ DeprecationWarning: `task.kill()` is deprecated in favor of `task.cancel()`\n\
+        \                                                          self._watchdog_task.kill()\n\
+        \   top.cg_transaction : <cocotb_coverage.coverage.CoverItem object at 0x76a66b5ad000>,\
+        \ coverage=0, size=28 \n      top.cg_transaction.bin_ack_error : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x76a66b5ad7b0>, coverage=0, size=2 \n      top.cg_transaction.bin_rw\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x76a66b5ad2d0>, coverage=0,\
+        \ size=2 \n      top.cg_transaction.bin_rx_data : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x76a66b5ae650>, coverage=0, size=2 \n      top.cg_transaction.bin_slave_addr\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x76a66b5ad180>, coverage=0,\
+        \ size=3 \n      top.cg_transaction.bin_tx_data : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x76a66b5ad750>, coverage=0, size=3 \n      top.cg_transaction.cross_addr_rw\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x76a66b5ae6e0>, coverage=0,\
+        \ size=6 \n      top.cg_transaction.cross_data_ack : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x76a66b5ae620>, coverage=0, size=6 \n      top.cg_transaction.cross_rw_ack_error\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x76a66b5ae710>, coverage=0,\
+        \ size=4 \n   top.cg_control_protocol : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x76a66b5ac580>, coverage=1, size=13 \n      top.cg_control_protocol.bin_addr_ack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x76a66b5ac640>, coverage=0,\
+        \ size=2 \n      top.cg_control_protocol.bin_busy : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x76a66b5ac3a0>, coverage=0, size=1 \n      top.cg_control_protocol.bin_data_ack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x76a66b5ac610>, coverage=0,\
+        \ size=2 \n      top.cg_control_protocol.bin_done : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x76a66b5ac460>, coverage=1, size=1 \n      top.cg_control_protocol.bin_master_nack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x76a66b5ac2e0>, coverage=0,\
+        \ size=1 \n      top.cg_control_protocol.bin_reset_injected : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x76a66b5ac2b0>, coverage=0, size=1 \n      top.cg_control_protocol.bin_start_while_busy\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x76a66b5ac6a0>, coverage=0,\
+        \ size=1 \n      top.cg_control_protocol.cross_addr_data_ack : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x76a66b5ac910>, coverage=0, size=4 \n   140.00ns WARNING  cocotb.regression\
+        \                  test_top.i2c_tb_top failed\n                          \
+        \                              Traceback (most recent call last):\n      \
+        \                                                    File \"/workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_assertions.py\"\
+        , line 878, in _check_a_open_drain_release\n                             \
+        \                               self._fail(\n                            \
+        \                              File \"/workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_assertions.py\"\
+        , line 455, in _fail\n                                                   \
+        \         raise AssertionError(f\"assertion '{name}' failed: {message}\")\n\
+        \                                                        AssertionError: assertion\
+        \ 'a_open_drain_release' failed: SDA resolved level 0 while busy==0 (sda_oe=1,\
+        \ sda_out=0); the line must be released (driven high via pull-up) while idle\n\
+        \   140.00ns INFO     cocotb.regression                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.i2c_tb_top\
+        \            FAIL         140.00           0.02       7223.37  **\n      \
+        \                                                  **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=0\
+        \ FAIL=1 SKIP=0                140.00           0.02       7095.11  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:74:\
+        \ /workspace/generated/designs/i2c_benchmark_corrupted/tb/.chia_sim/WriteZeroTest.xml]\
+        \ Error 1\n"
+    WriteMaxTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "FO     ..rupted/tb/i2c_scoreboard.py(352) [uvm_test_top.i2c_env.i2c_scoreboard]:\
+        \ connected monitor ap/hung_ap/reset_ap -> scoreboard FIFOs\n    90.00ns INFO\
+        \     ..orrupted/tb/i2c_coverage.py(632) [uvm_test_top.i2c_env.i2c_coverage]:\
+        \ connected monitor ap/reset_ap -> coverage FIFOs\n    90.00ns INFO     ..ark_corrupted/tb/i2c_env.py(147)\
+        \ [uvm_test_top.i2c_env]: I2CEnv connect_phase: 'i2c_driver' set; monitor\
+        \ ap/hung_ap/reset_ap wired into scoreboard and coverage sampler\n    90.00ns\
+        \ INFO     ..upted/tb/i2c_assertions.py(1194) [uvm_test_top.i2c_env]: WATCHDOG:\
+        \ armed for 10000 clock cycles\n   100.00ns WARNING  py.warnings         \
+        \               /workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_pins.py:165:\
+        \ DeprecationWarning: `logic_array.binstr` getter is deprecated. Use `str(logic_array)`\
+        \ instead.\n                                                          if hasattr(pin_value,\
+        \ \"binstr\"):\n   130.00ns INFO     .._corrupted/tb/i2c_driver.py(231) [uvm_test_top.i2c_env.i2c_agent.driver]:\
+        \ reset asserted for 4 cycles\n   140.00ns ERROR    ..rupted/tb/i2c_assertions.py(454)\
+        \ [uvm_test_top.i2c_env]: [assertion a_open_drain_release] FAILED: SDA resolved\
+        \ level 0 while busy==0 (sda_oe=1, sda_out=0); the line must be released (driven\
+        \ high via pull-up) while idle\n   140.00ns WARNING  py.warnings         \
+        \               /workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_env.py:180:\
+        \ DeprecationWarning: `task.kill()` is deprecated in favor of `task.cancel()`\n\
+        \                                                          self._watchdog_task.kill()\n\
+        \   top.cg_transaction : <cocotb_coverage.coverage.CoverItem object at 0x7bc51e87f040>,\
+        \ coverage=0, size=28 \n      top.cg_transaction.bin_ack_error : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7bc51e87fcd0>, coverage=0, size=2 \n      top.cg_transaction.bin_rw\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7bc51e87f6d0>, coverage=0,\
+        \ size=2 \n      top.cg_transaction.bin_rx_data : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7bc51e87ec50>, coverage=0, size=2 \n      top.cg_transaction.bin_slave_addr\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7bc51e87ef20>, coverage=0,\
+        \ size=3 \n      top.cg_transaction.bin_tx_data : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7bc51e87fc10>, coverage=0, size=3 \n      top.cg_transaction.cross_addr_rw\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x7bc51e87f250>, coverage=0,\
+        \ size=6 \n      top.cg_transaction.cross_data_ack : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x7bc51e87fdf0>, coverage=0, size=6 \n      top.cg_transaction.cross_rw_ack_error\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x7bc51e87f220>, coverage=0,\
+        \ size=4 \n   top.cg_control_protocol : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7bc51e87f1f0>, coverage=1, size=13 \n      top.cg_control_protocol.bin_addr_ack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7bc51e87ff10>, coverage=0,\
+        \ size=2 \n      top.cg_control_protocol.bin_busy : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7bc51e87e470>, coverage=0, size=1 \n      top.cg_control_protocol.bin_data_ack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7bc51e87ec80>, coverage=0,\
+        \ size=2 \n      top.cg_control_protocol.bin_done : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7bc51e87f340>, coverage=1, size=1 \n      top.cg_control_protocol.bin_master_nack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7bc51e87d120>, coverage=0,\
+        \ size=1 \n      top.cg_control_protocol.bin_reset_injected : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7bc51e87fee0>, coverage=0, size=1 \n      top.cg_control_protocol.bin_start_while_busy\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7bc51e87e620>, coverage=0,\
+        \ size=1 \n      top.cg_control_protocol.cross_addr_data_ack : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x7bc51e87f1c0>, coverage=0, size=4 \n   140.00ns WARNING  cocotb.regression\
+        \                  test_top.i2c_tb_top failed\n                          \
+        \                              Traceback (most recent call last):\n      \
+        \                                                    File \"/workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_assertions.py\"\
+        , line 878, in _check_a_open_drain_release\n                             \
+        \                               self._fail(\n                            \
+        \                              File \"/workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_assertions.py\"\
+        , line 455, in _fail\n                                                   \
+        \         raise AssertionError(f\"assertion '{name}' failed: {message}\")\n\
+        \                                                        AssertionError: assertion\
+        \ 'a_open_drain_release' failed: SDA resolved level 0 while busy==0 (sda_oe=1,\
+        \ sda_out=0); the line must be released (driven high via pull-up) while idle\n\
+        \   140.00ns INFO     cocotb.regression                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.i2c_tb_top\
+        \            FAIL         140.00           0.02       7025.73  **\n      \
+        \                                                  **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=0\
+        \ FAIL=1 SKIP=0                140.00           0.02       6905.41  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:74:\
+        \ /workspace/generated/designs/i2c_benchmark_corrupted/tb/.chia_sim/WriteMaxTest.xml]\
+        \ Error 1\n"
+    ReadBasicTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "O     ..rupted/tb/i2c_scoreboard.py(352) [uvm_test_top.i2c_env.i2c_scoreboard]:\
+        \ connected monitor ap/hung_ap/reset_ap -> scoreboard FIFOs\n    90.00ns INFO\
+        \     ..orrupted/tb/i2c_coverage.py(632) [uvm_test_top.i2c_env.i2c_coverage]:\
+        \ connected monitor ap/reset_ap -> coverage FIFOs\n    90.00ns INFO     ..ark_corrupted/tb/i2c_env.py(147)\
+        \ [uvm_test_top.i2c_env]: I2CEnv connect_phase: 'i2c_driver' set; monitor\
+        \ ap/hung_ap/reset_ap wired into scoreboard and coverage sampler\n    90.00ns\
+        \ INFO     ..upted/tb/i2c_assertions.py(1194) [uvm_test_top.i2c_env]: WATCHDOG:\
+        \ armed for 10000 clock cycles\n   100.00ns WARNING  py.warnings         \
+        \               /workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_pins.py:165:\
+        \ DeprecationWarning: `logic_array.binstr` getter is deprecated. Use `str(logic_array)`\
+        \ instead.\n                                                          if hasattr(pin_value,\
+        \ \"binstr\"):\n   130.00ns INFO     .._corrupted/tb/i2c_driver.py(231) [uvm_test_top.i2c_env.i2c_agent.driver]:\
+        \ reset asserted for 4 cycles\n   140.00ns ERROR    ..rupted/tb/i2c_assertions.py(454)\
+        \ [uvm_test_top.i2c_env]: [assertion a_open_drain_release] FAILED: SDA resolved\
+        \ level 0 while busy==0 (sda_oe=1, sda_out=0); the line must be released (driven\
+        \ high via pull-up) while idle\n   140.00ns WARNING  py.warnings         \
+        \               /workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_env.py:180:\
+        \ DeprecationWarning: `task.kill()` is deprecated in favor of `task.cancel()`\n\
+        \                                                          self._watchdog_task.kill()\n\
+        \   top.cg_transaction : <cocotb_coverage.coverage.CoverItem object at 0x78e469c69000>,\
+        \ coverage=0, size=28 \n      top.cg_transaction.bin_ack_error : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x78e469c697b0>, coverage=0, size=2 \n      top.cg_transaction.bin_rw\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x78e469c692d0>, coverage=0,\
+        \ size=2 \n      top.cg_transaction.bin_rx_data : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x78e469c6a650>, coverage=0, size=2 \n      top.cg_transaction.bin_slave_addr\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x78e469c69180>, coverage=0,\
+        \ size=3 \n      top.cg_transaction.bin_tx_data : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x78e469c69750>, coverage=0, size=3 \n      top.cg_transaction.cross_addr_rw\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x78e469c6a6e0>, coverage=0,\
+        \ size=6 \n      top.cg_transaction.cross_data_ack : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x78e469c6a620>, coverage=0, size=6 \n      top.cg_transaction.cross_rw_ack_error\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x78e469c6a710>, coverage=0,\
+        \ size=4 \n   top.cg_control_protocol : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x78e469c68580>, coverage=1, size=13 \n      top.cg_control_protocol.bin_addr_ack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x78e469c68640>, coverage=0,\
+        \ size=2 \n      top.cg_control_protocol.bin_busy : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x78e469c683a0>, coverage=0, size=1 \n      top.cg_control_protocol.bin_data_ack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x78e469c68610>, coverage=0,\
+        \ size=2 \n      top.cg_control_protocol.bin_done : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x78e469c68460>, coverage=1, size=1 \n      top.cg_control_protocol.bin_master_nack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x78e469c682e0>, coverage=0,\
+        \ size=1 \n      top.cg_control_protocol.bin_reset_injected : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x78e469c682b0>, coverage=0, size=1 \n      top.cg_control_protocol.bin_start_while_busy\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x78e469c686a0>, coverage=0,\
+        \ size=1 \n      top.cg_control_protocol.cross_addr_data_ack : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x78e469c68910>, coverage=0, size=4 \n   140.00ns WARNING  cocotb.regression\
+        \                  test_top.i2c_tb_top failed\n                          \
+        \                              Traceback (most recent call last):\n      \
+        \                                                    File \"/workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_assertions.py\"\
+        , line 878, in _check_a_open_drain_release\n                             \
+        \                               self._fail(\n                            \
+        \                              File \"/workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_assertions.py\"\
+        , line 455, in _fail\n                                                   \
+        \         raise AssertionError(f\"assertion '{name}' failed: {message}\")\n\
+        \                                                        AssertionError: assertion\
+        \ 'a_open_drain_release' failed: SDA resolved level 0 while busy==0 (sda_oe=1,\
+        \ sda_out=0); the line must be released (driven high via pull-up) while idle\n\
+        \   140.00ns INFO     cocotb.regression                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.i2c_tb_top\
+        \            FAIL         140.00           0.02       6764.61  **\n      \
+        \                                                  **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=0\
+        \ FAIL=1 SKIP=0                140.00           0.02       6647.54  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:74:\
+        \ /workspace/generated/designs/i2c_benchmark_corrupted/tb/.chia_sim/ReadBasicTest.xml]\
+        \ Error 1\n"
+    ReadMaxTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "NFO     ..rupted/tb/i2c_scoreboard.py(352) [uvm_test_top.i2c_env.i2c_scoreboard]:\
+        \ connected monitor ap/hung_ap/reset_ap -> scoreboard FIFOs\n    90.00ns INFO\
+        \     ..orrupted/tb/i2c_coverage.py(632) [uvm_test_top.i2c_env.i2c_coverage]:\
+        \ connected monitor ap/reset_ap -> coverage FIFOs\n    90.00ns INFO     ..ark_corrupted/tb/i2c_env.py(147)\
+        \ [uvm_test_top.i2c_env]: I2CEnv connect_phase: 'i2c_driver' set; monitor\
+        \ ap/hung_ap/reset_ap wired into scoreboard and coverage sampler\n    90.00ns\
+        \ INFO     ..upted/tb/i2c_assertions.py(1194) [uvm_test_top.i2c_env]: WATCHDOG:\
+        \ armed for 10000 clock cycles\n   100.00ns WARNING  py.warnings         \
+        \               /workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_pins.py:165:\
+        \ DeprecationWarning: `logic_array.binstr` getter is deprecated. Use `str(logic_array)`\
+        \ instead.\n                                                          if hasattr(pin_value,\
+        \ \"binstr\"):\n   130.00ns INFO     .._corrupted/tb/i2c_driver.py(231) [uvm_test_top.i2c_env.i2c_agent.driver]:\
+        \ reset asserted for 4 cycles\n   140.00ns ERROR    ..rupted/tb/i2c_assertions.py(454)\
+        \ [uvm_test_top.i2c_env]: [assertion a_open_drain_release] FAILED: SDA resolved\
+        \ level 0 while busy==0 (sda_oe=1, sda_out=0); the line must be released (driven\
+        \ high via pull-up) while idle\n   140.00ns WARNING  py.warnings         \
+        \               /workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_env.py:180:\
+        \ DeprecationWarning: `task.kill()` is deprecated in favor of `task.cancel()`\n\
+        \                                                          self._watchdog_task.kill()\n\
+        \   top.cg_transaction : <cocotb_coverage.coverage.CoverItem object at 0x7fee2ef8d000>,\
+        \ coverage=0, size=28 \n      top.cg_transaction.bin_ack_error : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7fee2ef8d7b0>, coverage=0, size=2 \n      top.cg_transaction.bin_rw\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7fee2ef8d2d0>, coverage=0,\
+        \ size=2 \n      top.cg_transaction.bin_rx_data : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7fee2ef8e650>, coverage=0, size=2 \n      top.cg_transaction.bin_slave_addr\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7fee2ef8d180>, coverage=0,\
+        \ size=3 \n      top.cg_transaction.bin_tx_data : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7fee2ef8d750>, coverage=0, size=3 \n      top.cg_transaction.cross_addr_rw\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x7fee2ef8e6e0>, coverage=0,\
+        \ size=6 \n      top.cg_transaction.cross_data_ack : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x7fee2ef8e620>, coverage=0, size=6 \n      top.cg_transaction.cross_rw_ack_error\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x7fee2ef8e710>, coverage=0,\
+        \ size=4 \n   top.cg_control_protocol : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7fee2ef8c580>, coverage=1, size=13 \n      top.cg_control_protocol.bin_addr_ack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7fee2ef8c640>, coverage=0,\
+        \ size=2 \n      top.cg_control_protocol.bin_busy : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7fee2ef8c3a0>, coverage=0, size=1 \n      top.cg_control_protocol.bin_data_ack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7fee2ef8c610>, coverage=0,\
+        \ size=2 \n      top.cg_control_protocol.bin_done : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7fee2ef8c460>, coverage=1, size=1 \n      top.cg_control_protocol.bin_master_nack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7fee2ef8c2e0>, coverage=0,\
+        \ size=1 \n      top.cg_control_protocol.bin_reset_injected : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7fee2ef8c2b0>, coverage=0, size=1 \n      top.cg_control_protocol.bin_start_while_busy\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7fee2ef8c6a0>, coverage=0,\
+        \ size=1 \n      top.cg_control_protocol.cross_addr_data_ack : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x7fee2ef8c910>, coverage=0, size=4 \n   140.00ns WARNING  cocotb.regression\
+        \                  test_top.i2c_tb_top failed\n                          \
+        \                              Traceback (most recent call last):\n      \
+        \                                                    File \"/workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_assertions.py\"\
+        , line 878, in _check_a_open_drain_release\n                             \
+        \                               self._fail(\n                            \
+        \                              File \"/workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_assertions.py\"\
+        , line 455, in _fail\n                                                   \
+        \         raise AssertionError(f\"assertion '{name}' failed: {message}\")\n\
+        \                                                        AssertionError: assertion\
+        \ 'a_open_drain_release' failed: SDA resolved level 0 while busy==0 (sda_oe=1,\
+        \ sda_out=0); the line must be released (driven high via pull-up) while idle\n\
+        \   140.00ns INFO     cocotb.regression                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.i2c_tb_top\
+        \            FAIL         140.00           0.02       7090.60  **\n      \
+        \                                                  **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=0\
+        \ FAIL=1 SKIP=0                140.00           0.02       6971.97  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:74:\
+        \ /workspace/generated/designs/i2c_benchmark_corrupted/tb/.chia_sim/ReadMaxTest.xml]\
+        \ Error 1\n"
+    WriteAddrNackTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "  ..rupted/tb/i2c_scoreboard.py(352) [uvm_test_top.i2c_env.i2c_scoreboard]:\
+        \ connected monitor ap/hung_ap/reset_ap -> scoreboard FIFOs\n    90.00ns INFO\
+        \     ..orrupted/tb/i2c_coverage.py(632) [uvm_test_top.i2c_env.i2c_coverage]:\
+        \ connected monitor ap/reset_ap -> coverage FIFOs\n    90.00ns INFO     ..ark_corrupted/tb/i2c_env.py(147)\
+        \ [uvm_test_top.i2c_env]: I2CEnv connect_phase: 'i2c_driver' set; monitor\
+        \ ap/hung_ap/reset_ap wired into scoreboard and coverage sampler\n    90.00ns\
+        \ INFO     ..upted/tb/i2c_assertions.py(1194) [uvm_test_top.i2c_env]: WATCHDOG:\
+        \ armed for 10000 clock cycles\n   100.00ns WARNING  py.warnings         \
+        \               /workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_pins.py:165:\
+        \ DeprecationWarning: `logic_array.binstr` getter is deprecated. Use `str(logic_array)`\
+        \ instead.\n                                                          if hasattr(pin_value,\
+        \ \"binstr\"):\n   130.00ns INFO     .._corrupted/tb/i2c_driver.py(231) [uvm_test_top.i2c_env.i2c_agent.driver]:\
+        \ reset asserted for 4 cycles\n   140.00ns ERROR    ..rupted/tb/i2c_assertions.py(454)\
+        \ [uvm_test_top.i2c_env]: [assertion a_open_drain_release] FAILED: SDA resolved\
+        \ level 0 while busy==0 (sda_oe=1, sda_out=0); the line must be released (driven\
+        \ high via pull-up) while idle\n   140.00ns WARNING  py.warnings         \
+        \               /workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_env.py:180:\
+        \ DeprecationWarning: `task.kill()` is deprecated in favor of `task.cancel()`\n\
+        \                                                          self._watchdog_task.kill()\n\
+        \   top.cg_transaction : <cocotb_coverage.coverage.CoverItem object at 0x7274d377dea0>,\
+        \ coverage=0, size=28 \n      top.cg_transaction.bin_ack_error : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7274d377d660>, coverage=0, size=2 \n      top.cg_transaction.bin_rw\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7274d377faf0>, coverage=0,\
+        \ size=2 \n      top.cg_transaction.bin_rx_data : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7274d377cb20>, coverage=0, size=2 \n      top.cg_transaction.bin_slave_addr\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7274d377fb20>, coverage=0,\
+        \ size=3 \n      top.cg_transaction.bin_tx_data : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7274d377e590>, coverage=0, size=3 \n      top.cg_transaction.cross_addr_rw\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x7274d377f340>, coverage=0,\
+        \ size=6 \n      top.cg_transaction.cross_data_ack : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x7274d377fe20>, coverage=0, size=6 \n      top.cg_transaction.cross_rw_ack_error\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x7274d377e770>, coverage=0,\
+        \ size=4 \n   top.cg_control_protocol : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7274d377db10>, coverage=1, size=13 \n      top.cg_control_protocol.bin_addr_ack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7274d377e560>, coverage=0,\
+        \ size=2 \n      top.cg_control_protocol.bin_busy : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7274d377d630>, coverage=0, size=1 \n      top.cg_control_protocol.bin_data_ack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7274d377c850>, coverage=0,\
+        \ size=2 \n      top.cg_control_protocol.bin_done : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7274d377ee90>, coverage=1, size=1 \n      top.cg_control_protocol.bin_master_nack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7274d377ca00>, coverage=0,\
+        \ size=1 \n      top.cg_control_protocol.bin_reset_injected : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7274d377ed70>, coverage=0, size=1 \n      top.cg_control_protocol.bin_start_while_busy\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7274d377e020>, coverage=0,\
+        \ size=1 \n      top.cg_control_protocol.cross_addr_data_ack : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x7274d377ffd0>, coverage=0, size=4 \n   140.00ns WARNING  cocotb.regression\
+        \                  test_top.i2c_tb_top failed\n                          \
+        \                              Traceback (most recent call last):\n      \
+        \                                                    File \"/workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_assertions.py\"\
+        , line 878, in _check_a_open_drain_release\n                             \
+        \                               self._fail(\n                            \
+        \                              File \"/workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_assertions.py\"\
+        , line 455, in _fail\n                                                   \
+        \         raise AssertionError(f\"assertion '{name}' failed: {message}\")\n\
+        \                                                        AssertionError: assertion\
+        \ 'a_open_drain_release' failed: SDA resolved level 0 while busy==0 (sda_oe=1,\
+        \ sda_out=0); the line must be released (driven high via pull-up) while idle\n\
+        \   140.00ns INFO     cocotb.regression                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.i2c_tb_top\
+        \            FAIL         140.00           0.02       7160.89  **\n      \
+        \                                                  **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=0\
+        \ FAIL=1 SKIP=0                140.00           0.02       7037.16  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:74:\
+        \ /workspace/generated/designs/i2c_benchmark_corrupted/tb/.chia_sim/WriteAddrNackTest.xml]\
+        \ Error 1\n"
+    WriteDataNackTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "  ..rupted/tb/i2c_scoreboard.py(352) [uvm_test_top.i2c_env.i2c_scoreboard]:\
+        \ connected monitor ap/hung_ap/reset_ap -> scoreboard FIFOs\n    90.00ns INFO\
+        \     ..orrupted/tb/i2c_coverage.py(632) [uvm_test_top.i2c_env.i2c_coverage]:\
+        \ connected monitor ap/reset_ap -> coverage FIFOs\n    90.00ns INFO     ..ark_corrupted/tb/i2c_env.py(147)\
+        \ [uvm_test_top.i2c_env]: I2CEnv connect_phase: 'i2c_driver' set; monitor\
+        \ ap/hung_ap/reset_ap wired into scoreboard and coverage sampler\n    90.00ns\
+        \ INFO     ..upted/tb/i2c_assertions.py(1194) [uvm_test_top.i2c_env]: WATCHDOG:\
+        \ armed for 10000 clock cycles\n   100.00ns WARNING  py.warnings         \
+        \               /workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_pins.py:165:\
+        \ DeprecationWarning: `logic_array.binstr` getter is deprecated. Use `str(logic_array)`\
+        \ instead.\n                                                          if hasattr(pin_value,\
+        \ \"binstr\"):\n   130.00ns INFO     .._corrupted/tb/i2c_driver.py(231) [uvm_test_top.i2c_env.i2c_agent.driver]:\
+        \ reset asserted for 4 cycles\n   140.00ns ERROR    ..rupted/tb/i2c_assertions.py(454)\
+        \ [uvm_test_top.i2c_env]: [assertion a_open_drain_release] FAILED: SDA resolved\
+        \ level 0 while busy==0 (sda_oe=1, sda_out=0); the line must be released (driven\
+        \ high via pull-up) while idle\n   140.00ns WARNING  py.warnings         \
+        \               /workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_env.py:180:\
+        \ DeprecationWarning: `task.kill()` is deprecated in favor of `task.cancel()`\n\
+        \                                                          self._watchdog_task.kill()\n\
+        \   top.cg_transaction : <cocotb_coverage.coverage.CoverItem object at 0x7c89aa489ea0>,\
+        \ coverage=0, size=28 \n      top.cg_transaction.bin_ack_error : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7c89aa489660>, coverage=0, size=2 \n      top.cg_transaction.bin_rw\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7c89aa48baf0>, coverage=0,\
+        \ size=2 \n      top.cg_transaction.bin_rx_data : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7c89aa488b20>, coverage=0, size=2 \n      top.cg_transaction.bin_slave_addr\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7c89aa48bb20>, coverage=0,\
+        \ size=3 \n      top.cg_transaction.bin_tx_data : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7c89aa48a590>, coverage=0, size=3 \n      top.cg_transaction.cross_addr_rw\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x7c89aa48b340>, coverage=0,\
+        \ size=6 \n      top.cg_transaction.cross_data_ack : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x7c89aa48be20>, coverage=0, size=6 \n      top.cg_transaction.cross_rw_ack_error\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x7c89aa48a770>, coverage=0,\
+        \ size=4 \n   top.cg_control_protocol : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7c89aa489b10>, coverage=1, size=13 \n      top.cg_control_protocol.bin_addr_ack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7c89aa48a560>, coverage=0,\
+        \ size=2 \n      top.cg_control_protocol.bin_busy : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7c89aa489630>, coverage=0, size=1 \n      top.cg_control_protocol.bin_data_ack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7c89aa488850>, coverage=0,\
+        \ size=2 \n      top.cg_control_protocol.bin_done : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7c89aa48ae90>, coverage=1, size=1 \n      top.cg_control_protocol.bin_master_nack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7c89aa488a00>, coverage=0,\
+        \ size=1 \n      top.cg_control_protocol.bin_reset_injected : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7c89aa48ad70>, coverage=0, size=1 \n      top.cg_control_protocol.bin_start_while_busy\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7c89aa48a020>, coverage=0,\
+        \ size=1 \n      top.cg_control_protocol.cross_addr_data_ack : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x7c89aa48bfd0>, coverage=0, size=4 \n   140.00ns WARNING  cocotb.regression\
+        \                  test_top.i2c_tb_top failed\n                          \
+        \                              Traceback (most recent call last):\n      \
+        \                                                    File \"/workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_assertions.py\"\
+        , line 878, in _check_a_open_drain_release\n                             \
+        \                               self._fail(\n                            \
+        \                              File \"/workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_assertions.py\"\
+        , line 455, in _fail\n                                                   \
+        \         raise AssertionError(f\"assertion '{name}' failed: {message}\")\n\
+        \                                                        AssertionError: assertion\
+        \ 'a_open_drain_release' failed: SDA resolved level 0 while busy==0 (sda_oe=1,\
+        \ sda_out=0); the line must be released (driven high via pull-up) while idle\n\
+        \   140.00ns INFO     cocotb.regression                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.i2c_tb_top\
+        \            FAIL         140.00           0.02       7267.52  **\n      \
+        \                                                  **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=0\
+        \ FAIL=1 SKIP=0                140.00           0.02       7142.51  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:74:\
+        \ /workspace/generated/designs/i2c_benchmark_corrupted/tb/.chia_sim/WriteDataNackTest.xml]\
+        \ Error 1\n"
+    ReadAddrNackTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "   ..rupted/tb/i2c_scoreboard.py(352) [uvm_test_top.i2c_env.i2c_scoreboard]:\
+        \ connected monitor ap/hung_ap/reset_ap -> scoreboard FIFOs\n    90.00ns INFO\
+        \     ..orrupted/tb/i2c_coverage.py(632) [uvm_test_top.i2c_env.i2c_coverage]:\
+        \ connected monitor ap/reset_ap -> coverage FIFOs\n    90.00ns INFO     ..ark_corrupted/tb/i2c_env.py(147)\
+        \ [uvm_test_top.i2c_env]: I2CEnv connect_phase: 'i2c_driver' set; monitor\
+        \ ap/hung_ap/reset_ap wired into scoreboard and coverage sampler\n    90.00ns\
+        \ INFO     ..upted/tb/i2c_assertions.py(1194) [uvm_test_top.i2c_env]: WATCHDOG:\
+        \ armed for 10000 clock cycles\n   100.00ns WARNING  py.warnings         \
+        \               /workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_pins.py:165:\
+        \ DeprecationWarning: `logic_array.binstr` getter is deprecated. Use `str(logic_array)`\
+        \ instead.\n                                                          if hasattr(pin_value,\
+        \ \"binstr\"):\n   130.00ns INFO     .._corrupted/tb/i2c_driver.py(231) [uvm_test_top.i2c_env.i2c_agent.driver]:\
+        \ reset asserted for 4 cycles\n   140.00ns ERROR    ..rupted/tb/i2c_assertions.py(454)\
+        \ [uvm_test_top.i2c_env]: [assertion a_open_drain_release] FAILED: SDA resolved\
+        \ level 0 while busy==0 (sda_oe=1, sda_out=0); the line must be released (driven\
+        \ high via pull-up) while idle\n   140.00ns WARNING  py.warnings         \
+        \               /workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_env.py:180:\
+        \ DeprecationWarning: `task.kill()` is deprecated in favor of `task.cancel()`\n\
+        \                                                          self._watchdog_task.kill()\n\
+        \   top.cg_transaction : <cocotb_coverage.coverage.CoverItem object at 0x7e5c0c725ea0>,\
+        \ coverage=0, size=28 \n      top.cg_transaction.bin_ack_error : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7e5c0c725660>, coverage=0, size=2 \n      top.cg_transaction.bin_rw\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7e5c0c727af0>, coverage=0,\
+        \ size=2 \n      top.cg_transaction.bin_rx_data : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7e5c0c724b20>, coverage=0, size=2 \n      top.cg_transaction.bin_slave_addr\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7e5c0c727b20>, coverage=0,\
+        \ size=3 \n      top.cg_transaction.bin_tx_data : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7e5c0c726590>, coverage=0, size=3 \n      top.cg_transaction.cross_addr_rw\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x7e5c0c727340>, coverage=0,\
+        \ size=6 \n      top.cg_transaction.cross_data_ack : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x7e5c0c727e20>, coverage=0, size=6 \n      top.cg_transaction.cross_rw_ack_error\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x7e5c0c726770>, coverage=0,\
+        \ size=4 \n   top.cg_control_protocol : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7e5c0c725b10>, coverage=1, size=13 \n      top.cg_control_protocol.bin_addr_ack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7e5c0c726560>, coverage=0,\
+        \ size=2 \n      top.cg_control_protocol.bin_busy : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7e5c0c725630>, coverage=0, size=1 \n      top.cg_control_protocol.bin_data_ack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7e5c0c724850>, coverage=0,\
+        \ size=2 \n      top.cg_control_protocol.bin_done : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7e5c0c726e90>, coverage=1, size=1 \n      top.cg_control_protocol.bin_master_nack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7e5c0c724a00>, coverage=0,\
+        \ size=1 \n      top.cg_control_protocol.bin_reset_injected : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7e5c0c726d70>, coverage=0, size=1 \n      top.cg_control_protocol.bin_start_while_busy\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7e5c0c726020>, coverage=0,\
+        \ size=1 \n      top.cg_control_protocol.cross_addr_data_ack : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x7e5c0c727fd0>, coverage=0, size=4 \n   140.00ns WARNING  cocotb.regression\
+        \                  test_top.i2c_tb_top failed\n                          \
+        \                              Traceback (most recent call last):\n      \
+        \                                                    File \"/workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_assertions.py\"\
+        , line 878, in _check_a_open_drain_release\n                             \
+        \                               self._fail(\n                            \
+        \                              File \"/workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_assertions.py\"\
+        , line 455, in _fail\n                                                   \
+        \         raise AssertionError(f\"assertion '{name}' failed: {message}\")\n\
+        \                                                        AssertionError: assertion\
+        \ 'a_open_drain_release' failed: SDA resolved level 0 while busy==0 (sda_oe=1,\
+        \ sda_out=0); the line must be released (driven high via pull-up) while idle\n\
+        \   140.00ns INFO     cocotb.regression                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.i2c_tb_top\
+        \            FAIL         140.00           0.02       7232.68  **\n      \
+        \                                                  **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=0\
+        \ FAIL=1 SKIP=0                140.00           0.02       7107.89  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:74:\
+        \ /workspace/generated/designs/i2c_benchmark_corrupted/tb/.chia_sim/ReadAddrNackTest.xml]\
+        \ Error 1\n"
+    StartWhileBusyTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: " ..rupted/tb/i2c_scoreboard.py(352) [uvm_test_top.i2c_env.i2c_scoreboard]:\
+        \ connected monitor ap/hung_ap/reset_ap -> scoreboard FIFOs\n    90.00ns INFO\
+        \     ..orrupted/tb/i2c_coverage.py(632) [uvm_test_top.i2c_env.i2c_coverage]:\
+        \ connected monitor ap/reset_ap -> coverage FIFOs\n    90.00ns INFO     ..ark_corrupted/tb/i2c_env.py(147)\
+        \ [uvm_test_top.i2c_env]: I2CEnv connect_phase: 'i2c_driver' set; monitor\
+        \ ap/hung_ap/reset_ap wired into scoreboard and coverage sampler\n    90.00ns\
+        \ INFO     ..upted/tb/i2c_assertions.py(1194) [uvm_test_top.i2c_env]: WATCHDOG:\
+        \ armed for 10000 clock cycles\n   100.00ns WARNING  py.warnings         \
+        \               /workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_pins.py:165:\
+        \ DeprecationWarning: `logic_array.binstr` getter is deprecated. Use `str(logic_array)`\
+        \ instead.\n                                                          if hasattr(pin_value,\
+        \ \"binstr\"):\n   130.00ns INFO     .._corrupted/tb/i2c_driver.py(231) [uvm_test_top.i2c_env.i2c_agent.driver]:\
+        \ reset asserted for 4 cycles\n   140.00ns ERROR    ..rupted/tb/i2c_assertions.py(454)\
+        \ [uvm_test_top.i2c_env]: [assertion a_open_drain_release] FAILED: SDA resolved\
+        \ level 0 while busy==0 (sda_oe=1, sda_out=0); the line must be released (driven\
+        \ high via pull-up) while idle\n   140.00ns WARNING  py.warnings         \
+        \               /workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_env.py:180:\
+        \ DeprecationWarning: `task.kill()` is deprecated in favor of `task.cancel()`\n\
+        \                                                          self._watchdog_task.kill()\n\
+        \   top.cg_transaction : <cocotb_coverage.coverage.CoverItem object at 0x7a2c02e51ea0>,\
+        \ coverage=0, size=28 \n      top.cg_transaction.bin_ack_error : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7a2c02e51660>, coverage=0, size=2 \n      top.cg_transaction.bin_rw\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7a2c02e53af0>, coverage=0,\
+        \ size=2 \n      top.cg_transaction.bin_rx_data : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7a2c02e50b20>, coverage=0, size=2 \n      top.cg_transaction.bin_slave_addr\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7a2c02e53b20>, coverage=0,\
+        \ size=3 \n      top.cg_transaction.bin_tx_data : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7a2c02e52590>, coverage=0, size=3 \n      top.cg_transaction.cross_addr_rw\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x7a2c02e53340>, coverage=0,\
+        \ size=6 \n      top.cg_transaction.cross_data_ack : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x7a2c02e53e20>, coverage=0, size=6 \n      top.cg_transaction.cross_rw_ack_error\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x7a2c02e52770>, coverage=0,\
+        \ size=4 \n   top.cg_control_protocol : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7a2c02e51b10>, coverage=1, size=13 \n      top.cg_control_protocol.bin_addr_ack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7a2c02e52560>, coverage=0,\
+        \ size=2 \n      top.cg_control_protocol.bin_busy : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7a2c02e51630>, coverage=0, size=1 \n      top.cg_control_protocol.bin_data_ack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7a2c02e50850>, coverage=0,\
+        \ size=2 \n      top.cg_control_protocol.bin_done : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7a2c02e52e90>, coverage=1, size=1 \n      top.cg_control_protocol.bin_master_nack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7a2c02e50a00>, coverage=0,\
+        \ size=1 \n      top.cg_control_protocol.bin_reset_injected : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7a2c02e52d70>, coverage=0, size=1 \n      top.cg_control_protocol.bin_start_while_busy\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7a2c02e52020>, coverage=0,\
+        \ size=1 \n      top.cg_control_protocol.cross_addr_data_ack : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x7a2c02e53fd0>, coverage=0, size=4 \n   140.00ns WARNING  cocotb.regression\
+        \                  test_top.i2c_tb_top failed\n                          \
+        \                              Traceback (most recent call last):\n      \
+        \                                                    File \"/workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_assertions.py\"\
+        , line 878, in _check_a_open_drain_release\n                             \
+        \                               self._fail(\n                            \
+        \                              File \"/workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_assertions.py\"\
+        , line 455, in _fail\n                                                   \
+        \         raise AssertionError(f\"assertion '{name}' failed: {message}\")\n\
+        \                                                        AssertionError: assertion\
+        \ 'a_open_drain_release' failed: SDA resolved level 0 while busy==0 (sda_oe=1,\
+        \ sda_out=0); the line must be released (driven high via pull-up) while idle\n\
+        \   140.00ns INFO     cocotb.regression                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.i2c_tb_top\
+        \            FAIL         140.00           0.02       6858.28  **\n      \
+        \                                                  **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=0\
+        \ FAIL=1 SKIP=0                140.00           0.02       6739.08  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:74:\
+        \ /workspace/generated/designs/i2c_benchmark_corrupted/tb/.chia_sim/StartWhileBusyTest.xml]\
+        \ Error 1\n"
+    ResetDuringTransactionTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "d/tb/i2c_scoreboard.py(352) [uvm_test_top.i2c_env.i2c_scoreboard]: connected\
+        \ monitor ap/hung_ap/reset_ap -> scoreboard FIFOs\n    90.00ns INFO     ..orrupted/tb/i2c_coverage.py(632)\
+        \ [uvm_test_top.i2c_env.i2c_coverage]: connected monitor ap/reset_ap -> coverage\
+        \ FIFOs\n    90.00ns INFO     ..ark_corrupted/tb/i2c_env.py(147) [uvm_test_top.i2c_env]:\
+        \ I2CEnv connect_phase: 'i2c_driver' set; monitor ap/hung_ap/reset_ap wired\
+        \ into scoreboard and coverage sampler\n    90.00ns INFO     ..upted/tb/i2c_assertions.py(1194)\
+        \ [uvm_test_top.i2c_env]: WATCHDOG: armed for 10000 clock cycles\n   100.00ns\
+        \ WARNING  py.warnings                        /workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_pins.py:165:\
+        \ DeprecationWarning: `logic_array.binstr` getter is deprecated. Use `str(logic_array)`\
+        \ instead.\n                                                          if hasattr(pin_value,\
+        \ \"binstr\"):\n   130.00ns INFO     .._corrupted/tb/i2c_driver.py(231) [uvm_test_top.i2c_env.i2c_agent.driver]:\
+        \ reset asserted for 4 cycles\n   140.00ns ERROR    ..rupted/tb/i2c_assertions.py(454)\
+        \ [uvm_test_top.i2c_env]: [assertion a_open_drain_release] FAILED: SDA resolved\
+        \ level 0 while busy==0 (sda_oe=1, sda_out=0); the line must be released (driven\
+        \ high via pull-up) while idle\n   140.00ns WARNING  py.warnings         \
+        \               /workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_env.py:180:\
+        \ DeprecationWarning: `task.kill()` is deprecated in favor of `task.cancel()`\n\
+        \                                                          self._watchdog_task.kill()\n\
+        \   top.cg_transaction : <cocotb_coverage.coverage.CoverItem object at 0x7523f9e81ea0>,\
+        \ coverage=0, size=28 \n      top.cg_transaction.bin_ack_error : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7523f9e81660>, coverage=0, size=2 \n      top.cg_transaction.bin_rw\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7523f9e83af0>, coverage=0,\
+        \ size=2 \n      top.cg_transaction.bin_rx_data : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7523f9e80b20>, coverage=0, size=2 \n      top.cg_transaction.bin_slave_addr\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7523f9e83b20>, coverage=0,\
+        \ size=3 \n      top.cg_transaction.bin_tx_data : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7523f9e82590>, coverage=0, size=3 \n      top.cg_transaction.cross_addr_rw\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x7523f9e83340>, coverage=0,\
+        \ size=6 \n      top.cg_transaction.cross_data_ack : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x7523f9e83e20>, coverage=0, size=6 \n      top.cg_transaction.cross_rw_ack_error\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x7523f9e82770>, coverage=0,\
+        \ size=4 \n   top.cg_control_protocol : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7523f9e81b10>, coverage=1, size=13 \n      top.cg_control_protocol.bin_addr_ack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7523f9e82560>, coverage=0,\
+        \ size=2 \n      top.cg_control_protocol.bin_busy : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7523f9e81630>, coverage=0, size=1 \n      top.cg_control_protocol.bin_data_ack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7523f9e80850>, coverage=0,\
+        \ size=2 \n      top.cg_control_protocol.bin_done : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7523f9e82e90>, coverage=1, size=1 \n      top.cg_control_protocol.bin_master_nack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7523f9e80a00>, coverage=0,\
+        \ size=1 \n      top.cg_control_protocol.bin_reset_injected : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7523f9e82d70>, coverage=0, size=1 \n      top.cg_control_protocol.bin_start_while_busy\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7523f9e82020>, coverage=0,\
+        \ size=1 \n      top.cg_control_protocol.cross_addr_data_ack : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x7523f9e83fd0>, coverage=0, size=4 \n   140.00ns WARNING  cocotb.regression\
+        \                  test_top.i2c_tb_top failed\n                          \
+        \                              Traceback (most recent call last):\n      \
+        \                                                    File \"/workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_assertions.py\"\
+        , line 878, in _check_a_open_drain_release\n                             \
+        \                               self._fail(\n                            \
+        \                              File \"/workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_assertions.py\"\
+        , line 455, in _fail\n                                                   \
+        \         raise AssertionError(f\"assertion '{name}' failed: {message}\")\n\
+        \                                                        AssertionError: assertion\
+        \ 'a_open_drain_release' failed: SDA resolved level 0 while busy==0 (sda_oe=1,\
+        \ sda_out=0); the line must be released (driven high via pull-up) while idle\n\
+        \   140.00ns INFO     cocotb.regression                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.i2c_tb_top\
+        \            FAIL         140.00           0.02       7398.59  **\n      \
+        \                                                  **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=0\
+        \ FAIL=1 SKIP=0                140.00           0.02       7263.45  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:74:\
+        \ /workspace/generated/designs/i2c_benchmark_corrupted/tb/.chia_sim/ResetDuringTransactionTest.xml]\
+        \ Error 1\n"
+    DonePulseCheckTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: " ..rupted/tb/i2c_scoreboard.py(352) [uvm_test_top.i2c_env.i2c_scoreboard]:\
+        \ connected monitor ap/hung_ap/reset_ap -> scoreboard FIFOs\n    90.00ns INFO\
+        \     ..orrupted/tb/i2c_coverage.py(632) [uvm_test_top.i2c_env.i2c_coverage]:\
+        \ connected monitor ap/reset_ap -> coverage FIFOs\n    90.00ns INFO     ..ark_corrupted/tb/i2c_env.py(147)\
+        \ [uvm_test_top.i2c_env]: I2CEnv connect_phase: 'i2c_driver' set; monitor\
+        \ ap/hung_ap/reset_ap wired into scoreboard and coverage sampler\n    90.00ns\
+        \ INFO     ..upted/tb/i2c_assertions.py(1194) [uvm_test_top.i2c_env]: WATCHDOG:\
+        \ armed for 10000 clock cycles\n   100.00ns WARNING  py.warnings         \
+        \               /workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_pins.py:165:\
+        \ DeprecationWarning: `logic_array.binstr` getter is deprecated. Use `str(logic_array)`\
+        \ instead.\n                                                          if hasattr(pin_value,\
+        \ \"binstr\"):\n   130.00ns INFO     .._corrupted/tb/i2c_driver.py(231) [uvm_test_top.i2c_env.i2c_agent.driver]:\
+        \ reset asserted for 4 cycles\n   140.00ns ERROR    ..rupted/tb/i2c_assertions.py(454)\
+        \ [uvm_test_top.i2c_env]: [assertion a_open_drain_release] FAILED: SDA resolved\
+        \ level 0 while busy==0 (sda_oe=1, sda_out=0); the line must be released (driven\
+        \ high via pull-up) while idle\n   140.00ns WARNING  py.warnings         \
+        \               /workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_env.py:180:\
+        \ DeprecationWarning: `task.kill()` is deprecated in favor of `task.cancel()`\n\
+        \                                                          self._watchdog_task.kill()\n\
+        \   top.cg_transaction : <cocotb_coverage.coverage.CoverItem object at 0x7d2ef3c8f040>,\
+        \ coverage=0, size=28 \n      top.cg_transaction.bin_ack_error : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7d2ef3c8ff70>, coverage=0, size=2 \n      top.cg_transaction.bin_rw\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7d2ef3c8f640>, coverage=0,\
+        \ size=2 \n      top.cg_transaction.bin_rx_data : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7d2ef3c8ebc0>, coverage=0, size=2 \n      top.cg_transaction.bin_slave_addr\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7d2ef3c8efe0>, coverage=0,\
+        \ size=3 \n      top.cg_transaction.bin_tx_data : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7d2ef3c8fbe0>, coverage=0, size=3 \n      top.cg_transaction.cross_addr_rw\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x7d2ef3c8f2b0>, coverage=0,\
+        \ size=6 \n      top.cg_transaction.cross_data_ack : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x7d2ef3c8fd90>, coverage=0, size=6 \n      top.cg_transaction.cross_rw_ack_error\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x7d2ef3c8f1f0>, coverage=0,\
+        \ size=4 \n   top.cg_control_protocol : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7d2ef3c8fdc0>, coverage=1, size=13 \n      top.cg_control_protocol.bin_addr_ack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7d2ef3c8ea10>, coverage=0,\
+        \ size=2 \n      top.cg_control_protocol.bin_busy : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7d2ef3c8fee0>, coverage=0, size=1 \n      top.cg_control_protocol.bin_data_ack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7d2ef3c8fca0>, coverage=0,\
+        \ size=2 \n      top.cg_control_protocol.bin_done : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7d2ef3c8fdf0>, coverage=1, size=1 \n      top.cg_control_protocol.bin_master_nack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7d2ef3c8e620>, coverage=0,\
+        \ size=1 \n      top.cg_control_protocol.bin_reset_injected : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7d2ef3c8d1e0>, coverage=0, size=1 \n      top.cg_control_protocol.bin_start_while_busy\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7d2ef3c8ce80>, coverage=0,\
+        \ size=1 \n      top.cg_control_protocol.cross_addr_data_ack : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x7d2ef3c8f1c0>, coverage=0, size=4 \n   140.00ns WARNING  cocotb.regression\
+        \                  test_top.i2c_tb_top failed\n                          \
+        \                              Traceback (most recent call last):\n      \
+        \                                                    File \"/workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_assertions.py\"\
+        , line 878, in _check_a_open_drain_release\n                             \
+        \                               self._fail(\n                            \
+        \                              File \"/workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_assertions.py\"\
+        , line 455, in _fail\n                                                   \
+        \         raise AssertionError(f\"assertion '{name}' failed: {message}\")\n\
+        \                                                        AssertionError: assertion\
+        \ 'a_open_drain_release' failed: SDA resolved level 0 while busy==0 (sda_oe=1,\
+        \ sda_out=0); the line must be released (driven high via pull-up) while idle\n\
+        \   140.00ns INFO     cocotb.regression                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.i2c_tb_top\
+        \            FAIL         140.00           0.02       7165.09  **\n      \
+        \                                                  **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=0\
+        \ FAIL=1 SKIP=0                140.00           0.02       7041.59  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:74:\
+        \ /workspace/generated/designs/i2c_benchmark_corrupted/tb/.chia_sim/DonePulseCheckTest.xml]\
+        \ Error 1\n"
+    AddressMsbFirstCheckTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "ted/tb/i2c_scoreboard.py(352) [uvm_test_top.i2c_env.i2c_scoreboard]: connected\
+        \ monitor ap/hung_ap/reset_ap -> scoreboard FIFOs\n    90.00ns INFO     ..orrupted/tb/i2c_coverage.py(632)\
+        \ [uvm_test_top.i2c_env.i2c_coverage]: connected monitor ap/reset_ap -> coverage\
+        \ FIFOs\n    90.00ns INFO     ..ark_corrupted/tb/i2c_env.py(147) [uvm_test_top.i2c_env]:\
+        \ I2CEnv connect_phase: 'i2c_driver' set; monitor ap/hung_ap/reset_ap wired\
+        \ into scoreboard and coverage sampler\n    90.00ns INFO     ..upted/tb/i2c_assertions.py(1194)\
+        \ [uvm_test_top.i2c_env]: WATCHDOG: armed for 10000 clock cycles\n   100.00ns\
+        \ WARNING  py.warnings                        /workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_pins.py:165:\
+        \ DeprecationWarning: `logic_array.binstr` getter is deprecated. Use `str(logic_array)`\
+        \ instead.\n                                                          if hasattr(pin_value,\
+        \ \"binstr\"):\n   130.00ns INFO     .._corrupted/tb/i2c_driver.py(231) [uvm_test_top.i2c_env.i2c_agent.driver]:\
+        \ reset asserted for 4 cycles\n   140.00ns ERROR    ..rupted/tb/i2c_assertions.py(454)\
+        \ [uvm_test_top.i2c_env]: [assertion a_open_drain_release] FAILED: SDA resolved\
+        \ level 0 while busy==0 (sda_oe=1, sda_out=0); the line must be released (driven\
+        \ high via pull-up) while idle\n   140.00ns WARNING  py.warnings         \
+        \               /workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_env.py:180:\
+        \ DeprecationWarning: `task.kill()` is deprecated in favor of `task.cancel()`\n\
+        \                                                          self._watchdog_task.kill()\n\
+        \   top.cg_transaction : <cocotb_coverage.coverage.CoverItem object at 0x782707b8dea0>,\
+        \ coverage=0, size=28 \n      top.cg_transaction.bin_ack_error : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x782707b8d660>, coverage=0, size=2 \n      top.cg_transaction.bin_rw\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x782707b8faf0>, coverage=0,\
+        \ size=2 \n      top.cg_transaction.bin_rx_data : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x782707b8cb20>, coverage=0, size=2 \n      top.cg_transaction.bin_slave_addr\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x782707b8fb20>, coverage=0,\
+        \ size=3 \n      top.cg_transaction.bin_tx_data : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x782707b8e590>, coverage=0, size=3 \n      top.cg_transaction.cross_addr_rw\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x782707b8f340>, coverage=0,\
+        \ size=6 \n      top.cg_transaction.cross_data_ack : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x782707b8fe20>, coverage=0, size=6 \n      top.cg_transaction.cross_rw_ack_error\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x782707b8e770>, coverage=0,\
+        \ size=4 \n   top.cg_control_protocol : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x782707b8db10>, coverage=1, size=13 \n      top.cg_control_protocol.bin_addr_ack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x782707b8e560>, coverage=0,\
+        \ size=2 \n      top.cg_control_protocol.bin_busy : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x782707b8d630>, coverage=0, size=1 \n      top.cg_control_protocol.bin_data_ack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x782707b8c850>, coverage=0,\
+        \ size=2 \n      top.cg_control_protocol.bin_done : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x782707b8ee90>, coverage=1, size=1 \n      top.cg_control_protocol.bin_master_nack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x782707b8ca00>, coverage=0,\
+        \ size=1 \n      top.cg_control_protocol.bin_reset_injected : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x782707b8ed70>, coverage=0, size=1 \n      top.cg_control_protocol.bin_start_while_busy\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x782707b8e020>, coverage=0,\
+        \ size=1 \n      top.cg_control_protocol.cross_addr_data_ack : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x782707b8ffd0>, coverage=0, size=4 \n   140.00ns WARNING  cocotb.regression\
+        \                  test_top.i2c_tb_top failed\n                          \
+        \                              Traceback (most recent call last):\n      \
+        \                                                    File \"/workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_assertions.py\"\
+        , line 878, in _check_a_open_drain_release\n                             \
+        \                               self._fail(\n                            \
+        \                              File \"/workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_assertions.py\"\
+        , line 455, in _fail\n                                                   \
+        \         raise AssertionError(f\"assertion '{name}' failed: {message}\")\n\
+        \                                                        AssertionError: assertion\
+        \ 'a_open_drain_release' failed: SDA resolved level 0 while busy==0 (sda_oe=1,\
+        \ sda_out=0); the line must be released (driven high via pull-up) while idle\n\
+        \   140.00ns INFO     cocotb.regression                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.i2c_tb_top\
+        \            FAIL         140.00           0.02       7363.73  **\n      \
+        \                                                  **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=0\
+        \ FAIL=1 SKIP=0                140.00           0.02       7237.82  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:74:\
+        \ /workspace/generated/designs/i2c_benchmark_corrupted/tb/.chia_sim/AddressMsbFirstCheckTest.xml]\
+        \ Error 1\n"
+    I2CCornerTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "ort\n    90.00ns INFO     ..rupted/tb/i2c_scoreboard.py(352) [uvm_test_top.i2c_env.i2c_scoreboard]:\
+        \ connected monitor ap/hung_ap/reset_ap -> scoreboard FIFOs\n    90.00ns INFO\
+        \     ..orrupted/tb/i2c_coverage.py(632) [uvm_test_top.i2c_env.i2c_coverage]:\
+        \ connected monitor ap/reset_ap -> coverage FIFOs\n    90.00ns INFO     ..ark_corrupted/tb/i2c_env.py(147)\
+        \ [uvm_test_top.i2c_env]: I2CEnv connect_phase: 'i2c_driver' set; monitor\
+        \ ap/hung_ap/reset_ap wired into scoreboard and coverage sampler\n    90.00ns\
+        \ INFO     ..upted/tb/i2c_assertions.py(1194) [uvm_test_top.i2c_env]: WATCHDOG:\
+        \ armed for 60000 clock cycles\n    90.00ns INFO     ..rk_corrupted/tb/i2c_test.py(478)\
+        \ [uvm_test_top]: I2CCornerTest: starting CornerAddrZeroWrite\n    90.00ns\
+        \ INFO     .._corrupted/tb/i2c_driver.py(270) [uvm_test_top.i2c_env.i2c_agent.driver]:\
+        \ offer: i2c_transaction[txn_id=0 start=1 addr=0x00 rw=0 tx_data=0x00 sda_in=1\
+        \ scl_in=1 slave_ack=1 read_data=0x00 rx_data=0x00 done=0 busy=0 ack_error=0\
+        \ sda_out=0 sda_oe=0 scl_out=0 scl_oe=0 latency_cycles=0]\n   100.00ns ERROR\
+        \    ..rupted/tb/i2c_assertions.py(454) [uvm_test_top.i2c_env]: [assertion\
+        \ a_open_drain_release] FAILED: SDA resolved level 0 while busy==0 (sda_oe=1,\
+        \ sda_out=0); the line must be released (driven high via pull-up) while idle\n\
+        \   100.00ns WARNING  py.warnings                        /workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_env.py:180:\
+        \ DeprecationWarning: `task.kill()` is deprecated in favor of `task.cancel()`\n\
+        \                                                          self._watchdog_task.kill()\n\
+        \   top.cg_transaction : <cocotb_coverage.coverage.CoverItem object at 0x7c7af4ec1000>,\
+        \ coverage=0, size=28 \n      top.cg_transaction.bin_ack_error : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7c7af4ec17b0>, coverage=0, size=2 \n      top.cg_transaction.bin_rw\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7c7af4ec12d0>, coverage=0,\
+        \ size=2 \n      top.cg_transaction.bin_rx_data : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7c7af4ec2650>, coverage=0, size=2 \n      top.cg_transaction.bin_slave_addr\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7c7af4ec1180>, coverage=0,\
+        \ size=3 \n      top.cg_transaction.bin_tx_data : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7c7af4ec1750>, coverage=0, size=3 \n      top.cg_transaction.cross_addr_rw\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x7c7af4ec26e0>, coverage=0,\
+        \ size=6 \n      top.cg_transaction.cross_data_ack : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x7c7af4ec2620>, coverage=0, size=6 \n      top.cg_transaction.cross_rw_ack_error\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x7c7af4ec2710>, coverage=0,\
+        \ size=4 \n   top.cg_control_protocol : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7c7af4ec0580>, coverage=0, size=13 \n      top.cg_control_protocol.bin_addr_ack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7c7af4ec0640>, coverage=0,\
+        \ size=2 \n      top.cg_control_protocol.bin_busy : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7c7af4ec03a0>, coverage=0, size=1 \n      top.cg_control_protocol.bin_data_ack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7c7af4ec0610>, coverage=0,\
+        \ size=2 \n      top.cg_control_protocol.bin_done : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7c7af4ec0460>, coverage=0, size=1 \n      top.cg_control_protocol.bin_master_nack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7c7af4ec02e0>, coverage=0,\
+        \ size=1 \n      top.cg_control_protocol.bin_reset_injected : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7c7af4ec02b0>, coverage=0, size=1 \n      top.cg_control_protocol.bin_start_while_busy\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7c7af4ec06a0>, coverage=0,\
+        \ size=1 \n      top.cg_control_protocol.cross_addr_data_ack : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x7c7af4ec0910>, coverage=0, size=4 \n   100.00ns WARNING  cocotb.regression\
+        \                  test_top.i2c_tb_top failed\n                          \
+        \                              Traceback (most recent call last):\n      \
+        \                                                    File \"/workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_assertions.py\"\
+        , line 878, in _check_a_open_drain_release\n                             \
+        \                               self._fail(\n                            \
+        \                              File \"/workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_assertions.py\"\
+        , line 455, in _fail\n                                                   \
+        \         raise AssertionError(f\"assertion '{name}' failed: {message}\")\n\
+        \                                                        AssertionError: assertion\
+        \ 'a_open_drain_release' failed: SDA resolved level 0 while busy==0 (sda_oe=1,\
+        \ sda_out=0); the line must be released (driven high via pull-up) while idle\n\
+        \   100.00ns INFO     cocotb.regression                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.i2c_tb_top\
+        \            FAIL         100.00           0.02       4828.33  **\n      \
+        \                                                  **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=0\
+        \ FAIL=1 SKIP=0                100.00           0.02       4680.42  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:74:\
+        \ /workspace/generated/designs/i2c_benchmark_corrupted/tb/.chia_sim/I2CCornerTest.xml]\
+        \ Error 1\n"
+    I2CRandomTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "    ..rupted/tb/i2c_scoreboard.py(352) [uvm_test_top.i2c_env.i2c_scoreboard]:\
+        \ connected monitor ap/hung_ap/reset_ap -> scoreboard FIFOs\n    90.00ns INFO\
+        \     ..orrupted/tb/i2c_coverage.py(632) [uvm_test_top.i2c_env.i2c_coverage]:\
+        \ connected monitor ap/reset_ap -> coverage FIFOs\n    90.00ns INFO     ..ark_corrupted/tb/i2c_env.py(147)\
+        \ [uvm_test_top.i2c_env]: I2CEnv connect_phase: 'i2c_driver' set; monitor\
+        \ ap/hung_ap/reset_ap wired into scoreboard and coverage sampler\n    90.00ns\
+        \ INFO     ..upted/tb/i2c_assertions.py(1194) [uvm_test_top.i2c_env]: WATCHDOG:\
+        \ armed for 200000 clock cycles\n   100.00ns WARNING  py.warnings        \
+        \                /workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_pins.py:165:\
+        \ DeprecationWarning: `logic_array.binstr` getter is deprecated. Use `str(logic_array)`\
+        \ instead.\n                                                          if hasattr(pin_value,\
+        \ \"binstr\"):\n   220.00ns INFO     .._corrupted/tb/i2c_driver.py(231) [uvm_test_top.i2c_env.i2c_agent.driver]:\
+        \ reset asserted for 13 cycles\n   230.00ns ERROR    ..rupted/tb/i2c_assertions.py(454)\
+        \ [uvm_test_top.i2c_env]: [assertion a_open_drain_release] FAILED: SDA resolved\
+        \ level 0 while busy==0 (sda_oe=1, sda_out=0); the line must be released (driven\
+        \ high via pull-up) while idle\n   230.00ns WARNING  py.warnings         \
+        \               /workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_env.py:180:\
+        \ DeprecationWarning: `task.kill()` is deprecated in favor of `task.cancel()`\n\
+        \                                                          self._watchdog_task.kill()\n\
+        \   top.cg_transaction : <cocotb_coverage.coverage.CoverItem object at 0x7a6769115000>,\
+        \ coverage=0, size=28 \n      top.cg_transaction.bin_ack_error : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7a67691157b0>, coverage=0, size=2 \n      top.cg_transaction.bin_rw\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7a67691152d0>, coverage=0,\
+        \ size=2 \n      top.cg_transaction.bin_rx_data : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7a6769116650>, coverage=0, size=2 \n      top.cg_transaction.bin_slave_addr\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7a6769115180>, coverage=0,\
+        \ size=3 \n      top.cg_transaction.bin_tx_data : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7a6769115750>, coverage=0, size=3 \n      top.cg_transaction.cross_addr_rw\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x7a67691166e0>, coverage=0,\
+        \ size=6 \n      top.cg_transaction.cross_data_ack : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x7a6769116620>, coverage=0, size=6 \n      top.cg_transaction.cross_rw_ack_error\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x7a6769116710>, coverage=0,\
+        \ size=4 \n   top.cg_control_protocol : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7a6769114580>, coverage=1, size=13 \n      top.cg_control_protocol.bin_addr_ack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7a6769114640>, coverage=0,\
+        \ size=2 \n      top.cg_control_protocol.bin_busy : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7a67691143a0>, coverage=0, size=1 \n      top.cg_control_protocol.bin_data_ack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7a6769114610>, coverage=0,\
+        \ size=2 \n      top.cg_control_protocol.bin_done : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7a6769114460>, coverage=1, size=1 \n      top.cg_control_protocol.bin_master_nack\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7a67691142e0>, coverage=0,\
+        \ size=1 \n      top.cg_control_protocol.bin_reset_injected : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7a67691142b0>, coverage=0, size=1 \n      top.cg_control_protocol.bin_start_while_busy\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7a67691146a0>, coverage=0,\
+        \ size=1 \n      top.cg_control_protocol.cross_addr_data_ack : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x7a6769114910>, coverage=0, size=4 \n   230.00ns WARNING  cocotb.regression\
+        \                  test_top.i2c_tb_top failed\n                          \
+        \                              Traceback (most recent call last):\n      \
+        \                                                    File \"/workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_assertions.py\"\
+        , line 878, in _check_a_open_drain_release\n                             \
+        \                               self._fail(\n                            \
+        \                              File \"/workspace/generated/designs/i2c_benchmark_corrupted/tb/i2c_assertions.py\"\
+        , line 455, in _fail\n                                                   \
+        \         raise AssertionError(f\"assertion '{name}' failed: {message}\")\n\
+        \                                                        AssertionError: assertion\
+        \ 'a_open_drain_release' failed: SDA resolved level 0 while busy==0 (sda_oe=1,\
+        \ sda_out=0); the line must be released (driven high via pull-up) while idle\n\
+        \   230.00ns INFO     cocotb.regression                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.i2c_tb_top\
+        \            FAIL         230.00           0.02      11707.17  **\n      \
+        \                                                  **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=0\
+        \ FAIL=1 SKIP=0                230.00           0.02      11514.59  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:74:\
+        \ /workspace/generated/designs/i2c_benchmark_corrupted/tb/.chia_sim/I2CRandomTest.xml]\
+        \ Error 1\n"

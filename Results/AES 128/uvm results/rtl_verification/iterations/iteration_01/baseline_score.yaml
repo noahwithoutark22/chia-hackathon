@@ -1,0 +1,981 @@
+schema_version: '1.0'
+iteration: 1
+quality_score: 55.0
+metrics:
+  tests_total: 11
+  tests_passed: 0
+  tests_failed: 11
+  functional_coverage:
+    available: false
+    percentage: null
+  planned_coverage_points: 5
+  generated_coverage_points: 5
+  planned_coverage_crosses: 2
+  generated_coverage_crosses: 2
+  python_assertions: 9
+  checker_coroutines: 7
+  test_classes: 11
+  sequences: 0
+  planned_assertions: 6
+  test_health_score: 0.0
+  coverage_quality_score: 100.0
+  assertion_quality_score: 100.0
+  scenario_quality_score: 0.0
+  scenario_coverage:
+    planned: 9
+    generated: 9
+    executed: 0
+    score: 0.0
+    planned_ids:
+    - TC01
+    - TC02
+    - TC03
+    - TC04
+    - TC05
+    - TC06
+    - TC07
+    - TC08
+    - TC09
+    generated_ids:
+    - TC01
+    - TC02
+    - TC03
+    - TC04
+    - TC05
+    - TC06
+    - TC07
+    - TC08
+    - TC09
+    executed_ids: []
+  parameter_coverage:
+    available: false
+    score: 100.0
+    planned: {}
+    observed: {}
+  tb_quality_score: 55.0
+weaknesses:
+- id: W-TEST-HEALTH
+  category: test_health
+  severity: high
+  description: 11 of 11 runnable tests did not complete successfully.
+  evidence:
+    passed: 0
+    total: 11
+- id: W-SCENARIO-COVERAGE
+  category: stimulus
+  severity: medium
+  description: Planned scenarios are not all represented by successfully executed
+    generated tests.
+  scenarios:
+  - TC01
+  - TC02
+  - TC03
+  - TC04
+  - TC05
+  - TC06
+  - TC07
+  - TC08
+  - TC09
+  evidence:
+    planned: 9
+    generated: 9
+    executed: 0
+- id: W-COVERAGE-METRIC
+  category: measurement
+  severity: medium
+  description: No machine-readable functional coverage percentage was observed in
+    simulation output.
+  action: Add deterministic coverage export/reporting to the TB without weakening
+    existing checks.
+authoritative_inputs:
+- specification
+- reference_model
+- verification_plan
+rtl_exposed_to_llm: false
+simulation_evidence:
+  status: functional_failure
+  tests:
+    Aes128ResetReleaseIdleTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "sertion '{name}' failed: {message}\")\n                              \
+        \                          AssertionError: assertion 'reset_returns_dut_to_idle'\
+        \ failed: a start sampled after reset release produced no done pulse within\
+        \ 80 clock cycles; the DUT did not return to idle so the start was never honored\
+        \ (plan reset_returns_dut_to_idle; cf. DISC-01 reset leaving the DUT busy)\n\
+        \   910.00ns INFO     cocotb.regression                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.aes128_tb_top\
+        \         FAIL         910.00           0.02      45773.85  **\n         \
+        \                                               **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=0\
+        \ FAIL=1 SKIP=0                910.00           0.02      44958.02  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\n%Warning-WIDTHEXPAND: /workspace/generated/designs/aes128_benchmark_corrupted/rtl_verification/accepted/aes128.sv:114:16:\
+        \ Operator ASSIGN expects 32 bits on the Assign RHS, but Assign RHS's SEL\
+        \ generates 31 bits.\n                                                   \
+        \                                                                     : ...\
+        \ note: In instance 'aes128'\n  114 |             w3 = k[30:0];\n      | \
+        \               ^\n                      ... For warning description see https://verilator.org/warn/WIDTHEXPAND?v=5.042\n\
+        \                      ... Use \"/* verilator lint_off WIDTHEXPAND */\" and\
+        \ lint_on around source to disable this message.\n%Warning-WIDTHEXPAND: /workspace/generated/designs/aes128_benchmark_corrupted/rtl_verification/accepted/aes128.sv:117:33:\
+        \ Operator XOR expects 32 bits on the LHS, but LHS's SEL generates 8 bits.\n\
+        \                                                                        \
+        \                                                : ... note: In instance 'aes128'\n\
+        \  117 |             t[31:24] = t[31:24] ^ RCON[r] ^ 32'h00000100;\n     \
+        \ |                                 ^\n%Warning-WIDTHEXPAND: /workspace/generated/designs/aes128_benchmark_corrupted/rtl_verification/accepted/aes128.sv:117:33:\
+        \ Operator XOR expects 32 bits on the RHS, but RHS's ARRAYSEL generates 8\
+        \ bits.\n                                                                \
+        \                                                        : ... note: In instance\
+        \ 'aes128'\n  117 |             t[31:24] = t[31:24] ^ RCON[r] ^ 32'h00000100;\n\
+        \      |                                 ^\n%Warning-WIDTHTRUNC: /workspace/generated/designs/aes128_benchmark_corrupted/rtl_verification/accepted/aes128.sv:117:22:\
+        \ Operator ASSIGN expects 8 bits on the Assign RHS, but Assign RHS's XOR generates\
+        \ 32 bits.\n                                                             \
+        \                                                          : ... note: In\
+        \ instance 'aes128'\n  117 |             t[31:24] = t[31:24] ^ RCON[r] ^ 32'h00000100;\n\
+        \      |                      ^\n                     ... For warning description\
+        \ see https://verilator.org/warn/WIDTHTRUNC?v=5.042\n                    \
+        \ ... Use \"/* verilator lint_off WIDTHTRUNC */\" and lint_on around source\
+        \ to disable this message.\n%Warning-WIDTHEXPAND: /workspace/generated/designs/aes128_benchmark_corrupted/rtl_verification/accepted/aes128.sv:160:30:\
+        \ Operator FUNCREF 'next_round_key' expects 32 bits on the Function Argument,\
+        \ but Function Argument's VARREF 'round' generates 4 bits.\n             \
+        \                                                                        \
+        \                                   : ... note: In instance 'aes128'\n  160\
+        \ |                 round_key <= next_round_key(round_key, round);\n     \
+        \ |                              ^~~~~~~~~~~~~~\n%Warning-WIDTHEXPAND: /workspace/generated/designs/aes128_benchmark_corrupted/rtl_verification/accepted/aes128.sv:164:52:\
+        \ Operator FUNCREF 'next_round_key' expects 32 bits on the Function Argument,\
+        \ but Function Argument's VARREF 'round' generates 4 bits.\n             \
+        \                                                                        \
+        \                                   : ... note: In instance 'aes128'\n  164\
+        \ |                     ciphertext <= aes_round(state, next_round_key(round_key,\
+        \ round), 1'b1);\n      |                                                \
+        \    ^~~~~~~~~~~~~~\n%Warning-WIDTHEXPAND: /workspace/generated/designs/aes128_benchmark_corrupted/rtl_verification/accepted/aes128.sv:168:47:\
+        \ Operator FUNCREF 'next_round_key' expects 32 bits on the Function Argument,\
+        \ but Function Argument's VARREF 'round' generates 4 bits.\n             \
+        \                                                                        \
+        \                                   : ... note: In instance 'aes128'\n  168\
+        \ |                     state <= aes_round(state, next_round_key(round_key,\
+        \ round), 1'b0);\n      |                                               ^~~~~~~~~~~~~~\n\
+        %Warning-WIDTHEXPAND: /workspace/generated/designs/aes128_benchmark_corrupted/rtl_verification/accepted/aes128.sv:169:36:\
+        \ Operator ADD expects 4 bits on the RHS, but RHS's CONST '2'h2' generates\
+        \ 2 bits.\n                                                              \
+        \                                                          : ... note: In\
+        \ instance 'aes128'\n  169 |                     round <= round + 2'b10;\n\
+        \      |                                    ^\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:74:\
+        \ /workspace/generated/designs/aes128_benchmark_corrupted/tb/.chia_sim/Aes128ResetReleaseIdleTest.xml]\
+        \ Error 1\n"
+    Aes128Fips197KnownAnswerTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "_encrypt at 0x7b46713153f0>; known-answer vectors=3)\n    40.00ns INFO\
+        \     ..nchmark_corrupted/tb/env.py(106) [uvm_test_top.aes128_env]: aes128_env\
+        \ connect_phase: agent.analysis_port -> scoreboard fifo and coverage subscriber\n\
+        \    40.00ns INFO     ..ark_corrupted/tb/monitor.py(153) [uvm_test_top.aes128_env.aes128_agent.monitor]:\
+        \ monitor: started (done_timeout_cycles=1000)\n    40.00ns WARNING  py.warnings\
+        \                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/dut_helper.py:91:\
+        \ DeprecationWarning: Use `handle.set(Immediate(...))` or `handle.value =\
+        \ Immediate(...)` instead.\n                                             \
+        \             self.dut.start.setimmediatevalue(int(start) & 0x1)\n    40.00ns\
+        \ WARNING  py.warnings                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/dut_helper.py:92:\
+        \ DeprecationWarning: Use `handle.set(Immediate(...))` or `handle.value =\
+        \ Immediate(...)` instead.\n                                             \
+        \             self.dut.key.setimmediatevalue(int(key) & mask128)\n    40.00ns\
+        \ WARNING  py.warnings                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/dut_helper.py:93:\
+        \ DeprecationWarning: Use `handle.set(Immediate(...))` or `handle.value =\
+        \ Immediate(...)` instead.\n                                             \
+        \             self.dut.plaintext.setimmediatevalue(int(plaintext) & mask128)\n\
+        \    40.00ns INFO     .._corrupted/tb/scoreboard.py(303) [uvm_test_top.aes128_env.aes128_scoreboard]:\
+        \ aes128_scoreboard: run_phase started\n    40.00ns INFO     ..rk_corrupted/tb/coverage.py(431)\
+        \ [uvm_test_top.aes128_env.aes128_coverage]: aes128_coverage: run_phase started\
+        \ (handshake sampler active)\n   890.00ns ERROR    tb.assertions         \
+        \             [assertion reset_returns_dut_to_idle] FAILED: a start sampled\
+        \ after reset release produced no done pulse within 80 clock cycles; the DUT\
+        \ did not return to idle so the start was never honored (plan reset_returns_dut_to_idle;\
+        \ cf. DISC-01 reset leaving the DUT busy)\n   890.00ns WARNING  py.warnings\
+        \                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/test_top.py:161:\
+        \ DeprecationWarning: `task.kill()` is deprecated in favor of `task.cancel()`\n\
+        \                                                          watchdog_task.kill()\n\
+        top : <cocotb_coverage.coverage.CoverItem object at 0x7b4671307d00>, coverage=5,\
+        \ size=36 \n   top.cg_ciphertext_classes : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7b46713078e0>, coverage=0, size=4 \n      top.cg_ciphertext_classes.ciphertext_class\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7b4671307a60>, coverage=0,\
+        \ size=4 \n   top.cg_key_plaintext_patterns : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7b4671307910>, coverage=0, size=24 \n      top.cg_key_plaintext_patterns.key_pattern\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7b4671307c40>, coverage=0,\
+        \ size=4 \n      top.cg_key_plaintext_patterns.key_plaintext_cross : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x7b4671307a90>, coverage=0, size=16 \n      top.cg_key_plaintext_patterns.plaintext_pattern\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7b46713079a0>, coverage=0,\
+        \ size=4 \n   top.cg_start_done_handshake : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7b4671307dc0>, coverage=5, size=8 \n      top.cg_start_done_handshake.done_state\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7b4671307b80>, coverage=1,\
+        \ size=2 \n      top.cg_start_done_handshake.start_done_cross : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x7b4671307b20>, coverage=2, size=4 \n      top.cg_start_done_handshake.start_state\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7b4671307c70>, coverage=2,\
+        \ size=2 \n   890.00ns WARNING  cocotb.regression                  test_top.aes128_tb_top\
+        \ failed\n                                                        Traceback\
+        \ (most recent call last):\n                                             \
+        \             File \"/workspace/generated/designs/aes128_benchmark_corrupted/tb/assertions.py\"\
+        , line 442, in _check_reset_returns_dut_to_idle\n                        \
+        \                                    self._fail(\n                       \
+        \                                   File \"/workspace/generated/designs/aes128_benchmark_corrupted/tb/assertions.py\"\
+        , line 365, in _fail\n                                                   \
+        \         raise AssertionError(f\"assertion '{name}' failed: {message}\")\n\
+        \                                                        AssertionError: assertion\
+        \ 'reset_returns_dut_to_idle' failed: a start sampled after reset release\
+        \ produced no done pulse within 80 clock cycles; the DUT did not return to\
+        \ idle so the start was never honored (plan reset_returns_dut_to_idle; cf.\
+        \ DISC-01 reset leaving the DUT busy)\n   890.00ns INFO     cocotb.regression\
+        \                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.aes128_tb_top\
+        \         FAIL         890.00           0.02      45438.76  **\n         \
+        \                                               **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=0\
+        \ FAIL=1 SKIP=0                890.00           0.02      44624.48  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:74:\
+        \ /workspace/generated/designs/aes128_benchmark_corrupted/tb/.chia_sim/Aes128Fips197KnownAnswerTest.xml]\
+        \ Error 1\n"
+    Aes128AllZeroKnownAnswerTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "_encrypt at 0x7556441153f0>; known-answer vectors=3)\n    40.00ns INFO\
+        \     ..nchmark_corrupted/tb/env.py(106) [uvm_test_top.aes128_env]: aes128_env\
+        \ connect_phase: agent.analysis_port -> scoreboard fifo and coverage subscriber\n\
+        \    40.00ns INFO     ..ark_corrupted/tb/monitor.py(153) [uvm_test_top.aes128_env.aes128_agent.monitor]:\
+        \ monitor: started (done_timeout_cycles=1000)\n    40.00ns WARNING  py.warnings\
+        \                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/dut_helper.py:91:\
+        \ DeprecationWarning: Use `handle.set(Immediate(...))` or `handle.value =\
+        \ Immediate(...)` instead.\n                                             \
+        \             self.dut.start.setimmediatevalue(int(start) & 0x1)\n    40.00ns\
+        \ WARNING  py.warnings                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/dut_helper.py:92:\
+        \ DeprecationWarning: Use `handle.set(Immediate(...))` or `handle.value =\
+        \ Immediate(...)` instead.\n                                             \
+        \             self.dut.key.setimmediatevalue(int(key) & mask128)\n    40.00ns\
+        \ WARNING  py.warnings                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/dut_helper.py:93:\
+        \ DeprecationWarning: Use `handle.set(Immediate(...))` or `handle.value =\
+        \ Immediate(...)` instead.\n                                             \
+        \             self.dut.plaintext.setimmediatevalue(int(plaintext) & mask128)\n\
+        \    40.00ns INFO     .._corrupted/tb/scoreboard.py(303) [uvm_test_top.aes128_env.aes128_scoreboard]:\
+        \ aes128_scoreboard: run_phase started\n    40.00ns INFO     ..rk_corrupted/tb/coverage.py(431)\
+        \ [uvm_test_top.aes128_env.aes128_coverage]: aes128_coverage: run_phase started\
+        \ (handshake sampler active)\n   890.00ns ERROR    tb.assertions         \
+        \             [assertion reset_returns_dut_to_idle] FAILED: a start sampled\
+        \ after reset release produced no done pulse within 80 clock cycles; the DUT\
+        \ did not return to idle so the start was never honored (plan reset_returns_dut_to_idle;\
+        \ cf. DISC-01 reset leaving the DUT busy)\n   890.00ns WARNING  py.warnings\
+        \                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/test_top.py:161:\
+        \ DeprecationWarning: `task.kill()` is deprecated in favor of `task.cancel()`\n\
+        \                                                          watchdog_task.kill()\n\
+        top : <cocotb_coverage.coverage.CoverItem object at 0x755644107d00>, coverage=5,\
+        \ size=36 \n   top.cg_ciphertext_classes : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7556441078e0>, coverage=0, size=4 \n      top.cg_ciphertext_classes.ciphertext_class\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x755644107a60>, coverage=0,\
+        \ size=4 \n   top.cg_key_plaintext_patterns : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x755644107910>, coverage=0, size=24 \n      top.cg_key_plaintext_patterns.key_pattern\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x755644107c40>, coverage=0,\
+        \ size=4 \n      top.cg_key_plaintext_patterns.key_plaintext_cross : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x755644107a90>, coverage=0, size=16 \n      top.cg_key_plaintext_patterns.plaintext_pattern\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7556441079a0>, coverage=0,\
+        \ size=4 \n   top.cg_start_done_handshake : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x755644107dc0>, coverage=5, size=8 \n      top.cg_start_done_handshake.done_state\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x755644107b80>, coverage=1,\
+        \ size=2 \n      top.cg_start_done_handshake.start_done_cross : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x755644107b20>, coverage=2, size=4 \n      top.cg_start_done_handshake.start_state\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x755644107c70>, coverage=2,\
+        \ size=2 \n   890.00ns WARNING  cocotb.regression                  test_top.aes128_tb_top\
+        \ failed\n                                                        Traceback\
+        \ (most recent call last):\n                                             \
+        \             File \"/workspace/generated/designs/aes128_benchmark_corrupted/tb/assertions.py\"\
+        , line 442, in _check_reset_returns_dut_to_idle\n                        \
+        \                                    self._fail(\n                       \
+        \                                   File \"/workspace/generated/designs/aes128_benchmark_corrupted/tb/assertions.py\"\
+        , line 365, in _fail\n                                                   \
+        \         raise AssertionError(f\"assertion '{name}' failed: {message}\")\n\
+        \                                                        AssertionError: assertion\
+        \ 'reset_returns_dut_to_idle' failed: a start sampled after reset release\
+        \ produced no done pulse within 80 clock cycles; the DUT did not return to\
+        \ idle so the start was never honored (plan reset_returns_dut_to_idle; cf.\
+        \ DISC-01 reset leaving the DUT busy)\n   890.00ns INFO     cocotb.regression\
+        \                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.aes128_tb_top\
+        \         FAIL         890.00           0.02      46254.38  **\n         \
+        \                                               **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=0\
+        \ FAIL=1 SKIP=0                890.00           0.02      45435.87  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:74:\
+        \ /workspace/generated/designs/aes128_benchmark_corrupted/tb/.chia_sim/Aes128AllZeroKnownAnswerTest.xml]\
+        \ Error 1\n"
+    Aes128IncrementingKnownAnswerTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "ypt at 0x760cf3e113f0>; known-answer vectors=3)\n    40.00ns INFO    \
+        \ ..nchmark_corrupted/tb/env.py(106) [uvm_test_top.aes128_env]: aes128_env\
+        \ connect_phase: agent.analysis_port -> scoreboard fifo and coverage subscriber\n\
+        \    40.00ns INFO     ..ark_corrupted/tb/monitor.py(153) [uvm_test_top.aes128_env.aes128_agent.monitor]:\
+        \ monitor: started (done_timeout_cycles=1000)\n    40.00ns WARNING  py.warnings\
+        \                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/dut_helper.py:91:\
+        \ DeprecationWarning: Use `handle.set(Immediate(...))` or `handle.value =\
+        \ Immediate(...)` instead.\n                                             \
+        \             self.dut.start.setimmediatevalue(int(start) & 0x1)\n    40.00ns\
+        \ WARNING  py.warnings                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/dut_helper.py:92:\
+        \ DeprecationWarning: Use `handle.set(Immediate(...))` or `handle.value =\
+        \ Immediate(...)` instead.\n                                             \
+        \             self.dut.key.setimmediatevalue(int(key) & mask128)\n    40.00ns\
+        \ WARNING  py.warnings                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/dut_helper.py:93:\
+        \ DeprecationWarning: Use `handle.set(Immediate(...))` or `handle.value =\
+        \ Immediate(...)` instead.\n                                             \
+        \             self.dut.plaintext.setimmediatevalue(int(plaintext) & mask128)\n\
+        \    40.00ns INFO     .._corrupted/tb/scoreboard.py(303) [uvm_test_top.aes128_env.aes128_scoreboard]:\
+        \ aes128_scoreboard: run_phase started\n    40.00ns INFO     ..rk_corrupted/tb/coverage.py(431)\
+        \ [uvm_test_top.aes128_env.aes128_coverage]: aes128_coverage: run_phase started\
+        \ (handshake sampler active)\n   890.00ns ERROR    tb.assertions         \
+        \             [assertion reset_returns_dut_to_idle] FAILED: a start sampled\
+        \ after reset release produced no done pulse within 80 clock cycles; the DUT\
+        \ did not return to idle so the start was never honored (plan reset_returns_dut_to_idle;\
+        \ cf. DISC-01 reset leaving the DUT busy)\n   890.00ns WARNING  py.warnings\
+        \                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/test_top.py:161:\
+        \ DeprecationWarning: `task.kill()` is deprecated in favor of `task.cancel()`\n\
+        \                                                          watchdog_task.kill()\n\
+        top : <cocotb_coverage.coverage.CoverItem object at 0x760cf3e03d00>, coverage=5,\
+        \ size=36 \n   top.cg_ciphertext_classes : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x760cf3e038e0>, coverage=0, size=4 \n      top.cg_ciphertext_classes.ciphertext_class\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x760cf3e03a60>, coverage=0,\
+        \ size=4 \n   top.cg_key_plaintext_patterns : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x760cf3e03910>, coverage=0, size=24 \n      top.cg_key_plaintext_patterns.key_pattern\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x760cf3e03c40>, coverage=0,\
+        \ size=4 \n      top.cg_key_plaintext_patterns.key_plaintext_cross : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x760cf3e03a90>, coverage=0, size=16 \n      top.cg_key_plaintext_patterns.plaintext_pattern\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x760cf3e039a0>, coverage=0,\
+        \ size=4 \n   top.cg_start_done_handshake : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x760cf3e03dc0>, coverage=5, size=8 \n      top.cg_start_done_handshake.done_state\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x760cf3e03b80>, coverage=1,\
+        \ size=2 \n      top.cg_start_done_handshake.start_done_cross : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x760cf3e03b20>, coverage=2, size=4 \n      top.cg_start_done_handshake.start_state\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x760cf3e03c70>, coverage=2,\
+        \ size=2 \n   890.00ns WARNING  cocotb.regression                  test_top.aes128_tb_top\
+        \ failed\n                                                        Traceback\
+        \ (most recent call last):\n                                             \
+        \             File \"/workspace/generated/designs/aes128_benchmark_corrupted/tb/assertions.py\"\
+        , line 442, in _check_reset_returns_dut_to_idle\n                        \
+        \                                    self._fail(\n                       \
+        \                                   File \"/workspace/generated/designs/aes128_benchmark_corrupted/tb/assertions.py\"\
+        , line 365, in _fail\n                                                   \
+        \         raise AssertionError(f\"assertion '{name}' failed: {message}\")\n\
+        \                                                        AssertionError: assertion\
+        \ 'reset_returns_dut_to_idle' failed: a start sampled after reset release\
+        \ produced no done pulse within 80 clock cycles; the DUT did not return to\
+        \ idle so the start was never honored (plan reset_returns_dut_to_idle; cf.\
+        \ DISC-01 reset leaving the DUT busy)\n   890.00ns INFO     cocotb.regression\
+        \                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.aes128_tb_top\
+        \         FAIL         890.00           0.02      46018.41  **\n         \
+        \                                               **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=0\
+        \ FAIL=1 SKIP=0                890.00           0.02      45222.02  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:74:\
+        \ /workspace/generated/designs/aes128_benchmark_corrupted/tb/.chia_sim/Aes128IncrementingKnownAnswerTest.xml]\
+        \ Error 1\n"
+    Aes128BackToBackTransactionsTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "rypt at 0x7f98e7fa53f0>; known-answer vectors=3)\n    40.00ns INFO   \
+        \  ..nchmark_corrupted/tb/env.py(106) [uvm_test_top.aes128_env]: aes128_env\
+        \ connect_phase: agent.analysis_port -> scoreboard fifo and coverage subscriber\n\
+        \    40.00ns INFO     ..ark_corrupted/tb/monitor.py(153) [uvm_test_top.aes128_env.aes128_agent.monitor]:\
+        \ monitor: started (done_timeout_cycles=1000)\n    40.00ns WARNING  py.warnings\
+        \                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/dut_helper.py:91:\
+        \ DeprecationWarning: Use `handle.set(Immediate(...))` or `handle.value =\
+        \ Immediate(...)` instead.\n                                             \
+        \             self.dut.start.setimmediatevalue(int(start) & 0x1)\n    40.00ns\
+        \ WARNING  py.warnings                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/dut_helper.py:92:\
+        \ DeprecationWarning: Use `handle.set(Immediate(...))` or `handle.value =\
+        \ Immediate(...)` instead.\n                                             \
+        \             self.dut.key.setimmediatevalue(int(key) & mask128)\n    40.00ns\
+        \ WARNING  py.warnings                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/dut_helper.py:93:\
+        \ DeprecationWarning: Use `handle.set(Immediate(...))` or `handle.value =\
+        \ Immediate(...)` instead.\n                                             \
+        \             self.dut.plaintext.setimmediatevalue(int(plaintext) & mask128)\n\
+        \    40.00ns INFO     .._corrupted/tb/scoreboard.py(303) [uvm_test_top.aes128_env.aes128_scoreboard]:\
+        \ aes128_scoreboard: run_phase started\n    40.00ns INFO     ..rk_corrupted/tb/coverage.py(431)\
+        \ [uvm_test_top.aes128_env.aes128_coverage]: aes128_coverage: run_phase started\
+        \ (handshake sampler active)\n   890.00ns ERROR    tb.assertions         \
+        \             [assertion reset_returns_dut_to_idle] FAILED: a start sampled\
+        \ after reset release produced no done pulse within 80 clock cycles; the DUT\
+        \ did not return to idle so the start was never honored (plan reset_returns_dut_to_idle;\
+        \ cf. DISC-01 reset leaving the DUT busy)\n   890.00ns WARNING  py.warnings\
+        \                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/test_top.py:161:\
+        \ DeprecationWarning: `task.kill()` is deprecated in favor of `task.cancel()`\n\
+        \                                                          watchdog_task.kill()\n\
+        top : <cocotb_coverage.coverage.CoverItem object at 0x7f98e7f73d00>, coverage=5,\
+        \ size=36 \n   top.cg_ciphertext_classes : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7f98e7f738e0>, coverage=0, size=4 \n      top.cg_ciphertext_classes.ciphertext_class\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7f98e7f73a60>, coverage=0,\
+        \ size=4 \n   top.cg_key_plaintext_patterns : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7f98e7f73910>, coverage=0, size=24 \n      top.cg_key_plaintext_patterns.key_pattern\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7f98e7f73c40>, coverage=0,\
+        \ size=4 \n      top.cg_key_plaintext_patterns.key_plaintext_cross : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x7f98e7f73a90>, coverage=0, size=16 \n      top.cg_key_plaintext_patterns.plaintext_pattern\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7f98e7f739a0>, coverage=0,\
+        \ size=4 \n   top.cg_start_done_handshake : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7f98e7f73dc0>, coverage=5, size=8 \n      top.cg_start_done_handshake.done_state\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7f98e7f73b80>, coverage=1,\
+        \ size=2 \n      top.cg_start_done_handshake.start_done_cross : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x7f98e7f73b20>, coverage=2, size=4 \n      top.cg_start_done_handshake.start_state\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7f98e7f73c70>, coverage=2,\
+        \ size=2 \n   890.00ns WARNING  cocotb.regression                  test_top.aes128_tb_top\
+        \ failed\n                                                        Traceback\
+        \ (most recent call last):\n                                             \
+        \             File \"/workspace/generated/designs/aes128_benchmark_corrupted/tb/assertions.py\"\
+        , line 442, in _check_reset_returns_dut_to_idle\n                        \
+        \                                    self._fail(\n                       \
+        \                                   File \"/workspace/generated/designs/aes128_benchmark_corrupted/tb/assertions.py\"\
+        , line 365, in _fail\n                                                   \
+        \         raise AssertionError(f\"assertion '{name}' failed: {message}\")\n\
+        \                                                        AssertionError: assertion\
+        \ 'reset_returns_dut_to_idle' failed: a start sampled after reset release\
+        \ produced no done pulse within 80 clock cycles; the DUT did not return to\
+        \ idle so the start was never honored (plan reset_returns_dut_to_idle; cf.\
+        \ DISC-01 reset leaving the DUT busy)\n   890.00ns INFO     cocotb.regression\
+        \                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.aes128_tb_top\
+        \         FAIL         890.00           0.02      44671.33  **\n         \
+        \                                               **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=0\
+        \ FAIL=1 SKIP=0                890.00           0.02      43917.99  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:74:\
+        \ /workspace/generated/designs/aes128_benchmark_corrupted/tb/.chia_sim/Aes128BackToBackTransactionsTest.xml]\
+        \ Error 1\n"
+    Aes128KeySensitivityTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "s128_encrypt at 0x7ed845b9d3f0>; known-answer vectors=3)\n    40.00ns\
+        \ INFO     ..nchmark_corrupted/tb/env.py(106) [uvm_test_top.aes128_env]: aes128_env\
+        \ connect_phase: agent.analysis_port -> scoreboard fifo and coverage subscriber\n\
+        \    40.00ns INFO     ..ark_corrupted/tb/monitor.py(153) [uvm_test_top.aes128_env.aes128_agent.monitor]:\
+        \ monitor: started (done_timeout_cycles=1000)\n    40.00ns WARNING  py.warnings\
+        \                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/dut_helper.py:91:\
+        \ DeprecationWarning: Use `handle.set(Immediate(...))` or `handle.value =\
+        \ Immediate(...)` instead.\n                                             \
+        \             self.dut.start.setimmediatevalue(int(start) & 0x1)\n    40.00ns\
+        \ WARNING  py.warnings                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/dut_helper.py:92:\
+        \ DeprecationWarning: Use `handle.set(Immediate(...))` or `handle.value =\
+        \ Immediate(...)` instead.\n                                             \
+        \             self.dut.key.setimmediatevalue(int(key) & mask128)\n    40.00ns\
+        \ WARNING  py.warnings                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/dut_helper.py:93:\
+        \ DeprecationWarning: Use `handle.set(Immediate(...))` or `handle.value =\
+        \ Immediate(...)` instead.\n                                             \
+        \             self.dut.plaintext.setimmediatevalue(int(plaintext) & mask128)\n\
+        \    40.00ns INFO     .._corrupted/tb/scoreboard.py(303) [uvm_test_top.aes128_env.aes128_scoreboard]:\
+        \ aes128_scoreboard: run_phase started\n    40.00ns INFO     ..rk_corrupted/tb/coverage.py(431)\
+        \ [uvm_test_top.aes128_env.aes128_coverage]: aes128_coverage: run_phase started\
+        \ (handshake sampler active)\n   890.00ns ERROR    tb.assertions         \
+        \             [assertion reset_returns_dut_to_idle] FAILED: a start sampled\
+        \ after reset release produced no done pulse within 80 clock cycles; the DUT\
+        \ did not return to idle so the start was never honored (plan reset_returns_dut_to_idle;\
+        \ cf. DISC-01 reset leaving the DUT busy)\n   890.00ns WARNING  py.warnings\
+        \                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/test_top.py:161:\
+        \ DeprecationWarning: `task.kill()` is deprecated in favor of `task.cancel()`\n\
+        \                                                          watchdog_task.kill()\n\
+        top : <cocotb_coverage.coverage.CoverItem object at 0x7ed845b8fd00>, coverage=5,\
+        \ size=36 \n   top.cg_ciphertext_classes : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7ed845b8f8e0>, coverage=0, size=4 \n      top.cg_ciphertext_classes.ciphertext_class\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7ed845b8fa60>, coverage=0,\
+        \ size=4 \n   top.cg_key_plaintext_patterns : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7ed845b8f910>, coverage=0, size=24 \n      top.cg_key_plaintext_patterns.key_pattern\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7ed845b8fc40>, coverage=0,\
+        \ size=4 \n      top.cg_key_plaintext_patterns.key_plaintext_cross : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x7ed845b8fa90>, coverage=0, size=16 \n      top.cg_key_plaintext_patterns.plaintext_pattern\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7ed845b8f9a0>, coverage=0,\
+        \ size=4 \n   top.cg_start_done_handshake : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7ed845b8fdc0>, coverage=5, size=8 \n      top.cg_start_done_handshake.done_state\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7ed845b8fb80>, coverage=1,\
+        \ size=2 \n      top.cg_start_done_handshake.start_done_cross : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x7ed845b8fb20>, coverage=2, size=4 \n      top.cg_start_done_handshake.start_state\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7ed845b8fc70>, coverage=2,\
+        \ size=2 \n   890.00ns WARNING  cocotb.regression                  test_top.aes128_tb_top\
+        \ failed\n                                                        Traceback\
+        \ (most recent call last):\n                                             \
+        \             File \"/workspace/generated/designs/aes128_benchmark_corrupted/tb/assertions.py\"\
+        , line 442, in _check_reset_returns_dut_to_idle\n                        \
+        \                                    self._fail(\n                       \
+        \                                   File \"/workspace/generated/designs/aes128_benchmark_corrupted/tb/assertions.py\"\
+        , line 365, in _fail\n                                                   \
+        \         raise AssertionError(f\"assertion '{name}' failed: {message}\")\n\
+        \                                                        AssertionError: assertion\
+        \ 'reset_returns_dut_to_idle' failed: a start sampled after reset release\
+        \ produced no done pulse within 80 clock cycles; the DUT did not return to\
+        \ idle so the start was never honored (plan reset_returns_dut_to_idle; cf.\
+        \ DISC-01 reset leaving the DUT busy)\n   890.00ns INFO     cocotb.regression\
+        \                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.aes128_tb_top\
+        \         FAIL         890.00           0.02      46235.91  **\n         \
+        \                                               **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=0\
+        \ FAIL=1 SKIP=0                890.00           0.02      45437.50  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:74:\
+        \ /workspace/generated/designs/aes128_benchmark_corrupted/tb/.chia_sim/Aes128KeySensitivityTest.xml]\
+        \ Error 1\n"
+    Aes128PlaintextSensitivityTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "ncrypt at 0x7ef2edb693f0>; known-answer vectors=3)\n    40.00ns INFO \
+        \    ..nchmark_corrupted/tb/env.py(106) [uvm_test_top.aes128_env]: aes128_env\
+        \ connect_phase: agent.analysis_port -> scoreboard fifo and coverage subscriber\n\
+        \    40.00ns INFO     ..ark_corrupted/tb/monitor.py(153) [uvm_test_top.aes128_env.aes128_agent.monitor]:\
+        \ monitor: started (done_timeout_cycles=1000)\n    40.00ns WARNING  py.warnings\
+        \                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/dut_helper.py:91:\
+        \ DeprecationWarning: Use `handle.set(Immediate(...))` or `handle.value =\
+        \ Immediate(...)` instead.\n                                             \
+        \             self.dut.start.setimmediatevalue(int(start) & 0x1)\n    40.00ns\
+        \ WARNING  py.warnings                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/dut_helper.py:92:\
+        \ DeprecationWarning: Use `handle.set(Immediate(...))` or `handle.value =\
+        \ Immediate(...)` instead.\n                                             \
+        \             self.dut.key.setimmediatevalue(int(key) & mask128)\n    40.00ns\
+        \ WARNING  py.warnings                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/dut_helper.py:93:\
+        \ DeprecationWarning: Use `handle.set(Immediate(...))` or `handle.value =\
+        \ Immediate(...)` instead.\n                                             \
+        \             self.dut.plaintext.setimmediatevalue(int(plaintext) & mask128)\n\
+        \    40.00ns INFO     .._corrupted/tb/scoreboard.py(303) [uvm_test_top.aes128_env.aes128_scoreboard]:\
+        \ aes128_scoreboard: run_phase started\n    40.00ns INFO     ..rk_corrupted/tb/coverage.py(431)\
+        \ [uvm_test_top.aes128_env.aes128_coverage]: aes128_coverage: run_phase started\
+        \ (handshake sampler active)\n   890.00ns ERROR    tb.assertions         \
+        \             [assertion reset_returns_dut_to_idle] FAILED: a start sampled\
+        \ after reset release produced no done pulse within 80 clock cycles; the DUT\
+        \ did not return to idle so the start was never honored (plan reset_returns_dut_to_idle;\
+        \ cf. DISC-01 reset leaving the DUT busy)\n   890.00ns WARNING  py.warnings\
+        \                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/test_top.py:161:\
+        \ DeprecationWarning: `task.kill()` is deprecated in favor of `task.cancel()`\n\
+        \                                                          watchdog_task.kill()\n\
+        top : <cocotb_coverage.coverage.CoverItem object at 0x7ef2edb5bd00>, coverage=5,\
+        \ size=36 \n   top.cg_ciphertext_classes : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7ef2edb5b8e0>, coverage=0, size=4 \n      top.cg_ciphertext_classes.ciphertext_class\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7ef2edb5ba60>, coverage=0,\
+        \ size=4 \n   top.cg_key_plaintext_patterns : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7ef2edb5b910>, coverage=0, size=24 \n      top.cg_key_plaintext_patterns.key_pattern\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7ef2edb5bc40>, coverage=0,\
+        \ size=4 \n      top.cg_key_plaintext_patterns.key_plaintext_cross : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x7ef2edb5ba90>, coverage=0, size=16 \n      top.cg_key_plaintext_patterns.plaintext_pattern\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7ef2edb5b9a0>, coverage=0,\
+        \ size=4 \n   top.cg_start_done_handshake : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7ef2edb5bdc0>, coverage=5, size=8 \n      top.cg_start_done_handshake.done_state\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7ef2edb5bb80>, coverage=1,\
+        \ size=2 \n      top.cg_start_done_handshake.start_done_cross : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x7ef2edb5bb20>, coverage=2, size=4 \n      top.cg_start_done_handshake.start_state\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7ef2edb5bc70>, coverage=2,\
+        \ size=2 \n   890.00ns WARNING  cocotb.regression                  test_top.aes128_tb_top\
+        \ failed\n                                                        Traceback\
+        \ (most recent call last):\n                                             \
+        \             File \"/workspace/generated/designs/aes128_benchmark_corrupted/tb/assertions.py\"\
+        , line 442, in _check_reset_returns_dut_to_idle\n                        \
+        \                                    self._fail(\n                       \
+        \                                   File \"/workspace/generated/designs/aes128_benchmark_corrupted/tb/assertions.py\"\
+        , line 365, in _fail\n                                                   \
+        \         raise AssertionError(f\"assertion '{name}' failed: {message}\")\n\
+        \                                                        AssertionError: assertion\
+        \ 'reset_returns_dut_to_idle' failed: a start sampled after reset release\
+        \ produced no done pulse within 80 clock cycles; the DUT did not return to\
+        \ idle so the start was never honored (plan reset_returns_dut_to_idle; cf.\
+        \ DISC-01 reset leaving the DUT busy)\n   890.00ns INFO     cocotb.regression\
+        \                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.aes128_tb_top\
+        \         FAIL         890.00           0.02      44218.10  **\n         \
+        \                                               **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=0\
+        \ FAIL=1 SKIP=0                890.00           0.02      43462.17  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:74:\
+        \ /workspace/generated/designs/aes128_benchmark_corrupted/tb/.chia_sim/Aes128PlaintextSensitivityTest.xml]\
+        \ Error 1\n"
+    Aes128DeterminismRepeatedEncryptionTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: " 0x703a48b11360>; known-answer vectors=3)\n    40.00ns INFO     ..nchmark_corrupted/tb/env.py(106)\
+        \ [uvm_test_top.aes128_env]: aes128_env connect_phase: agent.analysis_port\
+        \ -> scoreboard fifo and coverage subscriber\n    40.00ns INFO     ..ark_corrupted/tb/monitor.py(153)\
+        \ [uvm_test_top.aes128_env.aes128_agent.monitor]: monitor: started (done_timeout_cycles=1000)\n\
+        \    40.00ns WARNING  py.warnings                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/dut_helper.py:91:\
+        \ DeprecationWarning: Use `handle.set(Immediate(...))` or `handle.value =\
+        \ Immediate(...)` instead.\n                                             \
+        \             self.dut.start.setimmediatevalue(int(start) & 0x1)\n    40.00ns\
+        \ WARNING  py.warnings                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/dut_helper.py:92:\
+        \ DeprecationWarning: Use `handle.set(Immediate(...))` or `handle.value =\
+        \ Immediate(...)` instead.\n                                             \
+        \             self.dut.key.setimmediatevalue(int(key) & mask128)\n    40.00ns\
+        \ WARNING  py.warnings                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/dut_helper.py:93:\
+        \ DeprecationWarning: Use `handle.set(Immediate(...))` or `handle.value =\
+        \ Immediate(...)` instead.\n                                             \
+        \             self.dut.plaintext.setimmediatevalue(int(plaintext) & mask128)\n\
+        \    40.00ns INFO     .._corrupted/tb/scoreboard.py(303) [uvm_test_top.aes128_env.aes128_scoreboard]:\
+        \ aes128_scoreboard: run_phase started\n    40.00ns INFO     ..rk_corrupted/tb/coverage.py(431)\
+        \ [uvm_test_top.aes128_env.aes128_coverage]: aes128_coverage: run_phase started\
+        \ (handshake sampler active)\n   890.00ns ERROR    tb.assertions         \
+        \             [assertion reset_returns_dut_to_idle] FAILED: a start sampled\
+        \ after reset release produced no done pulse within 80 clock cycles; the DUT\
+        \ did not return to idle so the start was never honored (plan reset_returns_dut_to_idle;\
+        \ cf. DISC-01 reset leaving the DUT busy)\n   890.00ns WARNING  py.warnings\
+        \                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/test_top.py:161:\
+        \ DeprecationWarning: `task.kill()` is deprecated in favor of `task.cancel()`\n\
+        \                                                          watchdog_task.kill()\n\
+        top : <cocotb_coverage.coverage.CoverItem object at 0x703a48ae3d00>, coverage=5,\
+        \ size=36 \n   top.cg_ciphertext_classes : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x703a48ae38e0>, coverage=0, size=4 \n      top.cg_ciphertext_classes.ciphertext_class\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x703a48ae3a60>, coverage=0,\
+        \ size=4 \n   top.cg_key_plaintext_patterns : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x703a48ae3910>, coverage=0, size=24 \n      top.cg_key_plaintext_patterns.key_pattern\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x703a48ae3c40>, coverage=0,\
+        \ size=4 \n      top.cg_key_plaintext_patterns.key_plaintext_cross : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x703a48ae3a90>, coverage=0, size=16 \n      top.cg_key_plaintext_patterns.plaintext_pattern\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x703a48ae39a0>, coverage=0,\
+        \ size=4 \n   top.cg_start_done_handshake : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x703a48ae3dc0>, coverage=5, size=8 \n      top.cg_start_done_handshake.done_state\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x703a48ae3b80>, coverage=1,\
+        \ size=2 \n      top.cg_start_done_handshake.start_done_cross : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x703a48ae3b20>, coverage=2, size=4 \n      top.cg_start_done_handshake.start_state\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x703a48ae3c70>, coverage=2,\
+        \ size=2 \n   890.00ns WARNING  cocotb.regression                  test_top.aes128_tb_top\
+        \ failed\n                                                        Traceback\
+        \ (most recent call last):\n                                             \
+        \             File \"/workspace/generated/designs/aes128_benchmark_corrupted/tb/assertions.py\"\
+        , line 442, in _check_reset_returns_dut_to_idle\n                        \
+        \                                    self._fail(\n                       \
+        \                                   File \"/workspace/generated/designs/aes128_benchmark_corrupted/tb/assertions.py\"\
+        , line 365, in _fail\n                                                   \
+        \         raise AssertionError(f\"assertion '{name}' failed: {message}\")\n\
+        \                                                        AssertionError: assertion\
+        \ 'reset_returns_dut_to_idle' failed: a start sampled after reset release\
+        \ produced no done pulse within 80 clock cycles; the DUT did not return to\
+        \ idle so the start was never honored (plan reset_returns_dut_to_idle; cf.\
+        \ DISC-01 reset leaving the DUT busy)\n   890.00ns INFO     cocotb.regression\
+        \                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.aes128_tb_top\
+        \         FAIL         890.00           0.02      44768.51  **\n         \
+        \                                               **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=0\
+        \ FAIL=1 SKIP=0                890.00           0.02      43942.73  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:74:\
+        \ /workspace/generated/designs/aes128_benchmark_corrupted/tb/.chia_sim/Aes128DeterminismRepeatedEncryptionTest.xml]\
+        \ Error 1\n"
+    Aes128DonePulseAndStartIgnoredWhileBusyTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "ca0ddde1360>; known-answer vectors=3)\n    40.00ns INFO     ..nchmark_corrupted/tb/env.py(106)\
+        \ [uvm_test_top.aes128_env]: aes128_env connect_phase: agent.analysis_port\
+        \ -> scoreboard fifo and coverage subscriber\n    40.00ns INFO     ..ark_corrupted/tb/monitor.py(153)\
+        \ [uvm_test_top.aes128_env.aes128_agent.monitor]: monitor: started (done_timeout_cycles=1000)\n\
+        \    40.00ns WARNING  py.warnings                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/dut_helper.py:91:\
+        \ DeprecationWarning: Use `handle.set(Immediate(...))` or `handle.value =\
+        \ Immediate(...)` instead.\n                                             \
+        \             self.dut.start.setimmediatevalue(int(start) & 0x1)\n    40.00ns\
+        \ WARNING  py.warnings                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/dut_helper.py:92:\
+        \ DeprecationWarning: Use `handle.set(Immediate(...))` or `handle.value =\
+        \ Immediate(...)` instead.\n                                             \
+        \             self.dut.key.setimmediatevalue(int(key) & mask128)\n    40.00ns\
+        \ WARNING  py.warnings                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/dut_helper.py:93:\
+        \ DeprecationWarning: Use `handle.set(Immediate(...))` or `handle.value =\
+        \ Immediate(...)` instead.\n                                             \
+        \             self.dut.plaintext.setimmediatevalue(int(plaintext) & mask128)\n\
+        \    40.00ns INFO     .._corrupted/tb/scoreboard.py(303) [uvm_test_top.aes128_env.aes128_scoreboard]:\
+        \ aes128_scoreboard: run_phase started\n    40.00ns INFO     ..rk_corrupted/tb/coverage.py(431)\
+        \ [uvm_test_top.aes128_env.aes128_coverage]: aes128_coverage: run_phase started\
+        \ (handshake sampler active)\n   890.00ns ERROR    tb.assertions         \
+        \             [assertion reset_returns_dut_to_idle] FAILED: a start sampled\
+        \ after reset release produced no done pulse within 80 clock cycles; the DUT\
+        \ did not return to idle so the start was never honored (plan reset_returns_dut_to_idle;\
+        \ cf. DISC-01 reset leaving the DUT busy)\n   890.00ns WARNING  py.warnings\
+        \                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/test_top.py:161:\
+        \ DeprecationWarning: `task.kill()` is deprecated in favor of `task.cancel()`\n\
+        \                                                          watchdog_task.kill()\n\
+        top : <cocotb_coverage.coverage.CoverItem object at 0x7ca0dddb3d00>, coverage=5,\
+        \ size=36 \n   top.cg_ciphertext_classes : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7ca0dddb38e0>, coverage=0, size=4 \n      top.cg_ciphertext_classes.ciphertext_class\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7ca0dddb3a60>, coverage=0,\
+        \ size=4 \n   top.cg_key_plaintext_patterns : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7ca0dddb3910>, coverage=0, size=24 \n      top.cg_key_plaintext_patterns.key_pattern\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7ca0dddb3c40>, coverage=0,\
+        \ size=4 \n      top.cg_key_plaintext_patterns.key_plaintext_cross : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x7ca0dddb3a90>, coverage=0, size=16 \n      top.cg_key_plaintext_patterns.plaintext_pattern\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7ca0dddb39a0>, coverage=0,\
+        \ size=4 \n   top.cg_start_done_handshake : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7ca0dddb3dc0>, coverage=5, size=8 \n      top.cg_start_done_handshake.done_state\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7ca0dddb3b80>, coverage=1,\
+        \ size=2 \n      top.cg_start_done_handshake.start_done_cross : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x7ca0dddb3b20>, coverage=2, size=4 \n      top.cg_start_done_handshake.start_state\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7ca0dddb3c70>, coverage=2,\
+        \ size=2 \n   890.00ns WARNING  cocotb.regression                  test_top.aes128_tb_top\
+        \ failed\n                                                        Traceback\
+        \ (most recent call last):\n                                             \
+        \             File \"/workspace/generated/designs/aes128_benchmark_corrupted/tb/assertions.py\"\
+        , line 442, in _check_reset_returns_dut_to_idle\n                        \
+        \                                    self._fail(\n                       \
+        \                                   File \"/workspace/generated/designs/aes128_benchmark_corrupted/tb/assertions.py\"\
+        , line 365, in _fail\n                                                   \
+        \         raise AssertionError(f\"assertion '{name}' failed: {message}\")\n\
+        \                                                        AssertionError: assertion\
+        \ 'reset_returns_dut_to_idle' failed: a start sampled after reset release\
+        \ produced no done pulse within 80 clock cycles; the DUT did not return to\
+        \ idle so the start was never honored (plan reset_returns_dut_to_idle; cf.\
+        \ DISC-01 reset leaving the DUT busy)\n   890.00ns INFO     cocotb.regression\
+        \                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.aes128_tb_top\
+        \         FAIL         890.00           0.02      45666.77  **\n         \
+        \                                               **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=0\
+        \ FAIL=1 SKIP=0                890.00           0.02      44896.13  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:74:\
+        \ /workspace/generated/designs/aes128_benchmark_corrupted/tb/.chia_sim/Aes128DonePulseAndStartIgnoredWhileBusyTest.xml]\
+        \ Error 1\n"
+    Aes128CornerTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: ".py(106) [uvm_test_top.aes128_env]: aes128_env connect_phase: agent.analysis_port\
+        \ -> scoreboard fifo and coverage subscriber\n    40.00ns INFO     ..ark_corrupted/tb/monitor.py(153)\
+        \ [uvm_test_top.aes128_env.aes128_agent.monitor]: monitor: started (done_timeout_cycles=1000)\n\
+        \    40.00ns WARNING  py.warnings                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/dut_helper.py:91:\
+        \ DeprecationWarning: Use `handle.set(Immediate(...))` or `handle.value =\
+        \ Immediate(...)` instead.\n                                             \
+        \             self.dut.start.setimmediatevalue(int(start) & 0x1)\n    40.00ns\
+        \ WARNING  py.warnings                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/dut_helper.py:92:\
+        \ DeprecationWarning: Use `handle.set(Immediate(...))` or `handle.value =\
+        \ Immediate(...)` instead.\n                                             \
+        \             self.dut.key.setimmediatevalue(int(key) & mask128)\n    40.00ns\
+        \ WARNING  py.warnings                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/dut_helper.py:93:\
+        \ DeprecationWarning: Use `handle.set(Immediate(...))` or `handle.value =\
+        \ Immediate(...)` instead.\n                                             \
+        \             self.dut.plaintext.setimmediatevalue(int(plaintext) & mask128)\n\
+        \    40.00ns INFO     .._corrupted/tb/scoreboard.py(303) [uvm_test_top.aes128_env.aes128_scoreboard]:\
+        \ aes128_scoreboard: run_phase started\n    40.00ns INFO     ..rk_corrupted/tb/coverage.py(431)\
+        \ [uvm_test_top.aes128_env.aes128_coverage]: aes128_coverage: run_phase started\
+        \ (handshake sampler active)\n    40.00ns INFO     ..hmark_corrupted/tb/tests.py(455)\
+        \ [uvm_test_top]: uvm_test_top: starting CornerAllOnesSeq\n   890.00ns ERROR\
+        \    tb.assertions                      [assertion reset_returns_dut_to_idle]\
+        \ FAILED: a start sampled after reset release produced no done pulse within\
+        \ 80 clock cycles; the DUT did not return to idle so the start was never honored\
+        \ (plan reset_returns_dut_to_idle; cf. DISC-01 reset leaving the DUT busy)\n\
+        \   890.00ns WARNING  py.warnings                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/test_top.py:161:\
+        \ DeprecationWarning: `task.kill()` is deprecated in favor of `task.cancel()`\n\
+        \                                                          watchdog_task.kill()\n\
+        top : <cocotb_coverage.coverage.CoverItem object at 0x73da60a4bd00>, coverage=5,\
+        \ size=36 \n   top.cg_ciphertext_classes : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x73da60a4b8e0>, coverage=0, size=4 \n      top.cg_ciphertext_classes.ciphertext_class\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x73da60a4ba60>, coverage=0,\
+        \ size=4 \n   top.cg_key_plaintext_patterns : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x73da60a4b910>, coverage=0, size=24 \n      top.cg_key_plaintext_patterns.key_pattern\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x73da60a4bc40>, coverage=0,\
+        \ size=4 \n      top.cg_key_plaintext_patterns.key_plaintext_cross : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x73da60a4ba90>, coverage=0, size=16 \n      top.cg_key_plaintext_patterns.plaintext_pattern\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x73da60a4b9a0>, coverage=0,\
+        \ size=4 \n   top.cg_start_done_handshake : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x73da60a4bdc0>, coverage=5, size=8 \n      top.cg_start_done_handshake.done_state\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x73da60a4bb80>, coverage=1,\
+        \ size=2 \n      top.cg_start_done_handshake.start_done_cross : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x73da60a4bb20>, coverage=2, size=4 \n      top.cg_start_done_handshake.start_state\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x73da60a4bc70>, coverage=2,\
+        \ size=2 \n   890.00ns WARNING  cocotb.regression                  test_top.aes128_tb_top\
+        \ failed\n                                                        Traceback\
+        \ (most recent call last):\n                                             \
+        \             File \"/workspace/generated/designs/aes128_benchmark_corrupted/tb/assertions.py\"\
+        , line 442, in _check_reset_returns_dut_to_idle\n                        \
+        \                                    self._fail(\n                       \
+        \                                   File \"/workspace/generated/designs/aes128_benchmark_corrupted/tb/assertions.py\"\
+        , line 365, in _fail\n                                                   \
+        \         raise AssertionError(f\"assertion '{name}' failed: {message}\")\n\
+        \                                                        AssertionError: assertion\
+        \ 'reset_returns_dut_to_idle' failed: a start sampled after reset release\
+        \ produced no done pulse within 80 clock cycles; the DUT did not return to\
+        \ idle so the start was never honored (plan reset_returns_dut_to_idle; cf.\
+        \ DISC-01 reset leaving the DUT busy)\n   890.00ns INFO     cocotb.regression\
+        \                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.aes128_tb_top\
+        \         FAIL         890.00           0.02      45509.75  **\n         \
+        \                                               **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=0\
+        \ FAIL=1 SKIP=0                890.00           0.02      44718.22  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:74:\
+        \ /workspace/generated/designs/aes128_benchmark_corrupted/tb/.chia_sim/Aes128CornerTest.xml]\
+        \ Error 1\n"
+    Aes128RandomizedTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "s128_env]: aes128_env connect_phase: agent.analysis_port -> scoreboard\
+        \ fifo and coverage subscriber\n    40.00ns INFO     ..ark_corrupted/tb/monitor.py(153)\
+        \ [uvm_test_top.aes128_env.aes128_agent.monitor]: monitor: started (done_timeout_cycles=1000)\n\
+        \    40.00ns WARNING  py.warnings                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/dut_helper.py:91:\
+        \ DeprecationWarning: Use `handle.set(Immediate(...))` or `handle.value =\
+        \ Immediate(...)` instead.\n                                             \
+        \             self.dut.start.setimmediatevalue(int(start) & 0x1)\n    40.00ns\
+        \ WARNING  py.warnings                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/dut_helper.py:92:\
+        \ DeprecationWarning: Use `handle.set(Immediate(...))` or `handle.value =\
+        \ Immediate(...)` instead.\n                                             \
+        \             self.dut.key.setimmediatevalue(int(key) & mask128)\n    40.00ns\
+        \ WARNING  py.warnings                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/dut_helper.py:93:\
+        \ DeprecationWarning: Use `handle.set(Immediate(...))` or `handle.value =\
+        \ Immediate(...)` instead.\n                                             \
+        \             self.dut.plaintext.setimmediatevalue(int(plaintext) & mask128)\n\
+        \    40.00ns INFO     .._corrupted/tb/scoreboard.py(303) [uvm_test_top.aes128_env.aes128_scoreboard]:\
+        \ aes128_scoreboard: run_phase started\n    40.00ns INFO     ..rk_corrupted/tb/coverage.py(431)\
+        \ [uvm_test_top.aes128_env.aes128_coverage]: aes128_coverage: run_phase started\
+        \ (handshake sampler active)\n    40.00ns INFO     ..hmark_corrupted/tb/tests.py(508)\
+        \ [uvm_test_top]: uvm_test_top: knobs - num_txns=41 seed=None reset_every_n=20\n\
+        \   900.00ns ERROR    tb.assertions                      [assertion reset_returns_dut_to_idle]\
+        \ FAILED: a start sampled after reset release produced no done pulse within\
+        \ 80 clock cycles; the DUT did not return to idle so the start was never honored\
+        \ (plan reset_returns_dut_to_idle; cf. DISC-01 reset leaving the DUT busy)\n\
+        \   900.00ns WARNING  py.warnings                        /workspace/generated/designs/aes128_benchmark_corrupted/tb/test_top.py:161:\
+        \ DeprecationWarning: `task.kill()` is deprecated in favor of `task.cancel()`\n\
+        \                                                          watchdog_task.kill()\n\
+        top : <cocotb_coverage.coverage.CoverItem object at 0x7d48439abd00>, coverage=5,\
+        \ size=36 \n   top.cg_ciphertext_classes : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7d48439ab8e0>, coverage=0, size=4 \n      top.cg_ciphertext_classes.ciphertext_class\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7d48439aba60>, coverage=0,\
+        \ size=4 \n   top.cg_key_plaintext_patterns : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7d48439ab910>, coverage=0, size=24 \n      top.cg_key_plaintext_patterns.key_pattern\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7d48439abc40>, coverage=0,\
+        \ size=4 \n      top.cg_key_plaintext_patterns.key_plaintext_cross : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x7d48439aba90>, coverage=0, size=16 \n      top.cg_key_plaintext_patterns.plaintext_pattern\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7d48439ab9a0>, coverage=0,\
+        \ size=4 \n   top.cg_start_done_handshake : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7d48439abdc0>, coverage=5, size=8 \n      top.cg_start_done_handshake.done_state\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7d48439abb80>, coverage=1,\
+        \ size=2 \n      top.cg_start_done_handshake.start_done_cross : <cocotb_coverage.coverage.CoverCross\
+        \ object at 0x7d48439abb20>, coverage=2, size=4 \n      top.cg_start_done_handshake.start_state\
+        \ : <cocotb_coverage.coverage.CoverPoint object at 0x7d48439abc70>, coverage=2,\
+        \ size=2 \n   900.00ns WARNING  cocotb.regression                  test_top.aes128_tb_top\
+        \ failed\n                                                        Traceback\
+        \ (most recent call last):\n                                             \
+        \             File \"/workspace/generated/designs/aes128_benchmark_corrupted/tb/assertions.py\"\
+        , line 442, in _check_reset_returns_dut_to_idle\n                        \
+        \                                    self._fail(\n                       \
+        \                                   File \"/workspace/generated/designs/aes128_benchmark_corrupted/tb/assertions.py\"\
+        , line 365, in _fail\n                                                   \
+        \         raise AssertionError(f\"assertion '{name}' failed: {message}\")\n\
+        \                                                        AssertionError: assertion\
+        \ 'reset_returns_dut_to_idle' failed: a start sampled after reset release\
+        \ produced no done pulse within 80 clock cycles; the DUT did not return to\
+        \ idle so the start was never honored (plan reset_returns_dut_to_idle; cf.\
+        \ DISC-01 reset leaving the DUT busy)\n   900.00ns INFO     cocotb.regression\
+        \                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.aes128_tb_top\
+        \         FAIL         900.00           0.02      46041.77  **\n         \
+        \                                               **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=0\
+        \ FAIL=1 SKIP=0                900.00           0.02      45249.53  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:74:\
+        \ /workspace/generated/designs/aes128_benchmark_corrupted/tb/.chia_sim/Aes128RandomizedTest.xml]\
+        \ Error 1\n"

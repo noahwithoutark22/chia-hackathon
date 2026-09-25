@@ -1,0 +1,76 @@
+schema_version: '1.0'
+action: repair
+root_cause: "Exactly one genuine RTL defect (proved by StartWhileBusyTest); every\
+  \ other\nreported failure is attributable to frozen-testbench defects that would\n\
+  also fail on a spec-perfect RTL.\n\nRTL DEFECT (repaired):\n- rtl.sv captures the\
+  \ write-data byte from the live `tx_data` input pins in\n  the ADDR_ACK state (`shift_reg\
+  \ <= tx_data;`, rtl.sv:112) instead of at\n  transaction acceptance, where only\
+  \ `{slave_addr, rw}` is latched\n  (rtl.sv:70).  TC-10's illegal start-while-busy\
+  \ spur is driven right after\n  the address-ACK window, so its `tx_data=0x63` overlaps\
+  \ the ADDR_ACK\n  (acceptance+44) advance and corrupts the in-flight write: the\
+  \ bus carries\n  0x63 instead of the accepted transaction's 0xA5.  This violates\
+  \ the\n  specification requirement that \"start while busy must not corrupt the\n\
+  \  active transaction\".\n\nFROZEN-TB DEFECTS (root cause of the remaining failures;\
+  \ NOT RTL bugs):\n- TB driver ACK-level inversion.  i2c_driver.py:313 computes\n\
+  \  `ack_level = int(item.slave_ack) & 1` and drives that raw value onto\n  `sda_in`\
+  \ at the ACK sample points, but CONTRACT.md defines\n  `slave_ack=1 => slave drives\
+  \ ACK (SDA low); 0 => NACK (SDA high)`.\n  The driver therefore presents SDA HIGH\
+  \ (a NACK level) for every\n  intentionally-ACKed transaction and SDA low for intended\
+  \ NACKs.  The RTL\n  asserts `ack_error` exactly when `sda_in==1` at the ACK sample\n\
+  \  (rtl.sv:96-97, 120-121) - matching spec (\"If either expected ACK is not\n  detected\
+  \ (sda_in == 1 when ACK is sampled), ack_error shall be asserted\")\n  and the frozen\
+  \ scoreboard's own intent recovery\n  (`slave_ack = 1 if (addr_ack == 0 and data_ack\
+  \ == 0)`, i2c_scoreboard.py:\n  550-580).  Consequently TC-02/03/04/06/13 \"ack_error\
+  \ must stay low\",\n  DonePulseCheck \"expected 0, got 1\", I2CRandom \"must be\
+  \ 1, got 0\", and the\n  ack-related behaviour of the corner test all follow the\
+  \ inverted stimulus.\n  This is unrepairable on the RTL side.\n- Cadence checker\
+  \ artifact.  a_clk_div_advance_timing (i2c_assertions.py:\n  1085-1126) requires\
+  \ every pair of adjacent address-bit transitions to be\n  spaced exactly CLK_DIV\
+  \ cycles apart, but a correct FSM emits runs of\n  identical bits one per advance,\
+  \ so no transition occurs inside a run.\n  Observed spacings are exact multiples\
+  \ of CLK_DIV=4 and match the correct\n  bit streams (read 0x50 -> 0xA1 = 1010_0001\
+  \ -> [4,4,16]; write 0x30 ->\n  0x60 = 0110_0000 -> [8]; one corner byte -> [4,12,4]);\
+  \ the RTL's advance\n  cadence is spec-compliant (spec section 9).\n- TC-11 reset_during_transaction.\
+  \  The scenario resets mid-transaction, so\n  its only transaction never completes\
+  \ and the scoreboard has nothing to\n  grade; the test's \"no scoreboard-graded\
+  \ transactions\" check\n  (report_phase) fails by design on any RTL.\n(Ungraded\
+  \ note: the RTL also drives SDA low during READ_ACK instead of\nreleasing for a\
+  \ master NACK after a one-byte read; no graded checker\nconsumes that behaviour,\
+  \ so it is not part of this repair.)\n"
+evidence:
+- 'assertion ''a_write_data_correct'' failed: txn@accept_gi=5: write-data byte 0x63
+  != tx_data 0xa5" (StartWhileBusyTest.xml); 0x63 equals the TC-10 spur item''s tx_data
+  (i2c_sequences.py:319).'
+- rtl.sv:112 `shift_reg <= tx_data;` in ADDR_ACK reads the live input pin; only slave_addr/rw
+  are latched at acceptance (rtl.sv:68-74); spec requires an illegal start while busy
+  not corrupt the active transaction.
+- i2c_driver.py:313 `ack_level = int(item.slave_ack) & 1` vs CONTRACT.md "slave_ack
+  ... 1 = slave drives ACK (SDA low)" -> driver drives SDA high (NACK level) for slave_ack=1.
+- 'Corner sim log: "address ACK level presented: sda_in=1" / "write-data ACK level
+  presented: sda_in=1" for a slave_ack=1 transaction, and the RTL then reports ack_error=1
+  (matching spec polarity and scoreboard decode).'
+- 'I2CRandomTest "txn 0: completion ack_error must be 1, got 0": recovered intent
+  slave_ack=0 -> driver presented sda_in=0 (ACK level) -> RTL keeps ack_error=0.'
+- i2c_assertions.py:1085-1126 flags any transition spacing != CLK_DIV (cannot handle
+  runs of equal bits); ReadBasic/ReadAddrNack [4,4,16] and WriteAddrNack [8] are exact
+  multiples of CLK_DIV=4 matching bytes 0xA1/0x60 transmitted at the correct per-advance
+  cadence.
+- 'ResetDuringTransactionTest "no scoreboard-graded transactions (driver/sequence
+  may have crashed before driving any transaction)": TC-11 (i2c_sequences.py:339-356)
+  resets mid-transaction so no completed transaction exists to grade; would fail identically
+  on a correct RTL.'
+confidence: high
+changes:
+- file: rtl.sv
+  action: modify
+  instructions:
+  - Capture the write-data byte at transaction acceptance so that an illegal start
+    while busy cannot corrupt the in-flight write.
+  - (1) Declare a new register `logic [7:0] tx_hold;` alongside `shift_reg`/`rx_shift`.
+  - (2) In the reset block add `tx_hold <= 8'd0;`.
+  - (3) In the acceptance branch (`if (state == IDLE && start)`), add `tx_hold <=
+    tx_data;` so the byte is latched on the same edge the transaction is accepted.
+  - (4) In the ADDR_ACK case, replace `shift_reg <= tx_data;` with `shift_reg <= tx_hold;`
+    so the write-data byte comes from the acceptance-time capture rather than the
+    live input pins.
+  - No other state-machine, cadence, or ACK-sampling logic is changed.

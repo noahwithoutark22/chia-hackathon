@@ -1,0 +1,421 @@
+make: Entering directory '/root/OpenROAD-flow-scripts/flow'
+/root/OpenROAD-flow-scripts/flow/scripts/flow.sh 4_1_cts cts
+Running cts.tcl, stage 4_1_cts
+read_liberty /root/OpenROAD-flow-scripts/flow/platforms/sky130hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
+read_db ./results/sky130hd/chia_sha256_benchmark_corrupted/slot0/3_place.odb
+read_sdc ./results/sky130hd/chia_sha256_benchmark_corrupted/slot0/3_place.sdc
+source /root/OpenROAD-flow-scripts/flow/platforms/sky130hd/setRC.tcl
+clock_tree_synthesis -sink_clustering_enable -repair_clock_nets
+[INFO CTS-0050] Root buffer is sky130_fd_sc_hd__clkbuf_16.
+[INFO CTS-0051] Sink buffer is sky130_fd_sc_hd__clkbuf_16.
+[INFO CTS-0052] The following clock buffers will be used for CTS:
+                    sky130_fd_sc_hd__clkbuf_16
+[INFO CTS-0049] Characterization buffer is sky130_fd_sc_hd__clkbuf_16.
+[INFO CTS-0007] Net "clk" found for clock "core_clock".
+[INFO CTS-0010]  Clock net "clk" has 2568 sinks.
+[INFO CTS-0008] TritonCTS found 1 clock nets.
+[INFO CTS-0097] Characterization used 1 buffer(s) types.
+[INFO CTS-0201] 0 blockages from hard placement blockages and placed macros will be used.
+[INFO CTS-0027] Generating H-Tree topology for net clk.
+[INFO CTS-0028]  Total number of sinks: 2568.
+[INFO CTS-0090]  Sinks will be clustered based on buffer max cap.
+[INFO CTS-0030]  Number of static layers: 0.
+[INFO CTS-0020]  Wire segment unit: 13600  dbu (13 um).
+[INFO CTS-0206] Best clustering solution was found from max clustering size of 13 and max clustering diameter of 111.
+[INFO CTS-0019]  Total number of sinks after clustering: 262.
+[INFO CTS-0024]  Normalized sink region: [(0.797426, 1.26324), (44.5524, 43.1409)].
+[INFO CTS-0025]     Width:  43.7550.
+[INFO CTS-0026]     Height: 41.8776.
+ Level 1
+    Direction: Horizontal
+    Sinks per sub-region: 131
+    Sub-region size: 21.8775 X 41.8776
+[INFO CTS-0034]     Segment length (rounded): 10.
+ Level 2
+    Direction: Vertical
+    Sinks per sub-region: 66
+    Sub-region size: 21.8775 X 20.9388
+[INFO CTS-0034]     Segment length (rounded): 10.
+ Level 3
+    Direction: Horizontal
+    Sinks per sub-region: 33
+    Sub-region size: 10.9387 X 20.9388
+[INFO CTS-0034]     Segment length (rounded): 6.
+ Level 4
+    Direction: Vertical
+    Sinks per sub-region: 17
+    Sub-region size: 10.9387 X 10.4694
+[INFO CTS-0034]     Segment length (rounded): 6.
+ Level 5
+    Direction: Horizontal
+    Sinks per sub-region: 9
+    Sub-region size: 5.4694 X 10.4694
+[INFO CTS-0034]     Segment length (rounded): 2.
+[INFO CTS-0038]  Stop criterion found. Sink region hpwl is smaller than max wirelength (1911.535 um) and max number of sinks is 15.
+[INFO CTS-0035]  Number of sinks covered: 262.
+[INFO CTS-0018]     Created 299 clock buffers.
+[INFO CTS-0012]     Minimum number of buffers in the clock path: 4.
+[INFO CTS-0013]     Maximum number of buffers in the clock path: 4.
+[INFO CTS-0015]     Created 299 clock nets.
+[INFO CTS-0016]     Fanout distribution for the current clock = 2:1, 3:1, 4:1, 5:3, 6:13, 7:15, 8:32, 9:53, 10:75, 11:69, 12:22, 13:9..
+[INFO CTS-0017]     Max level of the clock tree: 5.
+[INFO CTS-0098] Clock net "clk"
+[INFO CTS-0099]  Sinks 2804
+[INFO CTS-0100]  Leaf buffers 262
+[INFO CTS-0101]  Average sink wire length 1070.63 um
+[INFO CTS-0102]  Path depth 3 - 4
+[INFO CTS-0207]  Dummy loads inserted 236
+[INFO CTS-0500] Runtime: 1.30s
+estimate_parasitics -placement
+detailed_placement
+[INFO DPL-0006] Core area: 366373.88 um^2
+[INFO DPL-0007] Movable instances area: 193222.82 um^2
+[INFO DPL-0008] Fixed instances area within core: 6025.78 um^2
+[INFO DPL-0009] Utilization: 54.4%
+[INFO DPL-0005] Diamond search max displacement: +/- 500 sites horizontally, +/- 100 rows vertically.
+[INFO DPL-1102] Legalizing using negotiation legalizer.
+[INFO DPL-1103] Negotiation base search window: +/-20 sites horizontally, +/-5 rows vertically 
+	Automatic search window extension enabled.
+	Search window extendable up to the max displacement cap of +/-500 sites, +/-100 rows near walls.
+[INFO DPL-1104] NegotiationLegalizer DRC penalty: 5.
+[INFO DPL-0392] Negotiation cell height distribution (1 unique row-count(s)):
+[INFO DPL-0393]   height 1 row(s): 21186 cells
+          |      Total |  Illegal |  Illegal
+Iteration | Violations |    Cells |    Sites
+---------------------------------------------
+        0 |        336 |        64 |       272
+        1 |         36 |         9 |        27
+        2 |          4 |         2 |         2
+        3 |         22 |         2 |        20
+        4 |          0 |         0 |         0
+Negotiation phase 1 converged at iteration 4.
+[INFO DPL-0500] Runtime: 0.15s
+Placement Analysis
+---------------------------------
+total displacement      21375.3 u
+average displacement        1.0 u
+max displacement           25.9 u
+original HPWL          579613.7 u
+legalized HPWL         591435.2 u
+delta HPWL                    2 %
+
+estimate_parasitics -placement
+Warning: master sky130_ef_sc_hd__decap_12 has signal pins but no liberty cell
+repair_timing -setup_margin 0.5 -hold_margin 0 -repair_tns 100 -match_cell_footprint -verbose
+[INFO RSZ-0100] Repair move sequence: UnbufferMove SizeUpMove SwapPinsMove BufferMove CloneMove SplitLoadMove 
+[INFO RSZ-0094] Found 46 endpoints with setup violations.
+[INFO RSZ-0099] Repairing 46 out of 46 (100.00%) violating endpoints...
+   Iter   | Removed | Resized | Inserted | Cloned |  Pin  |   Area   |    WNS   |   StTNS    |   EnTNS    |  Viol  |  Worst  
+          | Buffers |  Gates  | Buffers  |  Gates | Swaps |          |          |            |            | Endpts | St/EnPt 
+------------------------------------------------------------------------------------------------------------------------------
+       0* |       0 |       0 |        0 |      0 |     0 |    +0.0% |   -0.331 |       -0.9 |       -3.5 |     46 | digest\[252\]$_DFFE_PN0P_/D
+      10* |       0 |       1 |        2 |      0 |     6 |    +0.0% |   -0.292 |       -0.8 |       -3.1 |     46 | digest\[249\]$_DFFE_PN0P_/D
+      20* |       0 |       7 |        2 |      0 |    10 |    +0.0% |   -0.238 |       -0.7 |       -2.1 |     46 | digest\[249\]$_DFFE_PN0P_/D
+      30* |       0 |      12 |        4 |      0 |    13 |    +0.1% |   -0.236 |       -0.7 |       -2.1 |     46 | digest\[249\]$_DFFE_PN0P_/D
+      40* |       0 |      18 |        8 |      2 |    14 |    +0.1% |   -0.213 |       -0.6 |       -1.8 |     46 | digest\[249\]$_DFFE_PN0P_/D
+      50* |       0 |      24 |        9 |      3 |    16 |    +0.1% |   -0.201 |       -0.6 |       -1.7 |     46 | digest\[255\]$_DFFE_PN0P_/D
+      60* |       0 |      27 |       10 |      3 |    22 |    +0.2% |   -0.226 |       -0.6 |       -1.8 |     46 | digest\[255\]$_DFFE_PN0P_/D
+      70* |       0 |      32 |       12 |      4 |    24 |    +0.2% |   -0.208 |       -0.6 |       -1.7 |     46 | digest\[249\]$_DFFE_PN0P_/D
+      80* |       0 |      38 |       12 |      4 |    28 |    +0.2% |   -0.222 |       -0.6 |       -1.4 |     46 | digest\[255\]$_DFFE_PN0P_/D
+      90* |       0 |      40 |       14 |      4 |    34 |    +0.2% |   -0.231 |       -0.6 |       -2.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     100* |       0 |      42 |       16 |      4 |    40 |    +0.2% |   -0.260 |       -0.8 |       -2.3 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     110* |       0 |      48 |       18 |      5 |    41 |    +0.3% |   -0.257 |       -0.8 |       -2.3 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     120* |       0 |      50 |       18 |      5 |    49 |    +0.3% |   -0.179 |       -0.5 |       -1.4 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     126* |       0 |      37 |       12 |      4 |    25 |    +0.2% |   -0.161 |       -0.5 |       -1.2 |     46 | digest\[255\]$_DFFE_PN0P_/D
+     130* |       0 |      39 |       13 |      4 |    25 |    +0.2% |   -0.161 |       -0.5 |       -1.1 |     46 | digest\[255\]$_DFFE_PN0P_/D
+     140* |       0 |      47 |       14 |      5 |    25 |    +0.2% |   -0.181 |       -0.5 |       -1.5 |     46 | digest\[254\]$_DFFE_PN0P_/D
+     150* |       0 |      48 |       16 |      5 |    32 |    +0.3% |   -0.196 |       -0.6 |       -1.6 |     46 | digest\[254\]$_DFFE_PN0P_/D
+     154* |       0 |      43 |       14 |      4 |    25 |    +0.2% |   -0.161 |       -0.4 |       -1.1 |     46 | digest\[255\]$_DFFE_PN0P_/D
+     160* |       0 |      47 |       14 |      5 |    25 |    +0.2% |   -0.181 |       -0.5 |       -1.5 |     46 | digest\[254\]$_DFFE_PN0P_/D
+     164* |       0 |      43 |       14 |      4 |    25 |    +0.2% |   -0.161 |       -0.4 |       -1.1 |     46 | digest\[255\]$_DFFE_PN0P_/D
+     170* |       0 |      44 |       15 |      4 |    28 |    +0.2% |   -0.157 |       -0.4 |       -1.2 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     180* |       0 |      48 |       16 |      4 |    33 |    +0.2% |   -0.143 |       -0.4 |       -1.1 |     46 | digest\[254\]$_DFFE_PN0P_/D
+     189* |       0 |      48 |       16 |      4 |    33 |    +0.2% |   -0.143 |       -0.4 |       -1.1 |     46 | digest\[254\]$_DFFE_PN0P_/D
+     190* |       0 |      48 |       16 |      4 |    33 |    +0.2% |   -0.143 |       -0.4 |       -1.1 |     46 | digest\[254\]$_DFFE_PN0P_/D
+     200* |       0 |      51 |       17 |      5 |    38 |    +0.3% |   -0.202 |       -0.6 |       -1.7 |     46 | digest\[254\]$_DFFE_PN0P_/D
+     208* |       0 |      48 |       16 |      4 |    34 |    +0.2% |   -0.142 |       -0.4 |       -1.1 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     210* |       0 |      48 |       16 |      5 |    34 |    +0.3% |   -0.254 |       -0.6 |       -3.3 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     219* |       0 |      48 |       16 |      4 |    34 |    +0.2% |   -0.142 |       -0.4 |       -1.1 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     220* |       0 |      48 |       16 |      4 |    34 |    +0.2% |   -0.142 |       -0.4 |       -1.1 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     230* |       0 |      49 |       17 |      4 |    42 |    +0.3% |   -0.264 |       -0.7 |       -2.8 |     46 | digest\[255\]$_DFFE_PN0P_/D
+     240* |       0 |      52 |       22 |      4 |    44 |    +0.3% |   -0.280 |       -0.8 |       -2.4 |     46 | digest\[255\]$_DFFE_PN0P_/D
+     250* |       0 |      55 |       22 |      5 |    50 |    +0.3% |   -0.245 |       -0.7 |       -2.4 |     46 | digest\[255\]$_DFFE_PN0P_/D
+     260* |       0 |      58 |       22 |      5 |    57 |    +0.3% |   -0.244 |       -0.7 |       -2.8 |     46 | digest\[255\]$_DFFE_PN0P_/D
+     270* |       0 |      61 |       29 |      5 |    59 |    +0.3% |   -0.238 |       -0.7 |       -2.5 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     270* |       0 |      48 |       16 |      4 |    34 |    +0.2% |   -0.142 |       -0.4 |       -1.1 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     280* |       0 |      53 |       18 |      5 |    35 |    +0.3% |   -0.155 |       -0.4 |       -1.2 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     282* |       0 |      48 |       16 |      4 |    34 |    +0.2% |   -0.142 |       -0.4 |       -1.1 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     290* |       0 |      53 |       17 |      5 |    34 |    +0.3% |   -0.166 |       -0.5 |       -1.3 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     291* |       0 |      48 |       16 |      4 |    34 |    +0.2% |   -0.142 |       -0.4 |       -1.1 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     300* |       0 |      52 |       17 |      4 |    37 |    +0.3% |   -0.142 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     310* |       0 |      57 |       18 |      5 |    40 |    +0.3% |   -0.247 |       -0.6 |       -2.7 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     320* |       0 |      64 |       21 |      5 |    40 |    +0.3% |   -0.173 |       -0.5 |       -1.3 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     327* |       0 |      57 |       17 |      4 |    39 |    +0.3% |   -0.142 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     330* |       0 |      58 |       18 |      4 |    39 |    +0.3% |   -0.142 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     340* |       0 |      64 |       20 |      5 |    40 |    +0.3% |   -0.199 |       -0.6 |       -1.7 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     350* |       0 |      69 |       23 |      5 |    42 |    +0.3% |   -0.172 |       -0.5 |       -1.3 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     352* |       0 |      58 |       18 |      4 |    39 |    +0.3% |   -0.142 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     360* |       0 |      62 |       20 |      4 |    40 |    +0.3% |   -0.142 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     370* |       0 |      69 |       21 |      5 |    41 |    +0.3% |   -0.199 |       -0.6 |       -1.7 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     380* |       0 |      75 |       25 |      5 |    41 |    +0.4% |   -0.171 |       -0.5 |       -1.3 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     390* |       0 |      79 |       25 |      5 |    47 |    +0.4% |   -0.171 |       -0.5 |       -1.3 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     400* |       0 |      86 |       27 |      5 |    48 |    +0.4% |   -0.188 |       -0.5 |       -1.5 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     406* |       0 |      62 |       20 |      4 |    40 |    +0.3% |   -0.142 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     410* |       0 |      65 |       20 |      4 |    40 |    +0.3% |   -0.147 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     420* |       0 |      71 |       21 |      4 |    43 |    +0.3% |   -0.143 |       -0.4 |       -0.9 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     430* |       0 |      75 |       22 |      4 |    48 |    +0.3% |   -0.143 |       -0.4 |       -0.9 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     440* |       0 |      80 |       24 |      4 |    51 |    +0.3% |   -0.143 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     449* |       0 |      63 |       20 |      4 |    40 |    +0.3% |   -0.142 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     450* |       0 |      63 |       20 |      4 |    40 |    +0.3% |   -0.142 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     460* |       0 |      69 |       20 |      4 |    44 |    +0.3% |   -0.147 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     470* |       0 |      76 |       20 |      4 |    47 |    +0.3% |   -0.163 |       -0.4 |       -1.2 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     480* |       0 |      82 |       21 |      4 |    50 |    +0.4% |   -0.159 |       -0.4 |       -1.2 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     490* |       0 |      89 |       22 |      4 |    52 |    +0.4% |   -0.165 |       -0.5 |       -1.2 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     500* |       0 |      95 |       24 |      4 |    54 |    +0.4% |   -0.159 |       -0.4 |       -1.1 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     505* |       0 |      66 |       20 |      4 |    42 |    +0.3% |   -0.142 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     510* |       0 |      67 |       20 |      4 |    45 |    +0.3% |   -0.142 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     520* |       0 |      75 |       21 |      4 |    46 |    +0.3% |   -0.143 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     530* |       0 |      82 |       21 |      4 |    49 |    +0.4% |   -0.159 |       -0.4 |       -1.2 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     540* |       0 |      87 |       22 |      4 |    53 |    +0.4% |   -0.153 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     550* |       0 |      94 |       23 |      4 |    55 |    +0.4% |   -0.153 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     560* |       0 |     103 |       24 |      4 |    55 |    +0.4% |   -0.160 |       -0.4 |       -1.1 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     563* |       0 |      69 |       20 |      4 |    46 |    +0.3% |   -0.142 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     570* |       0 |      72 |       21 |      5 |    47 |    +0.3% |   -0.171 |       -0.5 |       -1.3 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     580* |       0 |      77 |       25 |      5 |    48 |    +0.4% |   -0.166 |       -0.4 |       -1.3 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     583* |       0 |      69 |       20 |      4 |    46 |    +0.3% |   -0.142 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     590* |       0 |      71 |       23 |      4 |    47 |    +0.3% |   -0.142 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     600* |       0 |      78 |       25 |      5 |    47 |    +0.4% |   -0.213 |       -0.6 |       -1.7 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     610* |       0 |      83 |       28 |      5 |    49 |    +0.4% |   -0.145 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     620* |       0 |      89 |       30 |      5 |    51 |    +0.4% |   -0.166 |       -0.4 |       -1.3 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     630* |       0 |      95 |       33 |      5 |    52 |    +0.4% |   -0.166 |       -0.4 |       -1.4 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     640* |       0 |     103 |       34 |      5 |    53 |    +0.5% |   -0.162 |       -0.4 |       -1.2 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     645* |       0 |      76 |       23 |      4 |    47 |    +0.3% |   -0.142 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     650* |       0 |      79 |       23 |      4 |    48 |    +0.3% |   -0.147 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     660* |       0 |      87 |       24 |      4 |    49 |    +0.4% |   -0.143 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     670* |       0 |      91 |       26 |      5 |    52 |    +0.4% |   -0.153 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     680* |       0 |      97 |       28 |      5 |    54 |    +0.4% |   -0.146 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     680* |       0 |      76 |       23 |      4 |    47 |    +0.3% |   -0.142 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     690* |       0 |      80 |       24 |      4 |    51 |    +0.4% |   -0.147 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     700* |       0 |      88 |       26 |      4 |    51 |    +0.4% |   -0.143 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     710* |       0 |      96 |       27 |      4 |    52 |    +0.4% |   -0.143 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     720* |       0 |     101 |       30 |      4 |    54 |    +0.4% |   -0.143 |       -0.4 |       -0.9 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     730* |       0 |     108 |       30 |      4 |    57 |    +0.5% |   -0.143 |       -0.4 |       -0.9 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     734* |       0 |      78 |       23 |      4 |    48 |    +0.3% |   -0.142 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     740* |       0 |      81 |       24 |      5 |    48 |    +0.4% |   -0.254 |       -0.6 |       -2.2 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     750* |       0 |      88 |       27 |      5 |    48 |    +0.4% |   -0.170 |       -0.5 |       -1.2 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     760* |       0 |      96 |       27 |      5 |    50 |    +0.4% |   -0.170 |       -0.5 |       -1.2 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     770* |       0 |     101 |       31 |      5 |    51 |    +0.4% |   -0.188 |       -0.5 |       -1.4 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     775* |       0 |      78 |       23 |      4 |    48 |    +0.3% |   -0.142 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     780* |       0 |      80 |       24 |      5 |    48 |    +0.4% |   -0.247 |       -0.6 |       -2.1 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     790* |       0 |      87 |       27 |      5 |    48 |    +0.4% |   -0.145 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     799* |       0 |      80 |       23 |      4 |    48 |    +0.4% |   -0.142 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     800* |       0 |      80 |       23 |      4 |    48 |    +0.4% |   -0.142 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     810* |       0 |      89 |       24 |      4 |    48 |    +0.4% |   -0.143 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     820* |       0 |      97 |       25 |      4 |    49 |    +0.4% |   -0.159 |       -0.4 |       -1.2 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     830* |       0 |     103 |       28 |      4 |    50 |    +0.4% |   -0.153 |       -0.4 |       -1.1 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     840* |       0 |     111 |       29 |      4 |    51 |    +0.5% |   -0.147 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     840* |       0 |      82 |       23 |      4 |    48 |    +0.4% |   -0.142 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     850* |       0 |      89 |       25 |      4 |    48 |    +0.4% |   -0.159 |       -0.4 |       -1.2 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     860* |       0 |      97 |       26 |      4 |    49 |    +0.4% |   -0.153 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     870* |       0 |     105 |       28 |      4 |    49 |    +0.4% |   -0.149 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     873* |       0 |      82 |       24 |      4 |    48 |    +0.4% |   -0.142 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     880* |       0 |      88 |       24 |      4 |    48 |    +0.4% |   -0.142 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     890* |       0 |      97 |       24 |      4 |    49 |    +0.4% |   -0.147 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     900* |       0 |     104 |       24 |      4 |    52 |    +0.4% |   -0.164 |       -0.5 |       -1.2 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     910* |       0 |     110 |       26 |      4 |    54 |    +0.5% |   -0.164 |       -0.5 |       -1.2 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     920* |       0 |     117 |       28 |      5 |    54 |    +0.5% |   -0.176 |       -0.5 |       -1.4 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     930* |       0 |     123 |       30 |      5 |    56 |    +0.5% |   -0.166 |       -0.5 |       -1.3 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     939* |       0 |      96 |       24 |      4 |    49 |    +0.4% |   -0.142 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     940* |       0 |      96 |       24 |      4 |    49 |    +0.4% |   -0.142 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     950* |       0 |     102 |       26 |      4 |    51 |    +0.4% |   -0.147 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     960* |       0 |     107 |       31 |      4 |    51 |    +0.5% |   -0.153 |       -0.4 |       -1.1 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     970* |       0 |     114 |       34 |      4 |    51 |    +0.5% |   -0.147 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     970* |       0 |     100 |       24 |      4 |    51 |    +0.4% |   -0.142 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     980* |       0 |     107 |       25 |      5 |    51 |    +0.5% |   -0.181 |       -0.5 |       -1.4 |     46 | digest\[249\]$_DFFE_PN0P_/D
+     990* |       0 |     113 |       28 |      5 |    52 |    +0.5% |   -0.170 |       -0.5 |       -1.2 |     46 | digest\[249\]$_DFFE_PN0P_/D
+    1000* |       0 |     121 |       30 |      5 |    52 |    +0.5% |   -0.166 |       -0.5 |       -1.2 |     46 | digest\[249\]$_DFFE_PN0P_/D
+    1010* |       0 |     128 |       32 |      5 |    53 |    +0.5% |   -0.187 |       -0.5 |       -1.4 |     46 | digest\[249\]$_DFFE_PN0P_/D
+    1011* |       0 |     102 |       24 |      4 |    51 |    +0.4% |   -0.142 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+    1020* |       0 |     105 |       26 |      4 |    54 |    +0.4% |   -0.142 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+    1030* |       0 |     112 |       26 |      4 |    57 |    +0.5% |   -0.142 |       -0.4 |       -1.0 |     46 | digest\[249\]$_DFFE_PN0P_/D
+    1040* |       0 |     117 |       28 |      4 |    60 |    +0.5% |   -0.164 |       -0.5 |       -1.2 |     46 | digest\[249\]$_DFFE_PN0P_/D
+    1050* |       0 |     122 |       32 |      4 |    62 |    +0.5% |   -0.164 |       -0.5 |       -1.2 |     46 | digest\[249\]$_DFFE_PN0P_/D
+    1060* |       0 |     128 |       34 |      4 |    64 |    +0.5% |   -0.164 |       -0.5 |       -1.2 |     46 | digest\[249\]$_DFFE_PN0P_/D
+    1070* |       0 |     133 |       36 |      5 |    66 |    +0.6% |   -0.235 |       -0.6 |       -1.9 |     46 | digest\[249\]$_DFFE_PN0P_/D
+    1080* |       0 |     140 |       39 |      5 |    67 |    +0.6% |   -0.128 |       -0.4 |       -0.9 |     46 | digest\[255\]$_DFFE_PN0P_/D
+    1090* |       0 |     146 |       41 |      5 |    69 |    +0.6% |   -0.131 |       -0.4 |       -0.8 |     46 | digest\[255\]$_DFFE_PN0P_/D
+    1100* |       0 |     151 |       42 |      5 |    73 |    +0.6% |   -0.131 |       -0.4 |       -0.8 |     46 | digest\[255\]$_DFFE_PN0P_/D
+    1101* |       0 |     143 |       40 |      5 |    67 |    +0.6% |   -0.128 |       -0.4 |       -0.9 |     46 | digest\[255\]$_DFFE_PN0P_/D
+    1110* |       0 |     148 |       41 |      5 |    69 |    +0.6% |   -0.131 |       -0.4 |       -0.8 |     46 | digest\[255\]$_DFFE_PN0P_/D
+    1120* |       0 |     152 |       43 |      5 |    73 |    +0.6% |   -0.131 |       -0.4 |       -0.8 |     46 | digest\[255\]$_DFFE_PN0P_/D
+    1120* |       0 |     143 |       40 |      5 |    67 |    +0.6% |   -0.128 |       -0.4 |       -0.9 |     46 | digest\[255\]$_DFFE_PN0P_/D
+    1130* |       0 |     149 |       41 |      5 |    69 |    +0.6% |   -0.128 |       -0.4 |       -0.9 |     46 | digest\[255\]$_DFFE_PN0P_/D
+    1140* |       0 |     156 |       42 |      5 |    71 |    +0.7% |   -0.127 |       -0.4 |       -0.8 |     46 | digest\[249\]$_DFFE_PN0P_/D
+    1150* |       0 |     163 |       43 |      5 |    73 |    +0.7% |   -0.131 |       -0.3 |       -0.8 |     46 | digest\[255\]$_DFFE_PN0P_/D
+    1156* |       0 |     160 |       42 |      5 |    71 |    +0.7% |   -0.127 |       -0.3 |       -0.8 |     46 | digest\[249\]$_DFFE_PN0P_/D
+    1160* |       0 |     162 |       43 |      5 |    71 |    +0.7% |   -0.127 |       -0.3 |       -0.8 |     46 | digest\[249\]$_DFFE_PN0P_/D
+    1170* |       0 |     167 |       45 |      5 |    74 |    +0.7% |   -0.131 |       -0.3 |       -0.9 |     46 | digest\[255\]$_DFFE_PN0P_/D
+    1180* |       0 |     174 |       47 |      5 |    75 |    +0.7% |   -0.131 |       -0.3 |       -0.8 |     46 | digest\[255\]$_DFFE_PN0P_/D
+    1180* |       0 |     162 |       43 |      5 |    71 |    +0.7% |   -0.127 |       -0.3 |       -0.8 |     46 | digest\[249\]$_DFFE_PN0P_/D
+    1190* |       0 |     170 |       43 |      5 |    72 |    +0.7% |   -0.127 |       -0.3 |       -0.8 |     46 | digest\[249\]$_DFFE_PN0P_/D
+    1194* |       0 |     173 |       44 |      5 |    72 |    +0.7% |   -0.127 |       -0.3 |       -0.8 |     46 | digest\[249\]$_DFFE_PN0P_/D
+    1199* |       0 |     177 |       44 |      5 |    72 |    +0.7% |   -0.127 |       -0.3 |       -0.8 |     46 | digest\[249\]$_DFFE_PN0P_/D
+    1200* |       0 |     177 |       44 |      5 |    72 |    +0.7% |   -0.127 |       -0.3 |       -0.8 |     46 | digest\[249\]$_DFFE_PN0P_/D
+    1200* |       0 |     177 |       44 |      5 |    72 |    +0.7% |   -0.127 |       -0.3 |       -0.8 |     46 | digest\[249\]$_DFFE_PN0P_/D
+    1210* |       0 |     184 |       45 |      5 |    73 |    +0.7% |   -0.127 |       -0.3 |       -0.8 |     46 | digest\[249\]$_DFFE_PN0P_/D
+    1220* |       0 |     189 |       45 |      5 |    78 |    +0.7% |   -0.127 |       -0.3 |       -0.7 |     46 | digest\[249\]$_DFFE_PN0P_/D
+    1230* |       0 |     191 |       48 |      5 |    83 |    +0.8% |   -0.127 |       -0.3 |       -0.7 |     46 | digest\[249\]$_DFFE_PN0P_/D
+    1240* |       0 |     196 |       48 |      5 |    88 |    +0.8% |   -0.127 |       -0.3 |       -0.8 |     46 | digest\[249\]$_DFFE_PN0P_/D
+    1245* |       0 |     179 |       44 |      5 |    72 |    +0.7% |   -0.127 |       -0.3 |       -0.8 |     46 | digest\[249\]$_DFFE_PN0P_/D
+    1248* |       0 |     180 |       44 |      5 |    73 |    +0.7% |   -0.127 |       -0.3 |       -0.8 |     46 | digest\[249\]$_DFFE_PN0P_/D
+    1249* |       0 |     180 |       44 |      5 |    73 |    +0.7% |   -0.127 |       -0.3 |       -0.8 |     46 | digest\[249\]$_DFFE_PN0P_/D
+    1250* |       0 |     180 |       44 |      5 |    73 |    +0.7% |   -0.127 |       -0.3 |       -0.8 |     46 | digest\[249\]$_DFFE_PN0P_/D
+    1250* |       0 |     180 |       44 |      5 |    73 |    +0.7% |   -0.127 |       -0.3 |       -0.8 |     46 | digest\[249\]$_DFFE_PN0P_/D
+    1260* |       0 |     186 |       46 |      5 |    74 |    +0.7% |   -0.130 |       -0.3 |       -0.8 |     46 | digest\[249\]$_DFFE_PN0P_/D
+    1265* |       0 |     182 |       45 |      5 |    74 |    +0.7% |   -0.116 |       -0.3 |       -0.7 |     46 | digest\[255\]$_DFFE_PN0P_/D
+    1266* |       0 |     182 |       45 |      5 |    74 |    +0.7% |   -0.116 |       -0.3 |       -0.7 |     46 | digest\[255\]$_DFFE_PN0P_/D
+    1267* |       0 |     182 |       45 |      5 |    74 |    +0.7% |   -0.116 |       -0.3 |       -0.7 |     46 | digest\[255\]$_DFFE_PN0P_/D
+    1268* |       0 |     182 |       45 |      5 |    74 |    +0.7% |   -0.116 |       -0.3 |       -0.7 |     46 | digest\[255\]$_DFFE_PN0P_/D
+    1269* |       0 |     182 |       45 |      5 |    74 |    +0.7% |   -0.116 |       -0.3 |       -0.7 |     46 | digest\[255\]$_DFFE_PN0P_/D
+    1270* |       0 |     182 |       45 |      5 |    74 |    +0.7% |   -0.116 |       -0.3 |       -0.7 |     46 | digest\[255\]$_DFFE_PN0P_/D
+    1270* |       0 |     182 |       45 |      5 |    74 |    +0.7% |   -0.116 |       -0.3 |       -0.7 |     46 | digest\[255\]$_DFFE_PN0P_/D
+    1271* |       0 |     182 |       45 |      5 |    74 |    +0.7% |   -0.116 |       -0.3 |       -0.7 |     46 | digest\[255\]$_DFFE_PN0P_/D
+    1272* |       0 |     182 |       45 |      5 |    74 |    +0.7% |   -0.116 |       -0.3 |       -0.7 |     46 | digest\[255\]$_DFFE_PN0P_/D
+    1280* |       0 |     187 |       47 |      5 |    75 |    +0.8% |   -0.130 |       -0.3 |       -0.8 |     46 | digest\[249\]$_DFFE_PN0P_/D
+    1290* |       0 |     194 |       50 |      5 |    75 |    +0.8% |   -0.126 |       -0.3 |       -0.8 |     46 | digest\[249\]$_DFFE_PN0P_/D
+    1296* |       0 |     183 |       45 |      5 |    74 |    +0.7% |   -0.116 |       -0.3 |       -0.7 |     46 | digest\[255\]$_DFFE_PN0P_/D
+    1296* |       0 |     183 |       45 |      5 |    74 |    +0.7% |   -0.116 |       -0.3 |       -0.7 |     46 | digest\[255\]$_DFFE_PN0P_/D
+    1297+ |       0 |     183 |       45 |      5 |    74 |    +0.7% |   -0.116 |       -0.3 |       -0.7 |     34 | digest\[255\]$_DFFE_PN0P_/D
+    1298+ |       0 |     183 |       45 |      5 |    74 |    +0.7% |   -0.116 |       -0.3 |       -0.7 |     34 | digest\[255\]$_DFFE_PN0P_/D
+    1299+ |       0 |     183 |       45 |      5 |    74 |    +0.7% |   -0.116 |       -0.3 |       -0.7 |     34 | digest\[255\]$_DFFE_PN0P_/D
+    1300+ |       0 |     183 |       45 |      5 |    74 |    +0.7% |   -0.116 |       -0.3 |       -0.7 |     34 | digest\[255\]$_DFFE_PN0P_/D
+    1301+ |       0 |     183 |       45 |      5 |    74 |    +0.7% |   -0.116 |       -0.3 |       -0.7 |     34 | digest\[255\]$_DFFE_PN0P_/D
+    1302+ |       0 |     183 |       45 |      5 |    74 |    +0.7% |   -0.116 |       -0.3 |       -0.7 |     34 | digest\[255\]$_DFFE_PN0P_/D
+    1303+ |       0 |     183 |       45 |      5 |    74 |    +0.7% |   -0.116 |       -0.3 |       -0.7 |     34 | digest\[255\]$_DFFE_PN0P_/D
+    1304+ |       0 |     183 |       45 |      5 |    74 |    +0.7% |   -0.116 |       -0.3 |       -0.7 |     34 | digest\[255\]$_DFFE_PN0P_/D
+    1305+ |       0 |     183 |       45 |      5 |    74 |    +0.7% |   -0.116 |       -0.3 |       -0.7 |     34 | digest\[255\]$_DFFE_PN0P_/D
+    1306+ |       0 |     183 |       45 |      5 |    74 |    +0.7% |   -0.116 |       -0.3 |       -0.7 |     34 | digest\[255\]$_DFFE_PN0P_/D
+    1307+ |       0 |     183 |       45 |      5 |    74 |    +0.7% |   -0.116 |       -0.3 |       -0.7 |     34 | digest\[255\]$_DFFE_PN0P_/D
+    1309+ |       0 |     184 |       45 |      5 |    74 |    +0.7% |   -0.116 |       -0.3 |       -0.7 |     34 | digest\[255\]$_DFFE_PN0P_/D
+    1310+ |       0 |     184 |       45 |      5 |    74 |    +0.7% |   -0.116 |       -0.3 |       -0.7 |     34 | digest\[255\]$_DFFE_PN0P_/D
+    1312+ |       0 |     186 |       45 |      5 |    74 |    +0.7% |   -0.116 |       -0.3 |       -0.7 |     34 | digest\[255\]$_DFFE_PN0P_/D
+    1313+ |       0 |     186 |       45 |      5 |    74 |    +0.7% |   -0.116 |       -0.3 |       -0.7 |     34 | digest\[255\]$_DFFE_PN0P_/D
+    1314+ |       0 |     186 |       45 |      5 |    74 |    +0.7% |   -0.116 |       -0.3 |       -0.7 |     34 | digest\[255\]$_DFFE_PN0P_/D
+    1315+ |       0 |     186 |       45 |      5 |    74 |    +0.7% |   -0.116 |       -0.3 |       -0.7 |     34 | digest\[255\]$_DFFE_PN0P_/D
+    1316+ |       0 |     186 |       45 |      5 |    74 |    +0.7% |   -0.116 |       -0.3 |       -0.7 |     34 | digest\[255\]$_DFFE_PN0P_/D
+    1317+ |       0 |     186 |       45 |      5 |    74 |    +0.7% |   -0.116 |       -0.3 |       -0.7 |     34 | digest\[255\]$_DFFE_PN0P_/D
+    1320+ |       0 |     188 |       45 |      5 |    74 |    +0.7% |   -0.116 |       -0.3 |       -0.7 |     34 | digest\[255\]$_DFFE_PN0P_/D
+    1320+ |       0 |     188 |       45 |      5 |    74 |    +0.7% |   -0.116 |       -0.3 |       -0.7 |     34 | digest\[255\]$_DFFE_PN0P_/D
+    1321+ |       0 |     188 |       45 |      5 |    74 |    +0.7% |   -0.116 |       -0.3 |       -0.7 |     34 | digest\[255\]$_DFFE_PN0P_/D
+    1327+ |       0 |     193 |       45 |      5 |    74 |    +0.8% |   -0.110 |       -0.3 |       -0.7 |     34 | digest\[249\]$_DFFE_PN0P_/D
+    1328+ |       0 |     193 |       45 |      5 |    74 |    +0.8% |   -0.110 |       -0.3 |       -0.7 |     34 | digest\[249\]$_DFFE_PN0P_/D
+    1329+ |       0 |     193 |       45 |      5 |    74 |    +0.8% |   -0.110 |       -0.3 |       -0.7 |     34 | digest\[249\]$_DFFE_PN0P_/D
+    1330+ |       0 |     193 |       45 |      5 |    74 |    +0.8% |   -0.110 |       -0.3 |       -0.7 |     34 | digest\[249\]$_DFFE_PN0P_/D
+    1330+ |       0 |     193 |       45 |      5 |    74 |    +0.8% |   -0.110 |       -0.3 |       -0.7 |     34 | digest\[249\]$_DFFE_PN0P_/D
+    1331+ |       0 |     193 |       45 |      5 |    74 |    +0.8% |   -0.110 |       -0.3 |       -0.7 |     34 | digest\[249\]$_DFFE_PN0P_/D
+    1334+ |       0 |     195 |       45 |      5 |    74 |    +0.8% |   -0.110 |       -0.3 |       -0.7 |     34 | digest\[249\]$_DFFE_PN0P_/D
+    1335+ |       0 |     195 |       45 |      5 |    74 |    +0.8% |   -0.110 |       -0.3 |       -0.7 |     34 | digest\[249\]$_DFFE_PN0P_/D
+    1338+ |       0 |     197 |       45 |      5 |    74 |    +0.8% |   -0.110 |       -0.3 |       -0.7 |     34 | digest\[249\]$_DFFE_PN0P_/D
+    1339+ |       0 |     197 |       45 |      5 |    74 |    +0.8% |   -0.110 |       -0.3 |       -0.7 |     34 | digest\[249\]$_DFFE_PN0P_/D
+    1340+ |       0 |     197 |       45 |      5 |    74 |    +0.8% |   -0.110 |       -0.3 |       -0.7 |     34 | digest\[249\]$_DFFE_PN0P_/D
+    1340+ |       0 |     197 |       45 |      5 |    74 |    +0.8% |   -0.110 |       -0.3 |       -0.7 |     34 | digest\[249\]$_DFFE_PN0P_/D
+    1341+ |       0 |     197 |       45 |      5 |    74 |    +0.8% |   -0.110 |       -0.3 |       -0.7 |     34 | digest\[249\]$_DFFE_PN0P_/D
+    1342+ |       0 |     197 |       45 |      5 |    74 |    +0.8% |   -0.110 |       -0.3 |       -0.7 |     34 | digest\[249\]$_DFFE_PN0P_/D
+    1343+ |       0 |     197 |       45 |      5 |    74 |    +0.8% |   -0.110 |       -0.3 |       -0.7 |     34 | digest\[249\]$_DFFE_PN0P_/D
+    1344+ |       0 |     197 |       45 |      5 |    74 |    +0.8% |   -0.110 |       -0.3 |       -0.7 |     34 | digest\[249\]$_DFFE_PN0P_/D
+    final |       0 |     197 |       45 |      5 |    74 |    +0.8% |   -0.110 |       -0.3 |       -0.7 |     34 | digest\[249\]$_DFFE_PN0P_/D
+------------------------------------------------------------------------------------------------------------------------------
+[INFO RSZ-0040] Inserted 45 buffers.
+[INFO RSZ-0051] Resized 197 instances: 197 up, 0 up match, 0 down, 0 VT
+[INFO RSZ-0043] Swapped pins on 74 instances.
+[INFO RSZ-0049] Cloned 5 instances.
+[WARNING RSZ-0062] Unable to repair all setup violations.
+[INFO RSZ-0505] Runtime: 30.04s
+[INFO RSZ-0033] No hold violations found.
+[INFO RSZ-0506] Runtime: 0.02s
+Took 30 seconds: repair_timing -setup_margin 0.5 -hold_margin 0 -repair_tns 100 -match_cell_footprint -verbose
+Warning: master sky130_ef_sc_hd__decap_12 has signal pins but no liberty cell
+Repair timing output passed lec test
+detailed_placement
+[INFO DPL-0006] Core area: 366373.88 um^2
+[INFO DPL-0007] Movable instances area: 194765.55 um^2
+[INFO DPL-0008] Fixed instances area within core: 6025.78 um^2
+[INFO DPL-0009] Utilization: 54.8%
+[INFO DPL-0005] Diamond search max displacement: +/- 500 sites horizontally, +/- 100 rows vertically.
+[INFO DPL-1102] Legalizing using negotiation legalizer.
+[INFO DPL-1103] Negotiation base search window: +/-20 sites horizontally, +/-5 rows vertically 
+	Automatic search window extension enabled.
+	Search window extendable up to the max displacement cap of +/-500 sites, +/-100 rows near walls.
+[INFO DPL-1104] NegotiationLegalizer DRC penalty: 5.
+[INFO DPL-0392] Negotiation cell height distribution (1 unique row-count(s)):
+[INFO DPL-0393]   height 1 row(s): 21236 cells
+          |      Total |  Illegal |  Illegal
+Iteration | Violations |    Cells |    Sites
+---------------------------------------------
+        0 |         82 |        22 |        60
+        1 |          4 |         2 |         2
+        2 |          0 |         0 |         0
+Negotiation phase 1 converged at iteration 2.
+[INFO DPL-0500] Runtime: 0.12s
+Placement Analysis
+---------------------------------
+total displacement        902.5 u
+average displacement        0.0 u
+max displacement           26.8 u
+original HPWL          593428.7 u
+legalized HPWL         594450.9 u
+delta HPWL                    0 %
+
+estimate_parasitics -placement
+Report metrics stage 4, cts final...
+
+==========================================================================
+cts final report_design_area
+--------------------------------------------------------------------------
+Design area 200791 um^2 55% utilization.
+write_db ./results/sky130hd/chia_sha256_benchmark_corrupted/slot0/4_1_cts.odb
+write_sdc -no_timestamp ./results/sky130hd/chia_sha256_benchmark_corrupted/slot0/4_cts.sdc
+Log                       Ext     Elapsed/s Peak Memory/MB sha1sum result [0:20)
+4_1_cts                   .odb           74            382 f44819b8d26f33db7482
+cp ./results/sky130hd/chia_sha256_benchmark_corrupted/slot0/4_1_cts.odb ./results/sky130hd/chia_sha256_benchmark_corrupted/slot0/4_cts.odb
+make: Leaving directory '/root/OpenROAD-flow-scripts/flow'
+
+STDERR:
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+Elapsed time: 1:14.77[h:]min:sec. CPU time: user 74.23 sys 0.52 (99%). Peak memory: 391288KB.
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)
+bash: /opt/miniconda/lib/libtinfo.so.6: no version information available (required by bash)

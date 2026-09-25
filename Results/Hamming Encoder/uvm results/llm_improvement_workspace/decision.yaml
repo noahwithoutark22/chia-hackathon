@@ -1,0 +1,27 @@
+schema_version: "1.0"
+decision:
+  action: improve
+  weakness_id: "W001_TEST_PASS_DESPITE_MISMATCHES"
+  failure_class: "test_infrastructure"
+  failure_mechanism: "false_positive_check"
+  source: "guidance_supported"
+  confidence: "high"
+diagnosis:
+  observed_problem: "All 10 tests report PASS (category=pass) despite scoreboard logging 62 mismatches for TestPowerOfTwoDataPattern and 76 for TestRandomized. The HammingEncoderBaseTest.run_phase raises/drops objection but has no report_phase to check scoreboard.errors > 0 and fail the test."
+  consequence: "Verification results are misleading; RTL bugs (DISCREPANCY_001-004) are masked. The environment provides false confidence."
+candidate_interventions:
+  - "Add report_phase to HammingEncoderBaseTest that retrieves scoreboard from env and calls self.fail() if errors > 0"
+  - "Modify scoreboard.report_phase to raise UVM_FATAL when errors > 0"
+  - "Add end_of_simulation_phase to base test to check scoreboard error count"
+selected_intervention:
+  type: "Add report_phase to HammingEncoderBaseTest that accesses env.scoreboard and fails test when scoreboard.errors > 0"
+  expected_effect:
+    - "TestPowerOfTwoDataPattern and TestRandomized will correctly report FAIL"
+    - "All RTL bugs (DISCREPANCY_001-004) become visible in test results"
+    - "No weakening of existing checks; only makes existing scoreboard errors actionable"
+regression_risks:
+  - "None - this only exposes pre-existing failures that were silently ignored"
+validation:
+  - "Run all 10 tests; verify TestPowerOfTwoDataPattern and TestRandomized now fail"
+  - "Confirm directed tests (all zeros, all ones, alternating, single-bit) still pass (0 mismatches)"
+  - "Verify simulation_result.json shows category=fail for tests with mismatches"

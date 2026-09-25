@@ -1,0 +1,979 @@
+schema_version: '1.0'
+iteration: 2
+quality_score: 57.73
+metrics:
+  tests_total: 11
+  tests_passed: 1
+  tests_failed: 10
+  functional_coverage:
+    available: false
+    percentage: null
+  planned_coverage_points: 3
+  generated_coverage_points: 3
+  planned_coverage_crosses: 1
+  generated_coverage_crosses: 1
+  python_assertions: 9
+  checker_coroutines: 0
+  test_classes: 12
+  sequences: 16
+  planned_assertions: 3
+  test_health_score: 9.09
+  coverage_quality_score: 100.0
+  assertion_quality_score: 100.0
+  scenario_quality_score: 0.0
+  scenario_coverage:
+    planned: 9
+    generated: 9
+    executed: 0
+    score: 0.0
+    planned_ids:
+    - abc_message
+    - back_to_back_transactions
+    - done_behavior_continuous
+    - empty_message
+    - hello_world
+    - quick_brown_fox
+    - reset_initialization
+    - single_byte_a
+    - start_while_busy_restarts
+    generated_ids:
+    - abc_message
+    - back_to_back_transactions
+    - done_behavior_continuous
+    - empty_message
+    - hello_world
+    - quick_brown_fox
+    - reset_initialization
+    - single_byte_a
+    - start_while_busy_restarts
+    executed_ids: []
+  parameter_coverage:
+    available: false
+    score: 100.0
+    planned: {}
+    observed: {}
+  tb_quality_score: 57.73
+weaknesses:
+- id: W-TEST-HEALTH
+  category: test_health
+  severity: high
+  description: 10 of 11 runnable tests did not complete successfully.
+  evidence:
+    passed: 1
+    total: 11
+- id: W-SCENARIO-COVERAGE
+  category: stimulus
+  severity: medium
+  description: Planned scenarios are not all represented by successfully executed
+    generated tests.
+  scenarios:
+  - abc_message
+  - back_to_back_transactions
+  - done_behavior_continuous
+  - empty_message
+  - hello_world
+  - quick_brown_fox
+  - reset_initialization
+  - single_byte_a
+  - start_while_busy_restarts
+  evidence:
+    planned: 9
+    generated: 9
+    executed: 0
+- id: W-COVERAGE-METRIC
+  category: measurement
+  severity: medium
+  description: No machine-readable functional coverage percentage was observed in
+    simulation output.
+  action: Add deterministic coverage export/reporting to the TB without weakening
+    existing checks.
+authoritative_inputs:
+- specification
+- reference_model
+- verification_plan
+rtl_exposed_to_llm: false
+simulation_evidence:
+  status: functional_failure
+  tests:
+    Sha256ResetInitializationTest:
+      status: pass
+      clean_exit: true
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 2
+        assertion_failures: 0
+      log: " initialize                      Using Python 3.10.19 interpreter at /home/ray/anaconda3/bin/python3\n\
+        \     -.--ns INFO     gpi                                ../gpi/GpiCommon.cpp:74\
+        \   in gpi_print_registered_impl       GPI: VPI support registered\n     0.00ns\
+        \ INFO     cocotb.initialize                  Seeding Python random module\
+        \ with 1789907436\n     0.00ns INFO     cocotb.initialize                \
+        \  Initialized cocotb v2.1.0 from /home/ray/anaconda3/lib/python3.10/site-packages/cocotb\n\
+        \     0.00ns INFO     cocotb.initialize                  Running on Verilator\
+        \ version 5.042 2025-11-02\n     0.00ns INFO     cocotb.regression       \
+        \           Running tests\n     0.00ns INFO     cocotb.regression        \
+        \          running test_top.sha256_tb_top (1/1)\n                        \
+        \                                    Single cocotb entry point for the SHA-256\
+        \ pyuvm environment.\n     0.00ns INFO     cocotb.sha256                 \
+        \     sha256_tb_top: UVM_TESTNAME=Sha256ResetInitializationTest  cocotb=2.1.0\n\
+        \    40.00ns INFO     ..corrupted/tb/sha256_test.py(136) [uvm_test_top]: uvm_test_top:\
+        \ Sha256Env created\n    40.00ns INFO     ..k_corrupted/tb/sha256_env.py(78)\
+        \ [uvm_test_top.sha256_env]: Sha256Env build_phase: agent + scoreboard built;\
+        \ coverage sampler and 3 assertion checker(s) started\n    40.00ns INFO  \
+        \   ..k_corrupted/tb/sha256_env.py(93) [uvm_test_top.sha256_env]: Sha256Env\
+        \ connect_phase: agent.ap -> scoreboard analysis fifo\n   130.00ns INFO  \
+        \   ..corrupted/tb/sha256_test.py(270) [uvm_test_top]: reset_initialization:\
+        \ reset state OK (done=1, digest=0)\n   140.00ns INFO     ..corrupted/tb/sha256_test.py(192)\
+        \ [uvm_test_top]: ASSERTIONS: 3 structural checker coroutine(s) active\n \
+        \  140.00ns INFO     ..corrupted/tb/sha256_test.py(197) [uvm_test_top]: COVERAGE:\
+        \ 3/13 bins covered (23.1% total)\n   140.00ns INFO     ..corrupted/tb/sha256_test.py(201)\
+        \ [uvm_test_top]: SCOREBOARD: Sha256Scoreboard[sha256_scoreboard]: txn_count=0\
+        \ match=0 mismatch=0 invalid_block=0 order_error=0 error_count=0 (digest sampled\
+        \ 70 cycles after start edge)\n   140.00ns INFO     ..corrupted/tb/sha256_test.py(208)\
+        \ [uvm_test_top]: TEST PASSED: scoreboard clean (0 txns graded, 0 match, 0\
+        \ mismatch 'catch reports')\nsha256 : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x77d54b8d7370>, coverage=3, size=13 \n   sha256.control_signals_cg\
+        \ : <cocotb_coverage.coverage.CoverItem object at 0x77d54b8d79d0>, coverage=3,\
+        \ size=8 \n      sha256.control_signals_cg.done_pulse : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x77d54b8d53c0>, coverage=1, size=2 \n      sha256.control_signals_cg.start_done_cross\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x77d54b8d48b0>, coverage=1,\
+        \ size=4 \n      sha256.control_signals_cg.start_pulse : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x77d54b8d7ee0>, coverage=1, size=2 \n   sha256.message_length_cg\
+        \ : <cocotb_coverage.coverage.CoverItem object at 0x77d54b8d7cd0>, coverage=0,\
+        \ size=5 \n      sha256.message_length_cg.msg_len_bits : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x77d54b8d5600>, coverage=0, size=5 \n   140.00ns INFO     cocotb.sha256\
+        \                      sha256_tb_top: test 'Sha256ResetInitializationTest'\
+        \ completed\n   140.00ns INFO     cocotb.regression                  test_top.sha256_tb_top\
+        \ passed\n   140.00ns INFO     cocotb.regression                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.sha256_tb_top\
+        \         PASS         140.00           0.01      10943.65  **\n         \
+        \                                               **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=1\
+        \ FAIL=0 SKIP=0                140.00           0.01      10804.76  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\n%Warning-WIDTHTRUNC: /workspace/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv:163:31:\
+        \ Bit extraction of array[63:0] requires 6 bit index, not 7 bits.\n      \
+        \                                                                        \
+        \                                         : ... note: In instance 'sha256'\n\
+        \  163 |                     next_w = W[round];\n      |                 \
+        \              ^\n                     ... For warning description see https://verilator.org/warn/WIDTHTRUNC?v=5.042\n\
+        \                     ... Use \"/* verilator lint_off WIDTHTRUNC */\" and\
+        \ lint_on around source to disable this message.\n%Warning-WIDTHTRUNC: /workspace/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv:171:22:\
+        \ Bit extraction of array[63:0] requires 6 bit index, not 7 bits.\n      \
+        \                                                                        \
+        \                                         : ... note: In instance 'sha256'\n\
+        \  171 |                     W[round] <= next_w;\n      |                \
+        \      ^\n%Warning-WIDTHEXPAND: /workspace/generated/designs/sha256_benchmark_corrupted/rtl_verification/accepted/sha256.sv:214:36:\
+        \ Operator ADD expects 7 bits on the RHS, but RHS's CONST '2'h2' generates\
+        \ 2 bits.\n                                                              \
+        \                                                          : ... note: In\
+        \ instance 'sha256'\n  214 |                     round <= round + 2'd2;\n\
+        \      |                                    ^\n                      ... For\
+        \ warning description see https://verilator.org/warn/WIDTHEXPAND?v=5.042\n\
+        \                      ... Use \"/* verilator lint_off WIDTHEXPAND */\" and\
+        \ lint_on around source to disable this message.\n"
+    Sha256EmptyMessageTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "iCommon.cpp:242  in gpi_load_users                  Loaded entry library:\
+        \ '/home/ray/anaconda3/lib/libpython3.10.so.1.0'\n     -.--ns INFO     gpi\
+        \                                ../gpi/GpiCommon.cpp:233  in gpi_load_users\
+        \                  Running entry func 'initialize' from loaded library '/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/simulator.cpython-310-x86_64-linux-gnu.so'\n\
+        \     -.--ns INFO     pygpi                              ..ib/pygpi/embed.cpp:114\
+        \  in initialize                      Using Python 3.10.19 interpreter at\
+        \ /home/ray/anaconda3/bin/python3\n     -.--ns INFO     gpi              \
+        \                  ../gpi/GpiCommon.cpp:74   in gpi_print_registered_impl\
+        \       GPI: VPI support registered\n     0.00ns INFO     cocotb.initialize\
+        \                  Seeding Python random module with 1789907436\n     0.00ns\
+        \ INFO     cocotb.initialize                  Initialized cocotb v2.1.0 from\
+        \ /home/ray/anaconda3/lib/python3.10/site-packages/cocotb\n     0.00ns INFO\
+        \     cocotb.initialize                  Running on Verilator version 5.042\
+        \ 2025-11-02\n     0.00ns INFO     cocotb.regression                  Running\
+        \ tests\n     0.00ns INFO     cocotb.regression                  running test_top.sha256_tb_top\
+        \ (1/1)\n                                                            Single\
+        \ cocotb entry point for the SHA-256 pyuvm environment.\n     0.00ns INFO\
+        \     cocotb.sha256                      sha256_tb_top: UVM_TESTNAME=Sha256EmptyMessageTest\
+        \  cocotb=2.1.0\n    40.00ns INFO     ..corrupted/tb/sha256_test.py(136) [uvm_test_top]:\
+        \ uvm_test_top: Sha256Env created\n    40.00ns INFO     ..k_corrupted/tb/sha256_env.py(78)\
+        \ [uvm_test_top.sha256_env]: Sha256Env build_phase: agent + scoreboard built;\
+        \ coverage sampler and 3 assertion checker(s) started\n    40.00ns INFO  \
+        \   ..k_corrupted/tb/sha256_env.py(93) [uvm_test_top.sha256_env]: Sha256Env\
+        \ connect_phase: agent.ap -> scoreboard analysis fifo\n   790.00ns ERROR \
+        \   ..ted/tb/sha256_scoreboard.py(238) [uvm_test_top.sha256_env.sha256_scoreboard]:\
+        \ DIGEST MISMATCH txn_id=1: block=0x80000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
+        \ expected_digest=0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\
+        \ actual_digest=0x0000000000000000000000000000000000000000000000000000000000000000\
+        \ cycle_of_mismatch=79 (digest sampled 70 cycles after start edge)\n   800.00ns\
+        \ ERROR    sha256_assertions                  ASSERTION FAILED: transaction_completes_within_latency\
+        \ violated: transaction started at cycle 5 did not produce a non-zero digest\
+        \ within 64..70 cycles (digest still 0x0000000000000000000000000000000000000000000000000000000000000000\
+        \ at cycle 76). The RTL never reaches its completion state (digest assignment\
+        \ gated on round==62, DISC-008/014).\nsha256 : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x78a65ed93370>, coverage=6, size=13 \n   sha256.control_signals_cg\
+        \ : <cocotb_coverage.coverage.CoverItem object at 0x78a65ed939d0>, coverage=5,\
+        \ size=8 \n      sha256.control_signals_cg.done_pulse : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x78a65ed913c0>, coverage=1, size=2 \n      sha256.control_signals_cg.start_done_cross\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x78a65ed908b0>, coverage=2,\
+        \ size=4 \n      sha256.control_signals_cg.start_pulse : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x78a65ed93ee0>, coverage=2, size=2 \n   sha256.message_length_cg\
+        \ : <cocotb_coverage.coverage.CoverItem object at 0x78a65ed93cd0>, coverage=1,\
+        \ size=5 \n      sha256.message_length_cg.msg_len_bits : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x78a65ed91600>, coverage=1, size=5 \n   800.00ns WARNING  cocotb.regression\
+        \                  test_top.sha256_tb_top failed\n                       \
+        \                                 Traceback (most recent call last):\n   \
+        \                                                       File \"/workspace/generated/designs/sha256_benchmark_corrupted/tb/sha256_assertions.py\"\
+        , line 302, in check_transaction_completes_within_latency\n              \
+        \                                              self._fail(violation)\n   \
+        \                                                       File \"/workspace/generated/designs/sha256_benchmark_corrupted/tb/sha256_assertions.py\"\
+        , line 330, in _fail\n                                                   \
+        \         raise AssertionError(violation)\n                              \
+        \                          AssertionError: transaction_completes_within_latency\
+        \ violated: transaction started at cycle 5 did not produce a non-zero digest\
+        \ within 64..70 cycles (digest still 0x0000000000000000000000000000000000000000000000000000000000000000\
+        \ at cycle 76). The RTL never reaches its completion state (digest assignment\
+        \ gated on round==62, DISC-008/014).\n   800.00ns INFO     cocotb.regression\
+        \                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.sha256_tb_top\
+        \         FAIL         800.00           0.01      54603.73  **\n         \
+        \                                               **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=0\
+        \ FAIL=1 SKIP=0                800.00           0.01      53427.92  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:74:\
+        \ /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256EmptyMessageTest.xml]\
+        \ Error 1\n"
+    Sha256SingleByteATest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "GpiCommon.cpp:242  in gpi_load_users                  Loaded entry library:\
+        \ '/home/ray/anaconda3/lib/libpython3.10.so.1.0'\n     -.--ns INFO     gpi\
+        \                                ../gpi/GpiCommon.cpp:233  in gpi_load_users\
+        \                  Running entry func 'initialize' from loaded library '/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/simulator.cpython-310-x86_64-linux-gnu.so'\n\
+        \     -.--ns INFO     pygpi                              ..ib/pygpi/embed.cpp:114\
+        \  in initialize                      Using Python 3.10.19 interpreter at\
+        \ /home/ray/anaconda3/bin/python3\n     -.--ns INFO     gpi              \
+        \                  ../gpi/GpiCommon.cpp:74   in gpi_print_registered_impl\
+        \       GPI: VPI support registered\n     0.00ns INFO     cocotb.initialize\
+        \                  Seeding Python random module with 1789907437\n     0.00ns\
+        \ INFO     cocotb.initialize                  Initialized cocotb v2.1.0 from\
+        \ /home/ray/anaconda3/lib/python3.10/site-packages/cocotb\n     0.00ns INFO\
+        \     cocotb.initialize                  Running on Verilator version 5.042\
+        \ 2025-11-02\n     0.00ns INFO     cocotb.regression                  Running\
+        \ tests\n     0.00ns INFO     cocotb.regression                  running test_top.sha256_tb_top\
+        \ (1/1)\n                                                            Single\
+        \ cocotb entry point for the SHA-256 pyuvm environment.\n     0.00ns INFO\
+        \     cocotb.sha256                      sha256_tb_top: UVM_TESTNAME=Sha256SingleByteATest\
+        \  cocotb=2.1.0\n    40.00ns INFO     ..corrupted/tb/sha256_test.py(136) [uvm_test_top]:\
+        \ uvm_test_top: Sha256Env created\n    40.00ns INFO     ..k_corrupted/tb/sha256_env.py(78)\
+        \ [uvm_test_top.sha256_env]: Sha256Env build_phase: agent + scoreboard built;\
+        \ coverage sampler and 3 assertion checker(s) started\n    40.00ns INFO  \
+        \   ..k_corrupted/tb/sha256_env.py(93) [uvm_test_top.sha256_env]: Sha256Env\
+        \ connect_phase: agent.ap -> scoreboard analysis fifo\n   790.00ns ERROR \
+        \   ..ted/tb/sha256_scoreboard.py(238) [uvm_test_top.sha256_env.sha256_scoreboard]:\
+        \ DIGEST MISMATCH txn_id=1: block=0x61800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008\
+        \ expected_digest=0xca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb\
+        \ actual_digest=0x0000000000000000000000000000000000000000000000000000000000000000\
+        \ cycle_of_mismatch=79 (digest sampled 70 cycles after start edge)\n   800.00ns\
+        \ ERROR    sha256_assertions                  ASSERTION FAILED: transaction_completes_within_latency\
+        \ violated: transaction started at cycle 5 did not produce a non-zero digest\
+        \ within 64..70 cycles (digest still 0x0000000000000000000000000000000000000000000000000000000000000000\
+        \ at cycle 76). The RTL never reaches its completion state (digest assignment\
+        \ gated on round==62, DISC-008/014).\nsha256 : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7eb8adb67370>, coverage=6, size=13 \n   sha256.control_signals_cg\
+        \ : <cocotb_coverage.coverage.CoverItem object at 0x7eb8adb679d0>, coverage=5,\
+        \ size=8 \n      sha256.control_signals_cg.done_pulse : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7eb8adb653c0>, coverage=1, size=2 \n      sha256.control_signals_cg.start_done_cross\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x7eb8adb648b0>, coverage=2,\
+        \ size=4 \n      sha256.control_signals_cg.start_pulse : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7eb8adb67ee0>, coverage=2, size=2 \n   sha256.message_length_cg\
+        \ : <cocotb_coverage.coverage.CoverItem object at 0x7eb8adb67cd0>, coverage=1,\
+        \ size=5 \n      sha256.message_length_cg.msg_len_bits : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7eb8adb65600>, coverage=1, size=5 \n   800.00ns WARNING  cocotb.regression\
+        \                  test_top.sha256_tb_top failed\n                       \
+        \                                 Traceback (most recent call last):\n   \
+        \                                                       File \"/workspace/generated/designs/sha256_benchmark_corrupted/tb/sha256_assertions.py\"\
+        , line 302, in check_transaction_completes_within_latency\n              \
+        \                                              self._fail(violation)\n   \
+        \                                                       File \"/workspace/generated/designs/sha256_benchmark_corrupted/tb/sha256_assertions.py\"\
+        , line 330, in _fail\n                                                   \
+        \         raise AssertionError(violation)\n                              \
+        \                          AssertionError: transaction_completes_within_latency\
+        \ violated: transaction started at cycle 5 did not produce a non-zero digest\
+        \ within 64..70 cycles (digest still 0x0000000000000000000000000000000000000000000000000000000000000000\
+        \ at cycle 76). The RTL never reaches its completion state (digest assignment\
+        \ gated on round==62, DISC-008/014).\n   800.00ns INFO     cocotb.regression\
+        \                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.sha256_tb_top\
+        \         FAIL         800.00           0.01      54998.99  **\n         \
+        \                                               **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=0\
+        \ FAIL=1 SKIP=0                800.00           0.01      53859.80  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:74:\
+        \ /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256SingleByteATest.xml]\
+        \ Error 1\n"
+    Sha256AbcMessageTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "i/GpiCommon.cpp:242  in gpi_load_users                  Loaded entry library:\
+        \ '/home/ray/anaconda3/lib/libpython3.10.so.1.0'\n     -.--ns INFO     gpi\
+        \                                ../gpi/GpiCommon.cpp:233  in gpi_load_users\
+        \                  Running entry func 'initialize' from loaded library '/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/simulator.cpython-310-x86_64-linux-gnu.so'\n\
+        \     -.--ns INFO     pygpi                              ..ib/pygpi/embed.cpp:114\
+        \  in initialize                      Using Python 3.10.19 interpreter at\
+        \ /home/ray/anaconda3/bin/python3\n     -.--ns INFO     gpi              \
+        \                  ../gpi/GpiCommon.cpp:74   in gpi_print_registered_impl\
+        \       GPI: VPI support registered\n     0.00ns INFO     cocotb.initialize\
+        \                  Seeding Python random module with 1789907437\n     0.00ns\
+        \ INFO     cocotb.initialize                  Initialized cocotb v2.1.0 from\
+        \ /home/ray/anaconda3/lib/python3.10/site-packages/cocotb\n     0.00ns INFO\
+        \     cocotb.initialize                  Running on Verilator version 5.042\
+        \ 2025-11-02\n     0.00ns INFO     cocotb.regression                  Running\
+        \ tests\n     0.00ns INFO     cocotb.regression                  running test_top.sha256_tb_top\
+        \ (1/1)\n                                                            Single\
+        \ cocotb entry point for the SHA-256 pyuvm environment.\n     0.00ns INFO\
+        \     cocotb.sha256                      sha256_tb_top: UVM_TESTNAME=Sha256AbcMessageTest\
+        \  cocotb=2.1.0\n    40.00ns INFO     ..corrupted/tb/sha256_test.py(136) [uvm_test_top]:\
+        \ uvm_test_top: Sha256Env created\n    40.00ns INFO     ..k_corrupted/tb/sha256_env.py(78)\
+        \ [uvm_test_top.sha256_env]: Sha256Env build_phase: agent + scoreboard built;\
+        \ coverage sampler and 3 assertion checker(s) started\n    40.00ns INFO  \
+        \   ..k_corrupted/tb/sha256_env.py(93) [uvm_test_top.sha256_env]: Sha256Env\
+        \ connect_phase: agent.ap -> scoreboard analysis fifo\n   790.00ns ERROR \
+        \   ..ted/tb/sha256_scoreboard.py(238) [uvm_test_top.sha256_env.sha256_scoreboard]:\
+        \ DIGEST MISMATCH txn_id=1: block=0x61626380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000018\
+        \ expected_digest=0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad\
+        \ actual_digest=0x0000000000000000000000000000000000000000000000000000000000000000\
+        \ cycle_of_mismatch=79 (digest sampled 70 cycles after start edge)\n   800.00ns\
+        \ ERROR    sha256_assertions                  ASSERTION FAILED: transaction_completes_within_latency\
+        \ violated: transaction started at cycle 5 did not produce a non-zero digest\
+        \ within 64..70 cycles (digest still 0x0000000000000000000000000000000000000000000000000000000000000000\
+        \ at cycle 76). The RTL never reaches its completion state (digest assignment\
+        \ gated on round==62, DISC-008/014).\nsha256 : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7d4371d3b370>, coverage=6, size=13 \n   sha256.control_signals_cg\
+        \ : <cocotb_coverage.coverage.CoverItem object at 0x7d4371d3b9d0>, coverage=5,\
+        \ size=8 \n      sha256.control_signals_cg.done_pulse : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7d4371d393c0>, coverage=1, size=2 \n      sha256.control_signals_cg.start_done_cross\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x7d4371d388b0>, coverage=2,\
+        \ size=4 \n      sha256.control_signals_cg.start_pulse : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7d4371d3bee0>, coverage=2, size=2 \n   sha256.message_length_cg\
+        \ : <cocotb_coverage.coverage.CoverItem object at 0x7d4371d3bcd0>, coverage=1,\
+        \ size=5 \n      sha256.message_length_cg.msg_len_bits : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7d4371d39600>, coverage=1, size=5 \n   800.00ns WARNING  cocotb.regression\
+        \                  test_top.sha256_tb_top failed\n                       \
+        \                                 Traceback (most recent call last):\n   \
+        \                                                       File \"/workspace/generated/designs/sha256_benchmark_corrupted/tb/sha256_assertions.py\"\
+        , line 302, in check_transaction_completes_within_latency\n              \
+        \                                              self._fail(violation)\n   \
+        \                                                       File \"/workspace/generated/designs/sha256_benchmark_corrupted/tb/sha256_assertions.py\"\
+        , line 330, in _fail\n                                                   \
+        \         raise AssertionError(violation)\n                              \
+        \                          AssertionError: transaction_completes_within_latency\
+        \ violated: transaction started at cycle 5 did not produce a non-zero digest\
+        \ within 64..70 cycles (digest still 0x0000000000000000000000000000000000000000000000000000000000000000\
+        \ at cycle 76). The RTL never reaches its completion state (digest assignment\
+        \ gated on round==62, DISC-008/014).\n   800.00ns INFO     cocotb.regression\
+        \                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.sha256_tb_top\
+        \         FAIL         800.00           0.01      54710.92  **\n         \
+        \                                               **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=0\
+        \ FAIL=1 SKIP=0                800.00           0.01      53552.28  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:74:\
+        \ /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256AbcMessageTest.xml]\
+        \ Error 1\n"
+    Sha256HelloWorldTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "i/GpiCommon.cpp:242  in gpi_load_users                  Loaded entry library:\
+        \ '/home/ray/anaconda3/lib/libpython3.10.so.1.0'\n     -.--ns INFO     gpi\
+        \                                ../gpi/GpiCommon.cpp:233  in gpi_load_users\
+        \                  Running entry func 'initialize' from loaded library '/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/simulator.cpython-310-x86_64-linux-gnu.so'\n\
+        \     -.--ns INFO     pygpi                              ..ib/pygpi/embed.cpp:114\
+        \  in initialize                      Using Python 3.10.19 interpreter at\
+        \ /home/ray/anaconda3/bin/python3\n     -.--ns INFO     gpi              \
+        \                  ../gpi/GpiCommon.cpp:74   in gpi_print_registered_impl\
+        \       GPI: VPI support registered\n     0.00ns INFO     cocotb.initialize\
+        \                  Seeding Python random module with 1789907438\n     0.00ns\
+        \ INFO     cocotb.initialize                  Initialized cocotb v2.1.0 from\
+        \ /home/ray/anaconda3/lib/python3.10/site-packages/cocotb\n     0.00ns INFO\
+        \     cocotb.initialize                  Running on Verilator version 5.042\
+        \ 2025-11-02\n     0.00ns INFO     cocotb.regression                  Running\
+        \ tests\n     0.00ns INFO     cocotb.regression                  running test_top.sha256_tb_top\
+        \ (1/1)\n                                                            Single\
+        \ cocotb entry point for the SHA-256 pyuvm environment.\n     0.00ns INFO\
+        \     cocotb.sha256                      sha256_tb_top: UVM_TESTNAME=Sha256HelloWorldTest\
+        \  cocotb=2.1.0\n    40.00ns INFO     ..corrupted/tb/sha256_test.py(136) [uvm_test_top]:\
+        \ uvm_test_top: Sha256Env created\n    40.00ns INFO     ..k_corrupted/tb/sha256_env.py(78)\
+        \ [uvm_test_top.sha256_env]: Sha256Env build_phase: agent + scoreboard built;\
+        \ coverage sampler and 3 assertion checker(s) started\n    40.00ns INFO  \
+        \   ..k_corrupted/tb/sha256_env.py(93) [uvm_test_top.sha256_env]: Sha256Env\
+        \ connect_phase: agent.ap -> scoreboard analysis fifo\n   790.00ns ERROR \
+        \   ..ted/tb/sha256_scoreboard.py(238) [uvm_test_top.sha256_env.sha256_scoreboard]:\
+        \ DIGEST MISMATCH txn_id=1: block=0x68656c6c6f20776f726c648000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000058\
+        \ expected_digest=0xb94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9\
+        \ actual_digest=0x0000000000000000000000000000000000000000000000000000000000000000\
+        \ cycle_of_mismatch=79 (digest sampled 70 cycles after start edge)\n   800.00ns\
+        \ ERROR    sha256_assertions                  ASSERTION FAILED: transaction_completes_within_latency\
+        \ violated: transaction started at cycle 5 did not produce a non-zero digest\
+        \ within 64..70 cycles (digest still 0x0000000000000000000000000000000000000000000000000000000000000000\
+        \ at cycle 76). The RTL never reaches its completion state (digest assignment\
+        \ gated on round==62, DISC-008/014).\nsha256 : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7eb903efb370>, coverage=6, size=13 \n   sha256.control_signals_cg\
+        \ : <cocotb_coverage.coverage.CoverItem object at 0x7eb903efb9d0>, coverage=5,\
+        \ size=8 \n      sha256.control_signals_cg.done_pulse : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7eb903ef93c0>, coverage=1, size=2 \n      sha256.control_signals_cg.start_done_cross\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x7eb903ef88b0>, coverage=2,\
+        \ size=4 \n      sha256.control_signals_cg.start_pulse : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7eb903efbee0>, coverage=2, size=2 \n   sha256.message_length_cg\
+        \ : <cocotb_coverage.coverage.CoverItem object at 0x7eb903efbcd0>, coverage=1,\
+        \ size=5 \n      sha256.message_length_cg.msg_len_bits : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7eb903ef9600>, coverage=1, size=5 \n   800.00ns WARNING  cocotb.regression\
+        \                  test_top.sha256_tb_top failed\n                       \
+        \                                 Traceback (most recent call last):\n   \
+        \                                                       File \"/workspace/generated/designs/sha256_benchmark_corrupted/tb/sha256_assertions.py\"\
+        , line 302, in check_transaction_completes_within_latency\n              \
+        \                                              self._fail(violation)\n   \
+        \                                                       File \"/workspace/generated/designs/sha256_benchmark_corrupted/tb/sha256_assertions.py\"\
+        , line 330, in _fail\n                                                   \
+        \         raise AssertionError(violation)\n                              \
+        \                          AssertionError: transaction_completes_within_latency\
+        \ violated: transaction started at cycle 5 did not produce a non-zero digest\
+        \ within 64..70 cycles (digest still 0x0000000000000000000000000000000000000000000000000000000000000000\
+        \ at cycle 76). The RTL never reaches its completion state (digest assignment\
+        \ gated on round==62, DISC-008/014).\n   800.00ns INFO     cocotb.regression\
+        \                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.sha256_tb_top\
+        \         FAIL         800.00           0.01      55261.92  **\n         \
+        \                                               **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=0\
+        \ FAIL=1 SKIP=0                800.00           0.01      54055.75  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:74:\
+        \ /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256HelloWorldTest.xml]\
+        \ Error 1\n"
+    Sha256QuickBrownFoxTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "ommon.cpp:242  in gpi_load_users                  Loaded entry library:\
+        \ '/home/ray/anaconda3/lib/libpython3.10.so.1.0'\n     -.--ns INFO     gpi\
+        \                                ../gpi/GpiCommon.cpp:233  in gpi_load_users\
+        \                  Running entry func 'initialize' from loaded library '/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/simulator.cpython-310-x86_64-linux-gnu.so'\n\
+        \     -.--ns INFO     pygpi                              ..ib/pygpi/embed.cpp:114\
+        \  in initialize                      Using Python 3.10.19 interpreter at\
+        \ /home/ray/anaconda3/bin/python3\n     -.--ns INFO     gpi              \
+        \                  ../gpi/GpiCommon.cpp:74   in gpi_print_registered_impl\
+        \       GPI: VPI support registered\n     0.00ns INFO     cocotb.initialize\
+        \                  Seeding Python random module with 1789907438\n     0.00ns\
+        \ INFO     cocotb.initialize                  Initialized cocotb v2.1.0 from\
+        \ /home/ray/anaconda3/lib/python3.10/site-packages/cocotb\n     0.00ns INFO\
+        \     cocotb.initialize                  Running on Verilator version 5.042\
+        \ 2025-11-02\n     0.00ns INFO     cocotb.regression                  Running\
+        \ tests\n     0.00ns INFO     cocotb.regression                  running test_top.sha256_tb_top\
+        \ (1/1)\n                                                            Single\
+        \ cocotb entry point for the SHA-256 pyuvm environment.\n     0.00ns INFO\
+        \     cocotb.sha256                      sha256_tb_top: UVM_TESTNAME=Sha256QuickBrownFoxTest\
+        \  cocotb=2.1.0\n    40.00ns INFO     ..corrupted/tb/sha256_test.py(136) [uvm_test_top]:\
+        \ uvm_test_top: Sha256Env created\n    40.00ns INFO     ..k_corrupted/tb/sha256_env.py(78)\
+        \ [uvm_test_top.sha256_env]: Sha256Env build_phase: agent + scoreboard built;\
+        \ coverage sampler and 3 assertion checker(s) started\n    40.00ns INFO  \
+        \   ..k_corrupted/tb/sha256_env.py(93) [uvm_test_top.sha256_env]: Sha256Env\
+        \ connect_phase: agent.ap -> scoreboard analysis fifo\n   790.00ns ERROR \
+        \   ..ted/tb/sha256_scoreboard.py(238) [uvm_test_top.sha256_env.sha256_scoreboard]:\
+        \ DIGEST MISMATCH txn_id=1: block=0x54686520717569636b2062726f776e20666f78206a756d7073206f76657220746865206c617a7920646f67800000000000000000000000000000000000000158\
+        \ expected_digest=0xd7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592\
+        \ actual_digest=0x0000000000000000000000000000000000000000000000000000000000000000\
+        \ cycle_of_mismatch=79 (digest sampled 70 cycles after start edge)\n   800.00ns\
+        \ ERROR    sha256_assertions                  ASSERTION FAILED: transaction_completes_within_latency\
+        \ violated: transaction started at cycle 5 did not produce a non-zero digest\
+        \ within 64..70 cycles (digest still 0x0000000000000000000000000000000000000000000000000000000000000000\
+        \ at cycle 76). The RTL never reaches its completion state (digest assignment\
+        \ gated on round==62, DISC-008/014).\nsha256 : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x76ae8358f370>, coverage=6, size=13 \n   sha256.control_signals_cg\
+        \ : <cocotb_coverage.coverage.CoverItem object at 0x76ae8358f9d0>, coverage=5,\
+        \ size=8 \n      sha256.control_signals_cg.done_pulse : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x76ae8358d3c0>, coverage=1, size=2 \n      sha256.control_signals_cg.start_done_cross\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x76ae8358c8b0>, coverage=2,\
+        \ size=4 \n      sha256.control_signals_cg.start_pulse : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x76ae8358fee0>, coverage=2, size=2 \n   sha256.message_length_cg\
+        \ : <cocotb_coverage.coverage.CoverItem object at 0x76ae8358fcd0>, coverage=1,\
+        \ size=5 \n      sha256.message_length_cg.msg_len_bits : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x76ae8358d600>, coverage=1, size=5 \n   800.00ns WARNING  cocotb.regression\
+        \                  test_top.sha256_tb_top failed\n                       \
+        \                                 Traceback (most recent call last):\n   \
+        \                                                       File \"/workspace/generated/designs/sha256_benchmark_corrupted/tb/sha256_assertions.py\"\
+        , line 302, in check_transaction_completes_within_latency\n              \
+        \                                              self._fail(violation)\n   \
+        \                                                       File \"/workspace/generated/designs/sha256_benchmark_corrupted/tb/sha256_assertions.py\"\
+        , line 330, in _fail\n                                                   \
+        \         raise AssertionError(violation)\n                              \
+        \                          AssertionError: transaction_completes_within_latency\
+        \ violated: transaction started at cycle 5 did not produce a non-zero digest\
+        \ within 64..70 cycles (digest still 0x0000000000000000000000000000000000000000000000000000000000000000\
+        \ at cycle 76). The RTL never reaches its completion state (digest assignment\
+        \ gated on round==62, DISC-008/014).\n   800.00ns INFO     cocotb.regression\
+        \                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.sha256_tb_top\
+        \         FAIL         800.00           0.01      54740.99  **\n         \
+        \                                               **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=0\
+        \ FAIL=1 SKIP=0                800.00           0.01      53603.01  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:74:\
+        \ /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256QuickBrownFoxTest.xml]\
+        \ Error 1\n"
+    Sha256BackToBackTransactionsTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "gpi_load_users                  Loaded entry library: '/home/ray/anaconda3/lib/libpython3.10.so.1.0'\n\
+        \     -.--ns INFO     gpi                                ../gpi/GpiCommon.cpp:233\
+        \  in gpi_load_users                  Running entry func 'initialize' from\
+        \ loaded library '/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/simulator.cpython-310-x86_64-linux-gnu.so'\n\
+        \     -.--ns INFO     pygpi                              ..ib/pygpi/embed.cpp:114\
+        \  in initialize                      Using Python 3.10.19 interpreter at\
+        \ /home/ray/anaconda3/bin/python3\n     -.--ns INFO     gpi              \
+        \                  ../gpi/GpiCommon.cpp:74   in gpi_print_registered_impl\
+        \       GPI: VPI support registered\n     0.00ns INFO     cocotb.initialize\
+        \                  Seeding Python random module with 1789907439\n     0.00ns\
+        \ INFO     cocotb.initialize                  Initialized cocotb v2.1.0 from\
+        \ /home/ray/anaconda3/lib/python3.10/site-packages/cocotb\n     0.00ns INFO\
+        \     cocotb.initialize                  Running on Verilator version 5.042\
+        \ 2025-11-02\n     0.00ns INFO     cocotb.regression                  Running\
+        \ tests\n     0.00ns INFO     cocotb.regression                  running test_top.sha256_tb_top\
+        \ (1/1)\n                                                            Single\
+        \ cocotb entry point for the SHA-256 pyuvm environment.\n     0.00ns INFO\
+        \     cocotb.sha256                      sha256_tb_top: UVM_TESTNAME=Sha256BackToBackTransactionsTest\
+        \  cocotb=2.1.0\n    40.00ns INFO     ..corrupted/tb/sha256_test.py(136) [uvm_test_top]:\
+        \ uvm_test_top: Sha256Env created\n    40.00ns INFO     ..k_corrupted/tb/sha256_env.py(78)\
+        \ [uvm_test_top.sha256_env]: Sha256Env build_phase: agent + scoreboard built;\
+        \ coverage sampler and 3 assertion checker(s) started\n    40.00ns INFO  \
+        \   ..k_corrupted/tb/sha256_env.py(93) [uvm_test_top.sha256_env]: Sha256Env\
+        \ connect_phase: agent.ap -> scoreboard analysis fifo\n   790.00ns ERROR \
+        \   ..ted/tb/sha256_scoreboard.py(238) [uvm_test_top.sha256_env.sha256_scoreboard]:\
+        \ DIGEST MISMATCH txn_id=1: block=0x61626380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000018\
+        \ expected_digest=0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad\
+        \ actual_digest=0x0000000000000000000000000000000000000000000000000000000000000000\
+        \ cycle_of_mismatch=79 (digest sampled 70 cycles after start edge)\n   800.00ns\
+        \ ERROR    sha256_assertions                  ASSERTION FAILED: transaction_completes_within_latency\
+        \ violated: transaction started at cycle 5 did not produce a non-zero digest\
+        \ within 64..70 cycles (digest still 0x0000000000000000000000000000000000000000000000000000000000000000\
+        \ at cycle 76). The RTL never reaches its completion state (digest assignment\
+        \ gated on round==62, DISC-008/014).\nsha256 : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7781c6fc7370>, coverage=6, size=13 \n   sha256.control_signals_cg\
+        \ : <cocotb_coverage.coverage.CoverItem object at 0x7781c6fc79d0>, coverage=5,\
+        \ size=8 \n      sha256.control_signals_cg.done_pulse : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7781c6fc53c0>, coverage=1, size=2 \n      sha256.control_signals_cg.start_done_cross\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x7781c6fc48b0>, coverage=2,\
+        \ size=4 \n      sha256.control_signals_cg.start_pulse : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7781c6fc7ee0>, coverage=2, size=2 \n   sha256.message_length_cg\
+        \ : <cocotb_coverage.coverage.CoverItem object at 0x7781c6fc7cd0>, coverage=1,\
+        \ size=5 \n      sha256.message_length_cg.msg_len_bits : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7781c6fc5600>, coverage=1, size=5 \n   800.00ns WARNING  cocotb.regression\
+        \                  test_top.sha256_tb_top failed\n                       \
+        \                                 Traceback (most recent call last):\n   \
+        \                                                       File \"/workspace/generated/designs/sha256_benchmark_corrupted/tb/sha256_assertions.py\"\
+        , line 302, in check_transaction_completes_within_latency\n              \
+        \                                              self._fail(violation)\n   \
+        \                                                       File \"/workspace/generated/designs/sha256_benchmark_corrupted/tb/sha256_assertions.py\"\
+        , line 330, in _fail\n                                                   \
+        \         raise AssertionError(violation)\n                              \
+        \                          AssertionError: transaction_completes_within_latency\
+        \ violated: transaction started at cycle 5 did not produce a non-zero digest\
+        \ within 64..70 cycles (digest still 0x0000000000000000000000000000000000000000000000000000000000000000\
+        \ at cycle 76). The RTL never reaches its completion state (digest assignment\
+        \ gated on round==62, DISC-008/014).\n   800.00ns INFO     cocotb.regression\
+        \                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.sha256_tb_top\
+        \         FAIL         800.00           0.01      55098.34  **\n         \
+        \                                               **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=0\
+        \ FAIL=1 SKIP=0                800.00           0.01      53866.61  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:74:\
+        \ /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256BackToBackTransactionsTest.xml]\
+        \ Error 1\n"
+    Sha256StartWhileBusyRestartsTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "gpi_load_users                  Loaded entry library: '/home/ray/anaconda3/lib/libpython3.10.so.1.0'\n\
+        \     -.--ns INFO     gpi                                ../gpi/GpiCommon.cpp:233\
+        \  in gpi_load_users                  Running entry func 'initialize' from\
+        \ loaded library '/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/simulator.cpython-310-x86_64-linux-gnu.so'\n\
+        \     -.--ns INFO     pygpi                              ..ib/pygpi/embed.cpp:114\
+        \  in initialize                      Using Python 3.10.19 interpreter at\
+        \ /home/ray/anaconda3/bin/python3\n     -.--ns INFO     gpi              \
+        \                  ../gpi/GpiCommon.cpp:74   in gpi_print_registered_impl\
+        \       GPI: VPI support registered\n     0.00ns INFO     cocotb.initialize\
+        \                  Seeding Python random module with 1789907439\n     0.00ns\
+        \ INFO     cocotb.initialize                  Initialized cocotb v2.1.0 from\
+        \ /home/ray/anaconda3/lib/python3.10/site-packages/cocotb\n     0.00ns INFO\
+        \     cocotb.initialize                  Running on Verilator version 5.042\
+        \ 2025-11-02\n     0.00ns INFO     cocotb.regression                  Running\
+        \ tests\n     0.00ns INFO     cocotb.regression                  running test_top.sha256_tb_top\
+        \ (1/1)\n                                                            Single\
+        \ cocotb entry point for the SHA-256 pyuvm environment.\n     0.00ns INFO\
+        \     cocotb.sha256                      sha256_tb_top: UVM_TESTNAME=Sha256StartWhileBusyRestartsTest\
+        \  cocotb=2.1.0\n    40.00ns INFO     ..corrupted/tb/sha256_test.py(136) [uvm_test_top]:\
+        \ uvm_test_top: Sha256Env created\n    40.00ns INFO     ..k_corrupted/tb/sha256_env.py(78)\
+        \ [uvm_test_top.sha256_env]: Sha256Env build_phase: agent + scoreboard built;\
+        \ coverage sampler and 3 assertion checker(s) started\n    40.00ns INFO  \
+        \   ..k_corrupted/tb/sha256_env.py(93) [uvm_test_top.sha256_env]: Sha256Env\
+        \ connect_phase: agent.ap -> scoreboard analysis fifo\n   790.00ns ERROR \
+        \   ..ted/tb/sha256_scoreboard.py(238) [uvm_test_top.sha256_env.sha256_scoreboard]:\
+        \ DIGEST MISMATCH txn_id=1: block=0x61626380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000018\
+        \ expected_digest=0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad\
+        \ actual_digest=0x0000000000000000000000000000000000000000000000000000000000000000\
+        \ cycle_of_mismatch=79 (digest sampled 70 cycles after start edge)\n   800.00ns\
+        \ ERROR    sha256_assertions                  ASSERTION FAILED: transaction_completes_within_latency\
+        \ violated: transaction started at cycle 5 did not produce a non-zero digest\
+        \ within 64..70 cycles (digest still 0x0000000000000000000000000000000000000000000000000000000000000000\
+        \ at cycle 76). The RTL never reaches its completion state (digest assignment\
+        \ gated on round==62, DISC-008/014).\nsha256 : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7e575ae8b370>, coverage=7, size=13 \n   sha256.control_signals_cg\
+        \ : <cocotb_coverage.coverage.CoverItem object at 0x7e575ae8b9d0>, coverage=5,\
+        \ size=8 \n      sha256.control_signals_cg.done_pulse : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7e575ae893c0>, coverage=1, size=2 \n      sha256.control_signals_cg.start_done_cross\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x7e575ae888b0>, coverage=2,\
+        \ size=4 \n      sha256.control_signals_cg.start_pulse : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7e575ae8bee0>, coverage=2, size=2 \n   sha256.message_length_cg\
+        \ : <cocotb_coverage.coverage.CoverItem object at 0x7e575ae8bcd0>, coverage=2,\
+        \ size=5 \n      sha256.message_length_cg.msg_len_bits : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7e575ae89600>, coverage=2, size=5 \n   800.00ns WARNING  cocotb.regression\
+        \                  test_top.sha256_tb_top failed\n                       \
+        \                                 Traceback (most recent call last):\n   \
+        \                                                       File \"/workspace/generated/designs/sha256_benchmark_corrupted/tb/sha256_assertions.py\"\
+        , line 302, in check_transaction_completes_within_latency\n              \
+        \                                              self._fail(violation)\n   \
+        \                                                       File \"/workspace/generated/designs/sha256_benchmark_corrupted/tb/sha256_assertions.py\"\
+        , line 330, in _fail\n                                                   \
+        \         raise AssertionError(violation)\n                              \
+        \                          AssertionError: transaction_completes_within_latency\
+        \ violated: transaction started at cycle 5 did not produce a non-zero digest\
+        \ within 64..70 cycles (digest still 0x0000000000000000000000000000000000000000000000000000000000000000\
+        \ at cycle 76). The RTL never reaches its completion state (digest assignment\
+        \ gated on round==62, DISC-008/014).\n   800.00ns INFO     cocotb.regression\
+        \                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.sha256_tb_top\
+        \         FAIL         800.00           0.01      53527.10  **\n         \
+        \                                               **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=0\
+        \ FAIL=1 SKIP=0                800.00           0.02      52349.18  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:74:\
+        \ /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256StartWhileBusyRestartsTest.xml]\
+        \ Error 1\n"
+    Sha256DoneBehaviorContinuousTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "gpi_load_users                  Loaded entry library: '/home/ray/anaconda3/lib/libpython3.10.so.1.0'\n\
+        \     -.--ns INFO     gpi                                ../gpi/GpiCommon.cpp:233\
+        \  in gpi_load_users                  Running entry func 'initialize' from\
+        \ loaded library '/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/simulator.cpython-310-x86_64-linux-gnu.so'\n\
+        \     -.--ns INFO     pygpi                              ..ib/pygpi/embed.cpp:114\
+        \  in initialize                      Using Python 3.10.19 interpreter at\
+        \ /home/ray/anaconda3/bin/python3\n     -.--ns INFO     gpi              \
+        \                  ../gpi/GpiCommon.cpp:74   in gpi_print_registered_impl\
+        \       GPI: VPI support registered\n     0.00ns INFO     cocotb.initialize\
+        \                  Seeding Python random module with 1789907440\n     0.00ns\
+        \ INFO     cocotb.initialize                  Initialized cocotb v2.1.0 from\
+        \ /home/ray/anaconda3/lib/python3.10/site-packages/cocotb\n     0.00ns INFO\
+        \     cocotb.initialize                  Running on Verilator version 5.042\
+        \ 2025-11-02\n     0.00ns INFO     cocotb.regression                  Running\
+        \ tests\n     0.00ns INFO     cocotb.regression                  running test_top.sha256_tb_top\
+        \ (1/1)\n                                                            Single\
+        \ cocotb entry point for the SHA-256 pyuvm environment.\n     0.00ns INFO\
+        \     cocotb.sha256                      sha256_tb_top: UVM_TESTNAME=Sha256DoneBehaviorContinuousTest\
+        \  cocotb=2.1.0\n    40.00ns INFO     ..corrupted/tb/sha256_test.py(136) [uvm_test_top]:\
+        \ uvm_test_top: Sha256Env created\n    40.00ns INFO     ..k_corrupted/tb/sha256_env.py(78)\
+        \ [uvm_test_top.sha256_env]: Sha256Env build_phase: agent + scoreboard built;\
+        \ coverage sampler and 3 assertion checker(s) started\n    40.00ns INFO  \
+        \   ..k_corrupted/tb/sha256_env.py(93) [uvm_test_top.sha256_env]: Sha256Env\
+        \ connect_phase: agent.ap -> scoreboard analysis fifo\n   790.00ns ERROR \
+        \   ..ted/tb/sha256_scoreboard.py(238) [uvm_test_top.sha256_env.sha256_scoreboard]:\
+        \ DIGEST MISMATCH txn_id=1: block=0x61626380000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000018\
+        \ expected_digest=0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad\
+        \ actual_digest=0x0000000000000000000000000000000000000000000000000000000000000000\
+        \ cycle_of_mismatch=79 (digest sampled 70 cycles after start edge)\n   800.00ns\
+        \ ERROR    sha256_assertions                  ASSERTION FAILED: transaction_completes_within_latency\
+        \ violated: transaction started at cycle 5 did not produce a non-zero digest\
+        \ within 64..70 cycles (digest still 0x0000000000000000000000000000000000000000000000000000000000000000\
+        \ at cycle 76). The RTL never reaches its completion state (digest assignment\
+        \ gated on round==62, DISC-008/014).\nsha256 : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x78a1c4da3370>, coverage=6, size=13 \n   sha256.control_signals_cg\
+        \ : <cocotb_coverage.coverage.CoverItem object at 0x78a1c4da39d0>, coverage=5,\
+        \ size=8 \n      sha256.control_signals_cg.done_pulse : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x78a1c4da13c0>, coverage=1, size=2 \n      sha256.control_signals_cg.start_done_cross\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x78a1c4da08b0>, coverage=2,\
+        \ size=4 \n      sha256.control_signals_cg.start_pulse : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x78a1c4da3ee0>, coverage=2, size=2 \n   sha256.message_length_cg\
+        \ : <cocotb_coverage.coverage.CoverItem object at 0x78a1c4da3cd0>, coverage=1,\
+        \ size=5 \n      sha256.message_length_cg.msg_len_bits : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x78a1c4da1600>, coverage=1, size=5 \n   800.00ns WARNING  cocotb.regression\
+        \                  test_top.sha256_tb_top failed\n                       \
+        \                                 Traceback (most recent call last):\n   \
+        \                                                       File \"/workspace/generated/designs/sha256_benchmark_corrupted/tb/sha256_assertions.py\"\
+        , line 302, in check_transaction_completes_within_latency\n              \
+        \                                              self._fail(violation)\n   \
+        \                                                       File \"/workspace/generated/designs/sha256_benchmark_corrupted/tb/sha256_assertions.py\"\
+        , line 330, in _fail\n                                                   \
+        \         raise AssertionError(violation)\n                              \
+        \                          AssertionError: transaction_completes_within_latency\
+        \ violated: transaction started at cycle 5 did not produce a non-zero digest\
+        \ within 64..70 cycles (digest still 0x0000000000000000000000000000000000000000000000000000000000000000\
+        \ at cycle 76). The RTL never reaches its completion state (digest assignment\
+        \ gated on round==62, DISC-008/014).\n   800.00ns INFO     cocotb.regression\
+        \                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.sha256_tb_top\
+        \         FAIL         800.00           0.02      51223.23  **\n         \
+        \                                               **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=0\
+        \ FAIL=1 SKIP=0                800.00           0.02      50154.88  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:74:\
+        \ /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256DoneBehaviorContinuousTest.xml]\
+        \ Error 1\n"
+    Sha256CornerTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "    -.--ns INFO     gpi                                ../gpi/GpiCommon.cpp:233\
+        \  in gpi_load_users                  Running entry func 'initialize' from\
+        \ loaded library '/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/simulator.cpython-310-x86_64-linux-gnu.so'\n\
+        \     -.--ns INFO     pygpi                              ..ib/pygpi/embed.cpp:114\
+        \  in initialize                      Using Python 3.10.19 interpreter at\
+        \ /home/ray/anaconda3/bin/python3\n     -.--ns INFO     gpi              \
+        \                  ../gpi/GpiCommon.cpp:74   in gpi_print_registered_impl\
+        \       GPI: VPI support registered\n     0.00ns INFO     cocotb.initialize\
+        \                  Seeding Python random module with 1789907440\n     0.00ns\
+        \ INFO     cocotb.initialize                  Initialized cocotb v2.1.0 from\
+        \ /home/ray/anaconda3/lib/python3.10/site-packages/cocotb\n     0.00ns INFO\
+        \     cocotb.initialize                  Running on Verilator version 5.042\
+        \ 2025-11-02\n     0.00ns INFO     cocotb.regression                  Running\
+        \ tests\n     0.00ns INFO     cocotb.regression                  running test_top.sha256_tb_top\
+        \ (1/1)\n                                                            Single\
+        \ cocotb entry point for the SHA-256 pyuvm environment.\n     0.00ns INFO\
+        \     cocotb.sha256                      sha256_tb_top: UVM_TESTNAME=Sha256CornerTest\
+        \  cocotb=2.1.0\n    40.00ns INFO     ..corrupted/tb/sha256_test.py(136) [uvm_test_top]:\
+        \ uvm_test_top: Sha256Env created\n    40.00ns INFO     ..k_corrupted/tb/sha256_env.py(78)\
+        \ [uvm_test_top.sha256_env]: Sha256Env build_phase: agent + scoreboard built;\
+        \ coverage sampler and 3 assertion checker(s) started\n    40.00ns INFO  \
+        \   ..k_corrupted/tb/sha256_env.py(93) [uvm_test_top.sha256_env]: Sha256Env\
+        \ connect_phase: agent.ap -> scoreboard analysis fifo\n    40.00ns INFO  \
+        \   ..corrupted/tb/sha256_test.py(411) [uvm_test_top]: Sha256CornerTest: starting\
+        \ Sha256MaximumMessageLengthSequence\n   790.00ns ERROR    ..ted/tb/sha256_scoreboard.py(238)\
+        \ [uvm_test_top.sha256_env.sha256_scoreboard]: DIGEST MISMATCH txn_id=1: block=0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435368000000000000001b8\
+        \ expected_digest=0x463eb28e72f82e0a96c0a4cc53690c571281131f672aa229e0d45ae59b598b59\
+        \ actual_digest=0x0000000000000000000000000000000000000000000000000000000000000000\
+        \ cycle_of_mismatch=79 (digest sampled 70 cycles after start edge)\n   800.00ns\
+        \ ERROR    sha256_assertions                  ASSERTION FAILED: transaction_completes_within_latency\
+        \ violated: transaction started at cycle 5 did not produce a non-zero digest\
+        \ within 64..70 cycles (digest still 0x0000000000000000000000000000000000000000000000000000000000000000\
+        \ at cycle 76). The RTL never reaches its completion state (digest assignment\
+        \ gated on round==62, DISC-008/014).\nsha256 : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7a05bddc7370>, coverage=6, size=13 \n   sha256.control_signals_cg\
+        \ : <cocotb_coverage.coverage.CoverItem object at 0x7a05bddc79d0>, coverage=5,\
+        \ size=8 \n      sha256.control_signals_cg.done_pulse : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7a05bddc53c0>, coverage=1, size=2 \n      sha256.control_signals_cg.start_done_cross\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x7a05bddc48b0>, coverage=2,\
+        \ size=4 \n      sha256.control_signals_cg.start_pulse : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7a05bddc7ee0>, coverage=2, size=2 \n   sha256.message_length_cg\
+        \ : <cocotb_coverage.coverage.CoverItem object at 0x7a05bddc7cd0>, coverage=1,\
+        \ size=5 \n      sha256.message_length_cg.msg_len_bits : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7a05bddc5600>, coverage=1, size=5 \n   800.00ns WARNING  cocotb.regression\
+        \                  test_top.sha256_tb_top failed\n                       \
+        \                                 Traceback (most recent call last):\n   \
+        \                                                       File \"/workspace/generated/designs/sha256_benchmark_corrupted/tb/sha256_assertions.py\"\
+        , line 302, in check_transaction_completes_within_latency\n              \
+        \                                              self._fail(violation)\n   \
+        \                                                       File \"/workspace/generated/designs/sha256_benchmark_corrupted/tb/sha256_assertions.py\"\
+        , line 330, in _fail\n                                                   \
+        \         raise AssertionError(violation)\n                              \
+        \                          AssertionError: transaction_completes_within_latency\
+        \ violated: transaction started at cycle 5 did not produce a non-zero digest\
+        \ within 64..70 cycles (digest still 0x0000000000000000000000000000000000000000000000000000000000000000\
+        \ at cycle 76). The RTL never reaches its completion state (digest assignment\
+        \ gated on round==62, DISC-008/014).\n   800.00ns INFO     cocotb.regression\
+        \                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.sha256_tb_top\
+        \         FAIL         800.00           0.01      54968.76  **\n         \
+        \                                               **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=0\
+        \ FAIL=1 SKIP=0                800.00           0.01      53798.11  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:74:\
+        \ /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256CornerTest.xml]\
+        \ Error 1\n"
+    Sha256RandomizedTest:
+      status: runtime_error
+      clean_exit: false
+      timed_out: false
+      counts:
+        uvm_errors: 0
+        uvm_fatals: 0
+        uvm_warnings: 0
+        scoreboard_mismatches: 0
+        assertion_failures: 0
+      log: "i/GpiCommon.cpp:242  in gpi_load_users                  Loaded entry library:\
+        \ '/home/ray/anaconda3/lib/libpython3.10.so.1.0'\n     -.--ns INFO     gpi\
+        \                                ../gpi/GpiCommon.cpp:233  in gpi_load_users\
+        \                  Running entry func 'initialize' from loaded library '/home/ray/anaconda3/lib/python3.10/site-packages/cocotb/simulator.cpython-310-x86_64-linux-gnu.so'\n\
+        \     -.--ns INFO     pygpi                              ..ib/pygpi/embed.cpp:114\
+        \  in initialize                      Using Python 3.10.19 interpreter at\
+        \ /home/ray/anaconda3/bin/python3\n     -.--ns INFO     gpi              \
+        \                  ../gpi/GpiCommon.cpp:74   in gpi_print_registered_impl\
+        \       GPI: VPI support registered\n     0.00ns INFO     cocotb.initialize\
+        \                  Seeding Python random module with 1789907441\n     0.00ns\
+        \ INFO     cocotb.initialize                  Initialized cocotb v2.1.0 from\
+        \ /home/ray/anaconda3/lib/python3.10/site-packages/cocotb\n     0.00ns INFO\
+        \     cocotb.initialize                  Running on Verilator version 5.042\
+        \ 2025-11-02\n     0.00ns INFO     cocotb.regression                  Running\
+        \ tests\n     0.00ns INFO     cocotb.regression                  running test_top.sha256_tb_top\
+        \ (1/1)\n                                                            Single\
+        \ cocotb entry point for the SHA-256 pyuvm environment.\n     0.00ns INFO\
+        \     cocotb.sha256                      sha256_tb_top: UVM_TESTNAME=Sha256RandomizedTest\
+        \  cocotb=2.1.0\n    40.00ns INFO     ..corrupted/tb/sha256_test.py(136) [uvm_test_top]:\
+        \ uvm_test_top: Sha256Env created\n    40.00ns INFO     ..k_corrupted/tb/sha256_env.py(78)\
+        \ [uvm_test_top.sha256_env]: Sha256Env build_phase: agent + scoreboard built;\
+        \ coverage sampler and 3 assertion checker(s) started\n    40.00ns INFO  \
+        \   ..k_corrupted/tb/sha256_env.py(93) [uvm_test_top.sha256_env]: Sha256Env\
+        \ connect_phase: agent.ap -> scoreboard analysis fifo\n   790.00ns ERROR \
+        \   ..ted/tb/sha256_scoreboard.py(238) [uvm_test_top.sha256_env.sha256_scoreboard]:\
+        \ DIGEST MISMATCH txn_id=1: block=0xfd85f73d544e62152209e551d667e8502bbb3262c7a687cb5be841704d784b440a73adc580000000000000000000000000000000000000000000000000000120\
+        \ expected_digest=0xb4b5bbaafef3bf861840b8d00f4d0015b024afa799d1912bfc022c4727bf8c34\
+        \ actual_digest=0x0000000000000000000000000000000000000000000000000000000000000000\
+        \ cycle_of_mismatch=79 (digest sampled 70 cycles after start edge)\n   800.00ns\
+        \ ERROR    sha256_assertions                  ASSERTION FAILED: transaction_completes_within_latency\
+        \ violated: transaction started at cycle 5 did not produce a non-zero digest\
+        \ within 64..70 cycles (digest still 0x0000000000000000000000000000000000000000000000000000000000000000\
+        \ at cycle 76). The RTL never reaches its completion state (digest assignment\
+        \ gated on round==62, DISC-008/014).\nsha256 : <cocotb_coverage.coverage.CoverItem\
+        \ object at 0x7e70b5f9f370>, coverage=6, size=13 \n   sha256.control_signals_cg\
+        \ : <cocotb_coverage.coverage.CoverItem object at 0x7e70b5f9f9d0>, coverage=5,\
+        \ size=8 \n      sha256.control_signals_cg.done_pulse : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7e70b5f9d3c0>, coverage=1, size=2 \n      sha256.control_signals_cg.start_done_cross\
+        \ : <cocotb_coverage.coverage.CoverCross object at 0x7e70b5f9c8b0>, coverage=2,\
+        \ size=4 \n      sha256.control_signals_cg.start_pulse : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7e70b5f9fee0>, coverage=2, size=2 \n   sha256.message_length_cg\
+        \ : <cocotb_coverage.coverage.CoverItem object at 0x7e70b5f9fcd0>, coverage=1,\
+        \ size=5 \n      sha256.message_length_cg.msg_len_bits : <cocotb_coverage.coverage.CoverPoint\
+        \ object at 0x7e70b5f9d600>, coverage=1, size=5 \n   800.00ns WARNING  cocotb.regression\
+        \                  test_top.sha256_tb_top failed\n                       \
+        \                                 Traceback (most recent call last):\n   \
+        \                                                       File \"/workspace/generated/designs/sha256_benchmark_corrupted/tb/sha256_assertions.py\"\
+        , line 302, in check_transaction_completes_within_latency\n              \
+        \                                              self._fail(violation)\n   \
+        \                                                       File \"/workspace/generated/designs/sha256_benchmark_corrupted/tb/sha256_assertions.py\"\
+        , line 330, in _fail\n                                                   \
+        \         raise AssertionError(violation)\n                              \
+        \                          AssertionError: transaction_completes_within_latency\
+        \ violated: transaction started at cycle 5 did not produce a non-zero digest\
+        \ within 64..70 cycles (digest still 0x0000000000000000000000000000000000000000000000000000000000000000\
+        \ at cycle 76). The RTL never reaches its completion state (digest assignment\
+        \ gated on round==62, DISC-008/014).\n   800.00ns INFO     cocotb.regression\
+        \                  **************************************************************************************\n\
+        \                                                        ** TEST         \
+        \                 STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **\n\
+        \                                                        **************************************************************************************\n\
+        \                                                        ** test_top.sha256_tb_top\
+        \         FAIL         800.00           0.01      55145.90  **\n         \
+        \                                               **************************************************************************************\n\
+        \                                                        ** TESTS=1 PASS=0\
+        \ FAIL=1 SKIP=0                800.00           0.01      53998.26  **\n \
+        \                                                       **************************************************************************************\n\
+        - :0: Verilog $finish\nmake: *** [/home/ray/anaconda3/lib/python3.10/site-packages/cocotb_tools/makefiles/simulators/Makefile.verilator:74:\
+        \ /workspace/generated/designs/sha256_benchmark_corrupted/tb/.chia_sim/Sha256RandomizedTest.xml]\
+        \ Error 1\n"

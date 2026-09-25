@@ -1,0 +1,36 @@
+[
+  {
+    "acceptance_reason": "no_regression",
+    "accepted_rtl": "/home/auralab/nwark/chia-hackathon/uvm_loop/generated/designs/aes128_benchmark_corrupted/rtl_verification/accepted/aes128.sv",
+    "baseline_quality_score": 55.0,
+    "baseline_tests_failed": 11,
+    "candidate_quality_score": 55.0,
+    "candidate_result": "/home/auralab/nwark/chia-hackathon/uvm_loop/generated/designs/aes128_benchmark_corrupted/rtl_verification/results/candidate_01.json",
+    "candidate_tests_failed": 11,
+    "confidence": "high",
+    "decision_path": "/home/auralab/nwark/chia-hackathon/uvm_loop/generated/designs/aes128_benchmark_corrupted/rtl_verification/decisions/iteration_01.yaml",
+    "iteration": 1,
+    "original_rtl": "/home/auralab/nwark/chia-hackathon/uvm_loop/benchmarks/aes128_benchmark_corrupted/aes128.sv",
+    "original_rtl_modified": false,
+    "result": "accepted",
+    "root_cause": "The DUT control FSM is corrupted so no transaction can ever complete.\nThree related RTL defects jointly cause the observed failure: (DISC-01) the\nsynchronous-reset branch sets busy <= 1'b1, so after reset release the start\ngate \"start && !busy\" is permanently closed and no transaction is ever\naccepted; (DISC-02) the round counter is incremented by 2 (\"round + 2'b10\"),\nso round never equals 4'd9 and an accepted transaction would never reach the\ncompletion branch; and in the round==4'd9 completion branch done is explicitly\ndriven to 1'b0, so a done pulse is never emitted even on completion. Net\neffect: after reset release the DUT never returns to idle, never honors start,\nand never pulses done -- exactly the observed failure.",
+    "score_delta": 0.0
+  },
+  {
+    "acceptance_reason": "passed_all_required_tests",
+    "accepted_rtl": "/home/auralab/nwark/chia-hackathon/uvm_loop/generated/designs/aes128_benchmark_corrupted/rtl_verification/accepted/aes128.sv",
+    "baseline_quality_score": 55.0,
+    "baseline_tests_failed": 11,
+    "candidate_quality_score": 85.0,
+    "candidate_result": "/home/auralab/nwark/chia-hackathon/uvm_loop/generated/designs/aes128_benchmark_corrupted/rtl_verification/results/candidate_02.json",
+    "candidate_tests_failed": 0,
+    "confidence": "high",
+    "decision_path": "/home/auralab/nwark/chia-hackathon/uvm_loop/generated/designs/aes128_benchmark_corrupted/rtl_verification/decisions/iteration_02.yaml",
+    "iteration": 2,
+    "original_rtl": "/home/auralab/nwark/chia-hackathon/uvm_loop/benchmarks/aes128_benchmark_corrupted/aes128.sv",
+    "original_rtl_modified": false,
+    "result": "accepted",
+    "root_cause": "The RTL's AES-128 datapath is functionally corrupted (intentional benchmark faults, spec \u00a710). Multiple independent RTL defects jointly corrupt the ciphertext of every transaction: (1) 10 SBOX entries differ from FIPS-197; (2) RCON has wrong values (0x03, 0x81) and is declared [1:10] while indexed with round 0..9 (RCON[0] out-of-bounds / off-by-one Rcon); (3) gm2 reduces with 8'h1d instead of 8'h1b; (4) gm3 = gm2(a)^gm2(a) so gm3\u22610; (5) mix_columns uses wrong/swapped xtime-2/xtime-3 coefficients (incl. gm3 on b[4c+3]); (6) shift_rows mis-maps 5 byte lanes; (7) next_round_key slices words at k[126:95]/k[94:63]/k[62:31]/k[30:0], swaps the two RotWord bytes, and chains n1=w1^w0, n3=w3^n1; (8) aes_round applies MixColumns only in the final round on the pre-round state, omits it for non-final rounds, and XORs ~k instead of k; (9) the control FSM loads round_key <= ~key on start and the round==9 state update uses the previous round key (K9) instead of the next round key (K10). Net effect: known-answer, corner, and randomized transactions all emit wrong ciphertext (FIPS-197 vector: 0x31de... instead of 0x69c4...).",
+    "score_delta": 30.0
+  }
+]
