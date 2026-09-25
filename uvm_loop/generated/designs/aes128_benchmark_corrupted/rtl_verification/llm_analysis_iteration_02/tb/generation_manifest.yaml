@@ -1,0 +1,79 @@
+# AES-128 cocotb+pyuvm testbench -- generation manifest (stage-6 INTEGRATION).
+#
+# This manifest is the authoritative runtime contract for the generated
+# environment and is consumed by the simulation runner.  The top module, RTL
+# file(s), the Python cocotb test module, and the exact pyuvm test class
+# names selectable via UVM_TESTNAME are listed here; `scenarios` maps each
+# directed verification-plan scenario id (the exact `id` from
+# verification_plan.yaml `directed_test_scenarios`, TC01..TC09) to its
+# generated sequence and test classes.
+
+top_module: aes128
+top_file: benchmarks/aes128_benchmark_corrupted/aes128.sv
+
+# Only the DUT RTL is compiled.  Every other part of the testbench is
+# Python (cocotb 2.1.0 + pyuvm 5.0.0); there is no generated SV source.
+compile_files:
+  - benchmarks/aes128_benchmark_corrupted/aes128.sv
+
+# Exact runtime pyuvm test class names (selectable via UVM_TESTNAME and
+# resolved by test_top.py through pyuvm's factory).
+test_classes:
+  - Aes128ResetReleaseIdleTest
+  - Aes128Fips197KnownAnswerTest
+  - Aes128AllZeroKnownAnswerTest
+  - Aes128IncrementingKnownAnswerTest
+  - Aes128BackToBackTransactionsTest
+  - Aes128KeySensitivityTest
+  - Aes128PlaintextSensitivityTest
+  - Aes128DeterminismRepeatedEncryptionTest
+  - Aes128DonePulseAndStartIgnoredWhileBusyTest
+  - Aes128CornerTest
+  - Aes128RandomizedTest
+
+# Top-level Python cocotb test module (without .py).
+python_test_module: test_top
+
+# Authoritative mapping between the accepted verification plan
+# (directed_test_scenarios, keyed by the exact scenario id from
+# verification_plan.yaml) and the generated directed environment.
+# The corner_case and randomized test classes above intentionally have NO
+# scenarios entry (separate verification strategies in the plan --
+# `corner_cases` / `randomized_testing_strategy`).
+scenarios:
+  - id: TC01
+    name: reset_release_idle
+    sequence: ResetReleaseIdleSeq
+    test: Aes128ResetReleaseIdleTest
+  - id: TC02
+    name: fips197_known_answer
+    sequence: Fips197KnownAnswerSeq
+    test: Aes128Fips197KnownAnswerTest
+  - id: TC03
+    name: all_zero_known_answer
+    sequence: AllZeroKnownAnswerSeq
+    test: Aes128AllZeroKnownAnswerTest
+  - id: TC04
+    name: incrementing_known_answer
+    sequence: IncrementingKnownAnswerSeq
+    test: Aes128IncrementingKnownAnswerTest
+  - id: TC05
+    name: back_to_back_transactions
+    sequence: BackToBackTransactionsSeq
+    test: Aes128BackToBackTransactionsTest
+  - id: TC06
+    name: key_sensitivity
+    sequence: KeySensitivitySeq
+    test: Aes128KeySensitivityTest
+  - id: TC07
+    name: plaintext_sensitivity
+    sequence: PlaintextSensitivitySeq
+    test: Aes128PlaintextSensitivityTest
+  - id: TC08
+    name: determinism_repeated_encryption
+    sequence: DeterminismRepeatedEncryptionSeq
+    test: Aes128DeterminismRepeatedEncryptionTest
+  - id: TC09
+    name: done_pulse_and_start_ignored_while_busy
+    sequence: DonePulseAndStartIgnoredWhileBusySeq
+    test: Aes128DonePulseAndStartIgnoredWhileBusyTest

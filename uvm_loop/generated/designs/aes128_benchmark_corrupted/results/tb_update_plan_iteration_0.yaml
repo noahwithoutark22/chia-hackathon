@@ -1,0 +1,53 @@
+version: '1.0'
+verdict: generation_bug
+root_cause:
+  category: driver
+  summary: 'The generated Python driver drives pins from inside cocotb''s ReadOnly
+    phase, so every test crashes on its first transaction drive with "RuntimeError:
+    Attempting settings a value during the ReadOnly phase."'
+  evidence: 'All 11 tests crash with the identical "RuntimeError: Attempting settings
+    a value during the ReadOnly phase." on the first transaction drive each (traceback:
+    run_phase:119 -> _drive_item:137 -> _drive:102 -> dut_helper.py:91 setimmediatevalue(start)
+    -> cocotb handle.py:876). The sequences sample done in the read-only region (_check_done_low/_wait_done
+    end in `await ReadOnly()`), and the whole start_item/finish_item handshake then
+    runs inside that ReadOnly GPI callback frame (GPITrigger._react() sets _current_gpi_trigger=ReadOnly
+    and runs the event loop inside it), waking the driver''s get_next_item() whose
+    immediate setimmediatevalue pin writes are rejected because cocotb forbids writes
+    in the ReadOnly phase. Timing evidence is consistent across tests: Fips197 fails
+    at ~70ns, ResetReleaseIdle (5-cycle reset vs 3-cycle) at ~90ns, exactly on the
+    first post-reset transaction drive.'
+changes:
+- file: driver.py
+  action: modify
+  reason: Realign the driver out of the ReadOnly GPI frame before touching pins so
+    its immediate setimmediatevalue writes are legal.
+  instructions:
+  - In Aes128Driver.run_phase, insert `await Timer(1, "step")` between `get_next_item()`
+    and `_drive_item()`.
+  - Add `Timer` to the `from cocotb.triggers import ...` import in driver.py.
+- file: sequences.py
+  action: modify
+  reason: Prevent reset writes (`rst_n`) that follow a read-only sample (randomized
+    `_inject_reset`, corner reset-mid-transaction) from hitting the same ReadOnly-phase
+    write guard once the driver is fixed.
+  instructions:
+  - In Aes128SeqBase._reset, insert `await Timer(1, "step")` at the top.
+  - Add `Timer` to the `from cocotb.triggers import ...` import in sequences.py.
+validation:
+  tests:
+  - Aes128ResetReleaseIdleTest
+  - Aes128Fips197KnownAnswerTest
+  - Aes128AllZeroKnownAnswerTest
+  - Aes128IncrementingKnownAnswerTest
+  - Aes128BackToBackTransactionsTest
+  - Aes128KeySensitivityTest
+  - Aes128PlaintextSensitivityTest
+  - Aes128DeterminismRepeatedEncryptionTest
+  - Aes128DonePulseAndStartIgnoredWhileBusyTest
+  - Aes128CornerTest
+  - Aes128RandomizedTest
+  requirements:
+  - build succeeds
+  - no UVM_ERROR or UVM_FATAL
+  - no reference-model mismatch
+  - no ReadOnly-phase write crash on any path
