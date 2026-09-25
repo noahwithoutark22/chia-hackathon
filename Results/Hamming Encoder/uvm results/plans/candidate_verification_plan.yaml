@@ -1,0 +1,319 @@
+dut:
+  name: hamming_encoder
+  file: benchmarks/hamming_encoder_benchmark_corrupted/hamming_encoder.sv
+  description: Extended Hamming(72,64) SECDED encoder that accepts 64 data bits and outputs a 72-bit codeword with Hamming parity and overall parity.
+parameters: []
+clock_and_reset:
+  clock:
+    name: ""
+    type: posedge
+    description: DUT has no clock port; this signal is not connected.
+  reset:
+    name: ""
+    polarity: active-low
+    type: asynchronous
+    description: DUT has no reset port; this signal is not connected.
+    reset_value: {}
+ports:
+  inputs:
+    - name: data_in
+      width: 64
+      description: 64-bit input data.
+      type: logic
+  outputs:
+    - name: codeword
+      width: 72
+      description: 72-bit SECDED codeword.
+      type: logic
+  inouts: []
+functional_behavior:
+  description: Combinational encoder that implements extended Hamming(72,64) SECDED code generation. The 64 input data bits are placed in non-parity Hamming positions excluding position 3 (positions 5,6,7,9,10,11,12,13,14,15,17,...,71 excluding powers of two). Parity bits at positions 1,2,4,8,16,32,64 are computed such that each parity check covers positions where the corresponding bit in the position index is set, using even parity. An overall parity bit (position 0) is set to make the entire 72-bit codeword have even parity.
+  reference_model:
+    language: Python
+    file: benchmarks/hamming_encoder_benchmark_corrupted/hamming_reference_model.py
+    function: encode
+    logic: |
+      The reference model encodes a 64-bit integer into a 72-bit codeword by:
+      1. Placing data bits in non-parity positions (1..71 excluding powers of two).
+      2. Computing each Hamming bit as the XOR of all covered positions (including the parity position itself).
+      3. Setting the overall parity bit to the XOR of all Hamming bits (positions 1..71) to achieve even parity across the full codeword.
+    latency: 0
+directed_test_scenarios:
+  - id: "1"
+    name: all_zeros_input
+    description: Test with all zero input data.
+    priority: high
+    stimulus:
+      sequence:
+        - action: apply_inputs
+          signals:
+            data_in: 64'h0000000000000000
+        - action: wait
+          cycles: 1
+        - action: check_outputs
+          signals:
+            codeword: 72'h000_000_000_000_000_000
+    expected: |
+      All data and Hamming bits (positions 1-71) are 0, so the overall parity bit (position 0) is set to 0 to achieve even parity.
+  - id: "2"
+    name: all_ones_input
+    description: Test with all ones input data.
+    priority: high
+    stimulus:
+      sequence:
+        - action: apply_inputs
+          signals:
+            data_in: 64'hFFFFFFFFFFFFFFFF
+        - action: wait
+          cycles: 1
+        - action: check_outputs
+          signals:
+            codeword: 72'hFFFFFFFFFFFFFFFFFFFFFF
+    expected: |
+      Computed via reference model.
+  - id: "3"
+    name: alternating_1010
+    description: Test with alternating 1010 pattern (LSB first).
+    priority: medium
+    stimulus:
+      sequence:
+        - action: apply_inputs
+          signals:
+            data_in: 64'haaaaaaaaaaaaaaaa
+        - action: wait
+          cycles: 1
+        - action: check_outputs
+          signals:
+            codeword: 72'haa5_555_5555_aaaa_55a5
+    expected: |
+      Computed via reference model.
+  - id: "4"
+    name: alternating_0101
+    description: Test with alternating 0101 pattern (LSB first).
+    priority: medium
+    stimulus:
+      sequence:
+        - action: apply_inputs
+          signals:
+            data_in: 64'h5555555555555555
+        - action: wait
+          cycles: 1
+        - action: check_outputs
+          signals:
+            codeword: 72'h55A_AAA_AAAA_5555_AA5A
+    expected: |
+      Computed via reference model.
+  - id: "5"
+    name: single_bit_set_lsb
+    description: Test with only LSB set.
+    priority: medium
+    stimulus:
+      sequence:
+        - action: apply_inputs
+          signals:
+            data_in: 64'h0000000000000001
+        - action: wait
+          cycles: 1
+        - action: check_outputs
+          signals:
+            codeword: 72'h000_000_000_000_000_00F
+    expected: |
+      Computed via reference model.
+  - id: "6"
+    name: single_bit_set_msb
+    description: Test with only MSB set.
+    priority: medium
+    stimulus:
+      sequence:
+        - action: apply_inputs
+          signals:
+            data_in: 64'h8000000000000000
+        - action: wait
+          cycles: 1
+        - action: check_outputs
+          signals:
+            codeword: 72'h810_000_000_000_000_017
+    expected: |
+      Computed via reference model.
+corner_cases:
+  - name: maximum_input_value
+    description: Input is 64'hFFFFFFFFFFFFFFFF (all ones).
+    expected: |
+      Codeword computed by reference model.
+  - name: minimum_input_value
+    description: Input is 64'h0000000000000000 (all zeros).
+    expected: |
+      Codeword computed by reference model.
+  - name: power_of_two_data_pattern
+    description: Input has only one bit set at each power-of-two position within the 64-bit word.
+    expected: |
+      Computed via reference model for each single bit.
+randomized_testing_strategy:
+  description: Generate random 64-bit stimuli and compare DUT output with reference model.
+  constraints:
+    - variable: data_in
+      range: [0, 18446744073709551615]
+  injection:
+    - type: random_delay
+      description: Apply random delays between stimulus changes to test for glitches.
+  pass_criteria: DUT output matches reference model output for all applied stimuli.
+functional_coverage:
+  covergroups:
+    - name: input_data_coverage
+      description: Coverage for input data values.
+      clk: null
+      sample_on: "@*"
+      bins:
+        - name: input_zero
+          variable: data_in
+          expression: data_in == 64'h0000000000000000
+        - name: input_ones
+          variable: data_in
+          expression: data_in == 64'hFFFFFFFFFFFFFFFF
+        - name: input_alt_1010
+          variable: data_in
+          expression: data_in == 64'haaaaaaaaaaaaaaaa
+        - name: input_alt_0101
+          variable: data_in
+          expression: data_in == 64'h5555555555555555
+        - name: input_lsb_set
+          variable: data_in
+          expression: data_in == 64'h0000000000000001
+        - name: input_msb_set
+          variable: data_in
+          expression: data_in == 64'h8000000000000000
+        - name: input_rest
+          variable: data_in
+          range: [0, 18446744073709551615]
+    - name: codeword_parity_coverage
+      description: Coverage for parity properties of the codeword.
+      clk: null
+      sample_on: "@*"
+      bins:
+        - name: overall_parity_even
+          variable: codeword
+          expression: ^codeword == 0
+        - name: hamming_p1_parity_even
+          variable: codeword
+          expression: ((codeword >> 1) & 1) ^ ((codeword >> 3) & 1) ^ ((codeword >> 5) & 1) ^ ((codeword >> 7) & 1) ^ ((codeword >> 9) & 1) ^ ((codeword >> 11) & 1) ^ ((codeword >> 13) & 1) ^ ((codeword >> 15) & 1) ^ ((codeword >> 17) & 1) ^ ((codeword >> 19) & 1) ^ ((codeword >> 21) & 1) ^ ((codeword >> 23) & 1) ^ ((codeword >> 25) & 1) ^ ((codeword >> 27) & 1) ^ ((codeword >> 29) & 1) ^ ((codeword >> 31) & 1) ^ ((codeword >> 33) & 1) ^ ((codeword >> 35) & 1) ^ ((codeword >> 37) & 1) ^ ((codeword >> 39) & 1) ^ ((codeword >> 41) & 1) ^ ((codeword >> 43) & 1) ^ ((codeword >> 45) & 1) ^ ((codeword >> 47) & 1) ^ ((codeword >> 49) & 1) ^ ((codeword >> 51) & 1) ^ ((codeword >> 53) & 1) ^ ((codeword >> 55) & 1) ^ ((codeword >> 57) & 1) ^ ((codeword >> 59) & 1) ^ ((codeword >> 61) & 1) ^ ((codeword >> 63) & 1) ^ ((codeword >> 65) & 1) ^ ((codeword >> 67) & 1) ^ ((codeword >> 69) & 1) ^ ((codeword >> 71) & 1) == 0
+        - name: hamming_p2_parity_even
+          variable: codeword
+          expression: ((codeword >> 2) & 1) ^ ((codeword >> 3) & 1) ^ ((codeword >> 6) & 1) ^ ((codeword >> 7) & 1) ^ ((codeword >> 10) & 1) ^ ((codeword >> 11) & 1) ^ ((codeword >> 14) & 1) ^ ((codeword >> 15) & 1) ^ ((codeword >> 18) & 1) ^ ((codeword >> 19) & 1) ^ ((codeword >> 22) & 1) ^ ((codeword >> 23) & 1) ^ ((codeword >> 26) & 1) ^ ((codeword >> 27) & 1) ^ ((codeword >> 30) & 1) ^ ((codeword >> 31) & 1) ^ ((codeword >> 34) & 1) ^ ((codeword >> 35) & 1) ^ ((codeword >> 38) & 1) ^ ((codeword >> 39) & 1) ^ ((codeword >> 42) & 1) ^ ((codeword >> 43) & 1) ^ ((codeword >> 46) & 1) ^ ((codeword >> 47) & 1) ^ ((codeword >> 50) & 1) ^ ((codeword >> 51) & 1) ^ ((codeword >> 54) & 1) ^ ((codeword >> 55) & 1) ^ ((codeword >> 58) & 1) ^ ((codeword >> 59) & 1) ^ ((codeword >> 62) & 1) ^ ((codeword >> 63) & 1) ^ ((codeword >> 66) & 1) ^ ((codeword >> 67) & 1) ^ ((codeword >> 70) & 1) ^ ((codeword >> 71) & 1) == 0
+        - name: hamming_p4_parity_even
+          variable: codeword
+          expression: ((codeword >> 4) & 1) ^ ((codeword >> 5) & 1) ^ ((codeword >> 6) & 1) ^ ((codeword >> 7) & 1) ^ ((codeword >> 12) & 1) ^ ((codeword >> 13) & 1) ^ ((codeword >> 14) & 1) ^ ((codeword >> 15) & 1) ^ ((codeword >> 20) & 1) ^ ((codeword >> 21) & 1) ^ ((codeword >> 22) & 1) ^ ((codeword >> 23) & 1) ^ ((codeword >> 28) & 1) ^ ((codeword >> 29) & 1) ^ ((codeword >> 30) & 1) ^ ((codeword >> 31) & 1) ^ ((codeword >> 36) & 1) ^ ((codeword >> 37) & 1) ^ ((codeword >> 38) & 1) ^ ((codeword >> 39) & 1) ^ ((codeword >> 44) & 1) ^ ((codeword >> 45) & 1) ^ ((codeword >> 46) & 1) ^ ((codeword >> 47) & 1) ^ ((codeword >> 52) & 1) ^ ((codeword >> 53) & 1) ^ ((codeword >> 54) & 1) ^ ((codeword >> 55) & 1) ^ ((codeword >> 60) & 1) ^ ((codeword >> 61) & 1) ^ ((codeword >> 62) & 1) ^ ((codeword >> 63) & 1) ^ ((codeword >> 68) & 1) ^ ((codeword >> 69) & 1) ^ ((codeword >> 70) & 1) ^ ((codeword >> 71) & 1) == 0
+        - name: hamming_p8_parity_even
+          variable: codeword
+          expression: ((codeword >> 8) & 1) ^ ((codeword >> 9) & 1) ^ ((codeword >> 10) & 1) ^ ((codeword >> 11) & 1) ^ ((codeword >> 12) & 1) ^ ((codeword >> 13) & 1) ^ ((codeword >> 14) & 1) ^ ((codeword >> 15) & 1) ^ ((codeword >> 24) & 1) ^ ((codeword >> 25) & 1) ^ ((codeword >> 26) & 1) ^ ((codeword >> 27) & 1) ^ ((codeword >> 28) & 1) ^ ((codeword >> 29) & 1) ^ ((codeword >> 30) & 1) ^ ((codeword >> 31) & 1) ^ ((codeword >> 40) & 1) ^ ((codeword >> 41) & 1) ^ ((codeword >> 42) & 1) ^ ((codeword >> 43) & 1) ^ ((codeword >> 44) & 1) ^ ((codeword >> 45) & 1) ^ ((codeword >> 46) & 1) ^ ((codeword >> 47) & 1) ^ ((codeword >> 56) & 1) ^ ((codeword >> 57) & 1) ^ ((codeword >> 58) & 1) ^ ((codeword >> 59) & 1) ^ ((codeword >> 60) & 1) ^ ((codeword >> 61) & 1) ^ ((codeword >> 62) & 1) ^ ((codeword >> 63) & 1) == 0
+        - name: hamming_p16_parity_even
+          variable: codeword
+          expression: ((codeword >> 16) & 1) ^ ((codeword >> 17) & 1) ^ ((codeword >> 18) & 1) ^ ((codeword >> 19) & 1) ^ ((codeword >> 20) & 1) ^ ((codeword >> 21) & 1) ^ ((codeword >> 22) & 1) ^ ((codeword >> 23) & 1) ^ ((codeword >> 24) & 1) ^ ((codeword >> 25) & 1) ^ ((codeword >> 26) & 1) ^ ((codeword >> 27) & 1) ^ ((codeword >> 28) & 1) ^ ((codeword >> 29) & 1) ^ ((codeword >> 30) & 1) ^ ((codeword >> 31) & 1) ^ ((codeword >> 48) & 1) ^ ((codeword >> 49) & 1) ^ ((codeword >> 50) & 1) ^ ((codeword >> 51) & 1) ^ ((codeword >> 52) & 1) ^ ((codeword >> 53) & 1) ^ ((codeword >> 54) & 1) ^ ((codeword >> 55) & 1) ^ ((codeword >> 56) & 1) ^ ((codeword >> 57) & 1) ^ ((codeword >> 58) & 1) ^ ((codeword >> 59) & 1) ^ ((codeword >> 60) & 1) ^ ((codeword >> 61) & 1) ^ ((codeword >> 62) & 1) ^ ((codeword >> 63) & 1) == 0
+        - name: hamming_p32_parity_even
+          variable: codeword
+          expression: ((codeword >> 32) & 1) ^ ((codeword >> 33) & 1) ^ ((codeword >> 34) & 1) ^ ((codeword >> 35) & 1) ^ ((codeword >> 36) & 1) ^ ((codeword >> 37) & 1) ^ ((codeword >> 38) & 1) ^ ((codeword >> 39) & 1) ^ ((codeword >> 40) & 1) ^ ((codeword >> 41) & 1) ^ ((codeword >> 42) & 1) ^ ((codeword >> 43) & 1) ^ ((codeword >> 44) & 1) ^ ((codeword >> 45) & 1) ^ ((codeword >> 46) & 1) ^ ((codeword >> 47) & 1) ^ ((codeword >> 48) & 1) ^ ((codeword >> 49) & 1) ^ ((codeword >> 50) & 1) ^ ((codeword >> 51) & 1) ^ ((codeword >> 52) & 1) ^ ((codeword >> 53) & 1) ^ ((codeword >> 54) & 1) ^ ((codeword >> 55) & 1) ^ ((codeword >> 56) & 1) ^ ((codeword >> 57) & 1) ^ ((codeword >> 58) & 1) ^ ((codeword >> 59) & 1) ^ ((codeword >> 60) & 1) ^ ((codeword >> 61) & 1) ^ ((codeword >> 62) & 1) ^ ((codeword >> 63) & 1) == 0
+        - name: hamming_p64_parity_even
+          variable: codeword
+          expression: ((codeword >> 64) & 1) ^ ((codeword >> 65) & 1) ^ ((codeword >> 66) & 1) ^ ((codeword >> 67) & 1) ^ ((codeword >> 68) & 1) ^ ((codeword >> 69) & 1) ^ ((codeword >> 70) & 1) ^ ((codeword >> 71) & 1) == 0
+      crosses:
+        - name: input_vs_parity
+          variables:
+            - data_in
+            - codeword
+          description: Cross coverage between input data and resulting codeword parity checks.
+scoreboard_reference_model_strategy:
+  description: Scoreboard compares DUT output with reference model output for the same input.
+  architecture:
+    - type: reference_model_comparison
+      description: For each test stimulus, compute expected codeword using reference model and compare with DUT output.
+  pass_criteria: DUT output matches reference model output for all stimuli.
+  error_reporting: Errors are reported with input value, DUT output, expected output, and bit-wise difference.
+useful_assertions:
+  - name: overall_parity_check
+    description: The entire 72-bit codeword must have even parity (XOR of all bits = 0).
+    assertion: ^codeword == 0
+    severity: error
+  - name: hamming_parity_p1_check
+    description: Parity check for P1 (positions 1,3,5,7,...) must be even.
+    assertion: (^codeword[1:71:2]) == 0
+    severity: error
+  - name: hamming_parity_p2_check
+    description: Parity check for P2 (positions 2,3,6,7,10,11,...) must be even.
+    assertion: (^codeword[2:71:4] ^ codeword[3:71:4]) == 0
+    severity: error
+  - name: hamming_parity_p4_check
+    description: Parity check for P4 (positions 4-7,12-15,...) must be even.
+    assertion: (^codeword[4:71:8] ^ codeword[5:71:8] ^ codeword[6:71:8] ^ codeword[7:71:8]) == 0
+    severity: error
+  - name: hamming_parity_p8_check
+    description: Parity check for P8 (positions 8-15,24-31,...) must be even.
+    assertion: (^codeword[8:71:16] ^ codeword[9:71:16] ^ codeword[10:71:16] ^ codeword[11:71:16] ^ codeword[12:71:16] ^ codeword[13:71:16] ^ codeword[14:71:16] ^ codeword[15:71:16]) == 0
+    severity: error
+  - name: hamming_parity_p16_check
+    description: Parity check for P16 (positions 16-31,48-63,...) must be even.
+    assertion: (^codeword[16:71:32] ^ codeword[17:71:32] ^ codeword[18:71:32] ^ codeword[19:71:32] ^ codeword[20:71:32] ^ codeword[21:71:32] ^ codeword[22:71:32] ^ codeword[23:71:32] ^ codeword[24:71:32] ^ codeword[25:71:32] ^ codeword[26:71:32] ^ codeword[27:71:32] ^ codeword[28:71:32] ^ codeword[29:71:32] ^ codeword[30:71:32] ^ codeword[31:71:32]) == 0
+    severity: error
+  - name: hamming_parity_p32_check
+    description: Parity check for P32 (positions 32-63,...) must be even.
+    assertion: (^codeword[32:71:64] ^ codeword[33:71:64] ^ codeword[34:71:64] ^ codeword[35:71:64] ^ codeword[36:71:64] ^ codeword[37:71:64] ^ codeword[38:71:64] ^ codeword[39:71:64] ^ codeword[40:71:64] ^ codeword[41:71:64] ^ codeword[42:71:64] ^ codeword[43:71:64] ^ codeword[44:71:64] ^ codeword[45:71:64] ^ codeword[46:71:64] ^ codeword[47:71:64] ^ codeword[48:71:64] ^ codeword[49:71:64] ^ codeword[50:71:64] ^ codeword[51:71:64] ^ codeword[52:71:64] ^ codeword[53:71:64] ^ codeword[54:71:64] ^ codeword[55:71:64] ^ codeword[56:71:64] ^ codeword[57:71:64] ^ codeword[58:71:64] ^ codeword[59:71:64] ^ codeword[60:71:64] ^ codeword[61:71:64] ^ codeword[62:71:64] ^ codeword[63:71:64] == 0
+    severity: error
+  - name: hamming_parity_p64_check
+    description: Parity check for P64 (positions 64-71,...) must be even.
+    assertion: (^codeword[64:71]) == 0
+    severity: error
+discrepancies:
+  - id: DISCREPANCY_001
+    severity: error
+    title: Incorrect data-to-position mapping
+    rtl: |
+      RTL skips Hamming position 3 when placing data bits (see condition `if (!(is_parity_position(pos) || pos == 3))`). This causes data bit intended for position 3 to be omitted, and shifts subsequent data bits by one position.
+    spec: |
+      Specification states that all non-power-of-two Hamming positions (including position 3) shall contain data bits, placed sequentially from data_in[0].
+    impact: |
+      Misplaced data bits, incorrect codeword generation.
+    recommendation: |
+      Remove the `|| pos == 3` condition from the data placement if-statement.
+  - id: DISCREPANCY_002
+    severity: error
+    title: Incorrect parity bit calculations
+    rtl: |
+      Parity calculation uses incorrect bit masks:
+      - p1 uses (pos & 2) instead of (pos & 1)
+      - p2 and p4 both use (pos & 4) instead of (pos & 2) and (pos & 4) respectively
+      - p8 uses (pos & 16) instead of (pos & 8)
+      - p16 and p32 use correct masks but p16 is inverted and p32 is not used
+      - p64 uses correct mask
+      Additionally, parity bits are assigned incorrectly:
+      - hamming_bits[16] = ~p16 (should be p16)
+      - hamming_bits[32] = p16 (should be p32)
+      - hamming_bits[64] = p64 (correct)
+    spec: |
+      Each parity bit at position 2^k should be set to achieve even parity over all positions where the k-th bit of the position index is set (including the parity position itself).
+    impact: |
+      Incorrect parity bits, failed parity checks.
+    recommendation: |
+      Correct the mask for each parity bit and assign the computed parity value directly (without inversion for p16) to the corresponding Hamming position.
+  - id: DISCREPANCY_003
+    severity: error
+    title: Incorrect codeword bit mapping
+    rtl: |
+      The loop `codeword[(pos == 10) ? 11 : pos] = hamming_bits[pos];` causes:
+      - Hamming bit 10 is lost (overwritten by bit 11)
+      - Hamming bit 11 is placed in codeword[11] (correct)
+      - Codeword[10] is never assigned (left uninitialized)
+    spec: |
+      codeword[1] through codeword[71] shall directly map to Hamming positions 1 through 71, respectively.
+    impact: |
+      Misplaced codeword bits, incorrect codeword generation.
+    recommendation: |
+      Change the assignment to `codeword[pos] = hamming_bits[pos];` for pos from 1 to 71.
+  - id: DISCREPANCY_004
+    severity: error
+    title: Incorrect overall parity calculation
+    rtl: |
+      Overall parity is computed as XOR of Hamming bits 1 through 70 (missing bit 71) and then inverted before assigning to codeword[0].
+    spec: |
+      The overall parity bit (codeword[0]) shall be set to the XOR of Hamming bits 1 through 71 to ensure even parity across the full 72-bit codeword.
+    impact: |
+      Incorrect overall parity bit, failed overall parity check.
+    recommendation: |
+      Compute XOR of Hamming bits 1 through 71 and assign directly to codeword[0] (without inversion).

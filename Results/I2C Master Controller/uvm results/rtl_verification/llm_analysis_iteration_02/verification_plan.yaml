@@ -1,0 +1,1415 @@
+dut:
+  name: i2c_master
+  file: benchmarks/i2c_benchmark_corrupted/i2c_master.sv
+  description: Compact single-byte I2C master transaction engine with 7-bit slave
+    addressing, write and one-byte read transactions, slave ACK detection, START/STOP
+    sequencing, busy/done status, and ack_error reporting. Provides open-drain-style
+    SDA/SCL drive-enable outputs for external bus modeling.
+parameters:
+- name: CLK_DIV
+  default: '4'
+  description: Number of system clock cycles between transaction-engine state advances.
+  test_values:
+  - 4
+  - 8
+  - 16
+clock_and_reset:
+  clock:
+    name: clk
+    type: posedge
+    description: System clock; all DUT state changes occur on the rising edge.
+  reset:
+    name: rst_n
+    polarity: active-low
+    type: synchronous
+    description: Synchronous active-low reset that forces the controller to IDLE and
+      clears all registered outputs.
+    reset_value:
+      busy: 0
+      done: 0
+      ack_error: 0
+      rx_data: 0
+      state: IDLE
+ports:
+  inputs:
+  - name: clk
+    width: 1
+    description: System clock.
+    type: logic
+    latency: null
+  - name: rst_n
+    width: 1
+    description: Active-low synchronous reset.
+    type: logic
+    latency: null
+  - name: start
+    width: 1
+    description: Transaction start request; honored only while the controller is idle.
+    type: logic
+    latency: null
+  - name: slave_addr
+    width: 7
+    description: 7-bit I2C slave address.
+    type: logic
+    latency: null
+  - name: rw
+    width: 1
+    description: Direction bit; 0=write, 1=read.
+    type: logic
+    latency: null
+  - name: tx_data
+    width: 8
+    description: Data byte to transmit during a write transaction.
+    type: logic
+    latency: null
+  - name: sda_in
+    width: 1
+    description: Sampled SDA bus value; used for address/data ACK sampling and read-data
+      reception.
+    type: logic
+    latency: null
+  - name: scl_in
+    width: 1
+    description: Sampled SCL bus value.
+    type: logic
+    latency: null
+  outputs:
+  - name: rx_data
+    width: 8
+    description: Received byte for a read transaction.
+    type: logic
+    latency: null
+  - name: done
+    width: 1
+    description: One-cycle pulse when a transaction completes.
+    type: logic
+    latency: null
+  - name: busy
+    width: 1
+    description: High while a transaction is active.
+    type: logic
+    latency: null
+  - name: ack_error
+    width: 1
+    description: High when an expected slave ACK is not observed.
+    type: logic
+    latency: null
+  - name: sda_out
+    width: 1
+    description: Data value associated with the open-drain SDA output.
+    type: logic
+    latency: null
+  - name: sda_oe
+    width: 1
+    description: SDA drive-enable control; 1=drive, 0=release so the external pull-up
+      drives high.
+    type: logic
+    latency: null
+  - name: scl_out
+    width: 1
+    description: Clock value associated with the open-drain SCL output.
+    type: logic
+    latency: null
+  - name: scl_oe
+    width: 1
+    description: SCL drive-enable control; 1=drive, 0=release so the external pull-up
+      drives high.
+    type: logic
+    latency: null
+  inouts: []
+functional_behavior:
+  description: The controller executes a single-byte I2C transaction. The transmitted
+    address byte is address_byte = (slave_addr << 1) | rw and is transmitted MSB first.
+    A write transaction follows START -> 7-bit address + W -> slave ACK -> 8-bit tx_data
+    -> slave ACK -> STOP -> done. A one-byte read transaction follows START -> 7-bit
+    address + R -> slave ACK -> 8-bit data from slave (appears on rx_data) -> master
+    NACK -> STOP -> done. If an expected slave ACK is not detected (SDA sampled high
+    at the ACK point), ack_error is asserted. The controller asserts busy while a
+    transaction is active, honors start only while idle, pulses done for exactly one
+    clock at completion, and returns to IDLE after STOP so a new transaction cannot
+    overwrite an active one.
+  reset_behavior: While rst_n=0 the controller returns to IDLE and drives busy=0,
+    done=0, ack_error=0, rx_data=0. On reset deassertion the controller is ready to
+    accept a start request.
+  reference_model:
+    language: python
+    file: benchmarks/i2c_benchmark_corrupted/i2c_reference_model.py
+    function: make_address_byte(), write_transaction(), read_transaction(), address_bits(),
+      byte_bits(), expected_write_bytes(), expected_read_address()
+    logic: Constructs the address byte as (slave_addr << 1) | int(read). write_transaction(slave_addr,
+      data, slave_ack) returns start, address_byte, rw=0, tx_data, expected_slave_acks=2,
+      expected_ack_error = not slave_ack, stop. read_transaction(slave_addr, data_from_slave,
+      slave_ack) returns start, address_byte, rw=1, slave_data, expected_slave_acks=1,
+      master_final_ack=False, expected_ack_error = not slave_ack, expected_rx_data
+      = data_from_slave, stop. TEST_VECTORS cover write_basic (0x50,0xA5), write_zero
+      (0x00,0x00), write_max (0x7F,0xFF), read_basic (0x50,0x3C), read_max (0x2A,0xFF).
+    latency: Transaction completion is signaled by the done pulse; latency is not
+      a fixed number of cycles (spec section 9).
+directed_test_scenarios:
+- id: TC-01
+  name: reset_idle_check
+  description: Verify that reset clears all status outputs and the controller is idle.
+  priority: high
+  stimulus:
+    sequence:
+    - action: reset
+      signals:
+        rst_n: 0
+      cycles: 4
+      description: Hold rst_n low for 4 clocks.
+    - action: deassert_reset
+      signals:
+        rst_n: 1
+      cycles: 2
+      description: Release reset and wait.
+    - action: expect
+      signals:
+        busy: 0
+        done: 0
+        ack_error: 0
+        rx_data: 0
+      cycles: null
+      description: Check the post-reset idle state.
+  expected:
+    busy: 0
+    done: 0
+    ack_error: 0
+    rx_data: 0
+  note: ''
+- id: TC-02
+  name: write_basic
+  description: Basic write transaction to 0x50 with data 0xA5 and slave ACK on both
+    phases; reference vector write_basic.
+  priority: high
+  stimulus:
+    sequence:
+    - action: reset
+      signals:
+        rst_n: 0
+      cycles: 4
+      description: ''
+    - action: deassert_reset
+      signals:
+        rst_n: 1
+      cycles: 1
+      description: ''
+    - action: start_write
+      signals:
+        start: 1
+        slave_addr: 80
+        rw: 0
+        tx_data: 165
+      cycles: 1
+      description: Request a write to slave 0x50 with data 0xA5.
+    - action: release_start
+      signals:
+        start: 0
+      cycles: 1
+      description: ''
+    - action: drive_ack
+      signals:
+        sda_in: 0
+      cycles: null
+      description: Slave ACKs the address phase.
+    - action: drive_ack
+      signals:
+        sda_in: 0
+      cycles: null
+      description: Slave ACKs the write-data phase.
+    - action: wait_for_done
+      signals: {}
+      cycles: null
+      description: Wait for the done pulse marking transaction completion.
+    - action: expect
+      signals:
+        ack_error: 0
+        busy: 0
+      cycles: null
+      description: Successful transaction must leave ack_error low and busy deasserted.
+  expected:
+    address_byte: 160
+    transmitted_bytes:
+    - 160
+    - 165
+    ack_error: 0
+    done: one-cycle pulse
+    busy_after_completion: 0
+  note: ''
+- id: TC-03
+  name: write_zero
+  description: Write to slave 0x00 with data 0x00; address byte and data are both
+    0x00.
+  priority: medium
+  stimulus:
+    sequence:
+    - action: reset
+      signals:
+        rst_n: 0
+      cycles: 4
+      description: ''
+    - action: deassert_reset
+      signals:
+        rst_n: 1
+      cycles: 1
+      description: ''
+    - action: start_write
+      signals:
+        start: 1
+        slave_addr: 0
+        rw: 0
+        tx_data: 0
+      cycles: 1
+      description: ''
+    - action: release_start
+      signals:
+        start: 0
+      cycles: null
+      description: ''
+    - action: drive_ack
+      signals:
+        sda_in: 0
+      cycles: null
+      description: ''
+    - action: drive_ack
+      signals:
+        sda_in: 0
+      cycles: null
+      description: ''
+    - action: wait_for_done
+      signals: {}
+      cycles: null
+      description: ''
+    - action: expect
+      signals:
+        ack_error: 0
+        busy: 0
+      cycles: null
+      description: ''
+  expected:
+    address_byte: 0
+    transmitted_bytes:
+    - 0
+    - 0
+    ack_error: 0
+  note: ''
+- id: TC-04
+  name: write_max
+  description: Write to maximum address 0x7F with data 0xFF; address byte is 0xFE.
+  priority: medium
+  stimulus:
+    sequence:
+    - action: reset
+      signals:
+        rst_n: 0
+      cycles: 4
+      description: ''
+    - action: deassert_reset
+      signals:
+        rst_n: 1
+      cycles: 1
+      description: ''
+    - action: start_write
+      signals:
+        start: 1
+        slave_addr: 127
+        rw: 0
+        tx_data: 255
+      cycles: 1
+      description: ''
+    - action: release_start
+      signals:
+        start: 0
+      cycles: null
+      description: ''
+    - action: drive_ack
+      signals:
+        sda_in: 0
+      cycles: null
+      description: ''
+    - action: drive_ack
+      signals:
+        sda_in: 0
+      cycles: null
+      description: ''
+    - action: wait_for_done
+      signals: {}
+      cycles: null
+      description: ''
+    - action: expect
+      signals:
+        ack_error: 0
+        busy: 0
+      cycles: null
+      description: ''
+  expected:
+    address_byte: 254
+    transmitted_bytes:
+    - 254
+    - 255
+    ack_error: 0
+  note: ''
+- id: TC-05
+  name: read_basic
+  description: Basic one-byte read from 0x50; slave ACKs the address and drives 0x3C;
+    master NACKs after the byte; reference vector read_basic.
+  priority: high
+  stimulus:
+    sequence:
+    - action: reset
+      signals:
+        rst_n: 0
+      cycles: 4
+      description: ''
+    - action: deassert_reset
+      signals:
+        rst_n: 1
+      cycles: 1
+      description: ''
+    - action: start_read
+      signals:
+        start: 1
+        slave_addr: 80
+        rw: 1
+        tx_data: 0
+      cycles: 1
+      description: Request a read from slave 0x50.
+    - action: release_start
+      signals:
+        start: 0
+      cycles: null
+      description: ''
+    - action: drive_ack
+      signals:
+        sda_in: 0
+      cycles: null
+      description: Slave ACKs the address phase.
+    - action: drive_byte
+      signals:
+        sda_in: 60
+      cycles: null
+      description: Slave drives data byte 0x3C on sda_in MSB first during the read-data
+        phase.
+    - action: drive_nack
+      signals:
+        sda_in: 1
+      cycles: null
+      description: After the data byte SDA is released and pulled high; this is the
+        master NACK sample window.
+    - action: wait_for_done
+      signals: {}
+      cycles: null
+      description: Wait for the done pulse marking transaction completion.
+    - action: expect
+      signals:
+        ack_error: 0
+        busy: 0
+        rx_data: 60
+      cycles: null
+      description: ''
+  expected:
+    address_byte: 161
+    rx_data: 60
+    ack_error: 0
+    done: one-cycle pulse
+    busy_after_completion: 0
+  note: ''
+- id: TC-06
+  name: read_max
+  description: One-byte read from 0x2A with slave data 0xFF; rx_data must be 0xFF.
+  priority: medium
+  stimulus:
+    sequence:
+    - action: reset
+      signals:
+        rst_n: 0
+      cycles: 4
+      description: ''
+    - action: deassert_reset
+      signals:
+        rst_n: 1
+      cycles: 1
+      description: ''
+    - action: start_read
+      signals:
+        start: 1
+        slave_addr: 42
+        rw: 1
+        tx_data: 0
+      cycles: 1
+      description: ''
+    - action: release_start
+      signals:
+        start: 0
+      cycles: null
+      description: ''
+    - action: drive_ack
+      signals:
+        sda_in: 0
+      cycles: null
+      description: ''
+    - action: drive_byte
+      signals:
+        sda_in: 255
+      cycles: null
+      description: ''
+    - action: drive_nack
+      signals:
+        sda_in: 1
+      cycles: null
+      description: ''
+    - action: wait_for_done
+      signals: {}
+      cycles: null
+      description: ''
+    - action: expect
+      signals:
+        ack_error: 0
+        busy: 0
+        rx_data: 255
+      cycles: null
+      description: ''
+  expected:
+    address_byte: 85
+    rx_data: 255
+    ack_error: 0
+  note: ''
+- id: TC-07
+  name: write_addr_nack
+  description: Write where the slave NACKs the address phase; ack_error must be asserted.
+  priority: high
+  stimulus:
+    sequence:
+    - action: reset
+      signals:
+        rst_n: 0
+      cycles: 4
+      description: ''
+    - action: deassert_reset
+      signals:
+        rst_n: 1
+      cycles: 1
+      description: ''
+    - action: start_write
+      signals:
+        start: 1
+        slave_addr: 48
+        rw: 0
+        tx_data: 0
+      cycles: 1
+      description: ''
+    - action: release_start
+      signals:
+        start: 0
+      cycles: null
+      description: ''
+    - action: drive_nack
+      signals:
+        sda_in: 1
+      cycles: null
+      description: Slave NACKs the address (SDA high at the address ACK sample).
+    - action: wait_for_done
+      signals: {}
+      cycles: null
+      description: ''
+    - action: expect
+      signals:
+        ack_error: 1
+      cycles: null
+      description: ''
+  expected:
+    ack_error: 1
+    note: ack_error must assert from the address ACK phase onward.
+  note: ''
+- id: TC-08
+  name: write_data_nack
+  description: Write where the slave ACKs the address but NACKs the data byte; ack_error
+    must be asserted.
+  priority: high
+  stimulus:
+    sequence:
+    - action: reset
+      signals:
+        rst_n: 0
+      cycles: 4
+      description: ''
+    - action: deassert_reset
+      signals:
+        rst_n: 1
+      cycles: 1
+      description: ''
+    - action: start_write
+      signals:
+        start: 1
+        slave_addr: 80
+        rw: 0
+        tx_data: 165
+      cycles: 1
+      description: ''
+    - action: release_start
+      signals:
+        start: 0
+      cycles: null
+      description: ''
+    - action: drive_ack
+      signals:
+        sda_in: 0
+      cycles: null
+      description: Slave ACKs the address.
+    - action: drive_nack
+      signals:
+        sda_in: 1
+      cycles: null
+      description: Slave NACKs the write-data byte.
+    - action: wait_for_done
+      signals: {}
+      cycles: null
+      description: ''
+    - action: expect
+      signals:
+        ack_error: 1
+      cycles: null
+      description: ''
+  expected:
+    ack_error: 1
+  note: ''
+- id: TC-09
+  name: read_addr_nack
+  description: Read where the slave NACKs the address phase; ack_error must be asserted.
+  priority: high
+  stimulus:
+    sequence:
+    - action: reset
+      signals:
+        rst_n: 0
+      cycles: 4
+      description: ''
+    - action: deassert_reset
+      signals:
+        rst_n: 1
+      cycles: 1
+      description: ''
+    - action: start_read
+      signals:
+        start: 1
+        slave_addr: 80
+        rw: 1
+        tx_data: 0
+      cycles: 1
+      description: ''
+    - action: release_start
+      signals:
+        start: 0
+      cycles: null
+      description: ''
+    - action: drive_nack
+      signals:
+        sda_in: 1
+      cycles: null
+      description: Slave NACKs the address.
+    - action: wait_for_done
+      signals: {}
+      cycles: null
+      description: ''
+    - action: expect
+      signals:
+        ack_error: 1
+      cycles: null
+      description: ''
+  expected:
+    ack_error: 1
+  note: ''
+- id: TC-10
+  name: start_while_busy
+  description: A start request asserted while a transaction is active must not corrupt
+    or overwrite the in-flight transaction.
+  priority: high
+  stimulus:
+    sequence:
+    - action: reset
+      signals:
+        rst_n: 0
+      cycles: 4
+      description: ''
+    - action: deassert_reset
+      signals:
+        rst_n: 1
+      cycles: 1
+      description: ''
+    - action: start_write
+      signals:
+        start: 1
+        slave_addr: 80
+        rw: 0
+        tx_data: 165
+      cycles: 1
+      description: ''
+    - action: release_start
+      signals:
+        start: 0
+      cycles: null
+      description: ''
+    - action: drive_ack
+      signals:
+        sda_in: 0
+      cycles: null
+      description: First address ACK; transaction is now busy.
+    - action: start_write
+      signals:
+        start: 1
+        slave_addr: 10
+        rw: 0
+        tx_data: 99
+      cycles: 1
+      description: Illegal start while busy must be ignored.
+    - action: release_start
+      signals:
+        start: 0
+      cycles: null
+      description: ''
+    - action: drive_ack
+      signals:
+        sda_in: 0
+      cycles: null
+      description: Data ACK completing the first transaction.
+    - action: wait_for_done
+      signals: {}
+      cycles: null
+      description: ''
+    - action: expect
+      signals:
+        ack_error: 0
+        busy: 0
+      cycles: null
+      description: ''
+  expected:
+    address_byte: 160
+    transmitted_bytes:
+    - 160
+    - 165
+    done: exactly one done pulse
+    note: Only the first transaction's address/data may be observed; the second start
+      is ignored.
+  note: ''
+- id: TC-11
+  name: reset_during_transaction
+  description: Asserting reset mid-transaction clears all status outputs and returns
+    the controller to IDLE.
+  priority: high
+  stimulus:
+    sequence:
+    - action: reset
+      signals:
+        rst_n: 0
+      cycles: 4
+      description: ''
+    - action: deassert_reset
+      signals:
+        rst_n: 1
+      cycles: 1
+      description: ''
+    - action: start_write
+      signals:
+        start: 1
+        slave_addr: 80
+        rw: 0
+        tx_data: 165
+      cycles: 1
+      description: ''
+    - action: release_start
+      signals:
+        start: 0
+      cycles: null
+      description: ''
+    - action: reset
+      signals:
+        rst_n: 0
+      cycles: 3
+      description: Reset asserted while the transaction is active.
+    - action: deassert_reset
+      signals:
+        rst_n: 1
+      cycles: 2
+      description: ''
+    - action: expect
+      signals:
+        busy: 0
+        done: 0
+        ack_error: 0
+        rx_data: 0
+      cycles: null
+      description: ''
+  expected:
+    busy: 0
+    done: 0
+    ack_error: 0
+    rx_data: 0
+    note: A subsequent start request must begin a clean new transaction.
+  note: ''
+- id: TC-12
+  name: done_pulse_check
+  description: done must be asserted for exactly one clock cycle at transaction completion
+    and stay low otherwise.
+  priority: high
+  stimulus:
+    sequence:
+    - action: reset
+      signals:
+        rst_n: 0
+      cycles: 4
+      description: ''
+    - action: deassert_reset
+      signals:
+        rst_n: 1
+      cycles: 1
+      description: ''
+    - action: start_write
+      signals:
+        start: 1
+        slave_addr: 80
+        rw: 0
+        tx_data: 165
+      cycles: 1
+      description: ''
+    - action: release_start
+      signals:
+        start: 0
+      cycles: null
+      description: ''
+    - action: drive_ack
+      signals:
+        sda_in: 0
+      cycles: null
+      description: ''
+    - action: drive_ack
+      signals:
+        sda_in: 0
+      cycles: null
+      description: ''
+    - action: wait_for_done
+      signals: {}
+      cycles: null
+      description: 'Monitor done width: it must be 1 for one cycle only.'
+  expected:
+    done: exactly one-cycle wide pulse
+    note: 'Also verified in idle before the start: done must be 0.'
+  note: ''
+- id: TC-13
+  name: address_msb_first_check
+  description: The 8-bit address byte is transmitted MSB first per the reference model
+    address_bits().
+  priority: medium
+  stimulus:
+    sequence:
+    - action: reset
+      signals:
+        rst_n: 0
+      cycles: 4
+      description: ''
+    - action: deassert_reset
+      signals:
+        rst_n: 1
+      cycles: 1
+      description: ''
+    - action: start_write
+      signals:
+        start: 1
+        slave_addr: 106
+        rw: 0
+        tx_data: 90
+      cycles: 1
+      description: ''
+    - action: release_start
+      signals:
+        start: 0
+      cycles: null
+      description: ''
+    - action: drive_ack
+      signals:
+        sda_in: 0
+      cycles: null
+      description: ''
+    - action: drive_ack
+      signals:
+        sda_in: 0
+      cycles: null
+      description: ''
+    - action: wait_for_done
+      signals: {}
+      cycles: null
+      description: ''
+    - action: expect
+      signals:
+        ack_error: 0
+        busy: 0
+      cycles: null
+      description: ''
+  expected:
+    address_byte: 212
+    transmitted_address_bits_msb_first:
+    - 1
+    - 1
+    - 0
+    - 1
+    - 0
+    - 1
+    - 0
+    - 0
+  note: ''
+corner_cases:
+- name: addr_zero_write
+  description: Write to slave address 0x00; the address byte must be 0x00 and transmitted
+    MSB first.
+  expected: address_byte == 0x00
+- name: addr_max_write
+  description: Write to slave address 0x7F; the address byte must be 0xFE.
+  expected: address_byte == 0xFE
+- name: addr_max_read
+  description: Read from slave address 0x7F; the address byte must be 0xFF (R/W bit
+    set).
+  expected: address_byte == 0xFF, rx_data == slave-driven byte
+- name: data_zero_write
+  description: Write with tx_data == 0x00; the transmitted data byte must be 0x00.
+  expected: data byte transmitted == 0x00
+- name: data_max_write
+  description: Write with tx_data == 0xFF; the transmitted data byte must be 0xFF.
+  expected: data byte transmitted == 0xFF
+- name: rx_all_ones_read
+  description: Read where the slave drives 0xFF; rx_data must be 0xFF.
+  expected: rx_data == 0xFF
+- name: rx_all_zeros_read
+  description: Read where the slave drives 0x00; rx_data must be 0x00.
+  expected: rx_data == 0x00
+- name: missing_addr_ack
+  description: Slave holds SDA high (NACK) at the address ACK sample; ack_error must
+    assert.
+  expected: ack_error == 1
+- name: missing_data_ack
+  description: Slave ACKs the address but NACKs the write data; ack_error must assert.
+  expected: ack_error == 1
+- name: start_one_cycle
+  description: start asserted for exactly one cycle while idle must begin exactly
+    one transaction; no transaction starts without start.
+  expected: one transaction, busy asserted after start
+- name: back_to_back_transactions
+  description: Immediately issue a second transaction after the first done pulse;
+    both must complete correctly.
+  expected: two sequential correct transactions
+- name: reset_mid_transaction
+  description: Reset asserted while busy must clear busy/done/ack_error/rx_data and
+    return to IDLE.
+  expected: all status outputs 0 after reset
+- name: clk_div_min
+  description: With CLK_DIV=4 the transaction-engine state advances every 4 clock
+    cycles (spec section 9).
+  expected: state advance period == CLK_DIV cycles
+- name: released_bus_no_ack
+  description: SDA held high through the whole transaction (released bus, no slave
+    response) must lead to ack_error asserting at each ACK sample.
+  expected: ack_error == 1
+randomized_testing_strategy:
+  description: Randomized transaction generation across the full valid address/data
+    space and both directions, with randomized slave ACK/NACK responses and randomized
+    read data. The random slave model responds per the reference-model protocol timeline
+    while the DUT is exercised.
+  constraints:
+  - variable: slave_addr
+    range:
+    - 0
+    - 127
+  - variable: tx_data
+    range:
+    - 0
+    - 255
+  - variable: rw
+    range:
+    - 0
+    - 1
+  - variable: slave_ack
+    range:
+    - 0
+    - 1
+  - variable: read_data
+    range:
+    - 0
+    - 255
+  - variable: CLK_DIV
+    range:
+    - 4
+    - 16
+  injection:
+  - type: initial_reset
+    frequency: null
+    duration_cycles:
+    - 4
+    - 16
+    description: Reset asserted at the start of every randomized test.
+  - type: mid_transaction_reset
+    frequency: occasional randomized injection
+    duration_cycles:
+    - 1
+    - 8
+    description: Occasional reset asserted while the controller is busy to verify
+      reset robustness.
+  pass_criteria: Every randomized transaction's observed protocol record (address_byte,
+    direction, transmitted data, ACK/NACK responses, rx_data, ack_error, done pulse,
+    busy behavior) must match the reference-model prediction; no transaction may hang
+    (global timeout); required coverage bins are reached.
+functional_coverage:
+  covergroups:
+  - name: cg_transaction
+    description: 'Covers the space of completed transactions: address classes, direction,
+      data extremes, ACK outcomes, and read data.'
+    clk: clk
+    sample_on: transaction_end (raised by the monitor when the protocol model observes
+      transaction completion)
+    bins:
+    - name: bin_slave_addr
+      variable: slave_addr
+      bins:
+      - name: addr_min
+        range:
+        - 0
+        - 0
+        expression: null
+      - name: addr_mid
+        range:
+        - 64
+        - 64
+        expression: null
+      - name: addr_max
+        range:
+        - 127
+        - 127
+        expression: null
+    - name: bin_rw
+      variable: rw
+      bins:
+      - name: write
+        range:
+        - 0
+        - 0
+        expression: null
+      - name: read
+        range:
+        - 1
+        - 1
+        expression: null
+    - name: bin_tx_data
+      variable: tx_data
+      bins:
+      - name: data_zero
+        range:
+        - 0
+        - 0
+        expression: null
+      - name: data_mid
+        range:
+        - 128
+        - 128
+        expression: null
+      - name: data_max
+        range:
+        - 255
+        - 255
+        expression: null
+    - name: bin_ack_error
+      variable: ack_error
+      bins:
+      - name: ack_ok
+        range:
+        - 0
+        - 0
+        expression: null
+      - name: ack_err
+        range:
+        - 1
+        - 1
+        expression: null
+    - name: bin_rx_data
+      variable: rx_data
+      bins:
+      - name: rx_zero
+        range:
+        - 0
+        - 0
+        expression: null
+      - name: rx_ones
+        range:
+        - 255
+        - 255
+        expression: null
+    crosses:
+    - name: cross_rw_ack_error
+      variables:
+      - rw
+      - ack_error
+      description: Covers each direction combined with ACK success and ACK failure.
+    - name: cross_addr_rw
+      variables:
+      - slave_addr
+      - rw
+      description: Covers address classes combined with direction.
+    - name: cross_data_ack
+      variables:
+      - tx_data
+      - ack_error
+      description: Covers data extremes combined with the ACK outcome.
+  - name: cg_control_protocol
+    description: 'Covers control and protocol-level events: done pulse, busy activity,
+      illegal start while busy, injected resets, master NACK after read, and ACK/NACK
+      sampling.'
+    clk: clk
+    sample_on: transaction_end and reset events raised by the monitor
+    bins:
+    - name: bin_done
+      variable: done
+      bins:
+      - name: pulse_seen
+        range:
+        - 1
+        - 1
+        expression: null
+    - name: bin_busy
+      variable: busy
+      bins:
+      - name: asserted
+        range:
+        - 1
+        - 1
+        expression: null
+    - name: bin_start_while_busy
+      variable: start_while_busy
+      bins:
+      - name: hit
+        range:
+        - 1
+        - 1
+        expression: null
+    - name: bin_reset_injected
+      variable: reset_injected
+      bins:
+      - name: hit
+        range:
+        - 1
+        - 1
+        expression: null
+    - name: bin_master_nack
+      variable: master_nack
+      bins:
+      - name: observed
+        range:
+        - 1
+        - 1
+        expression: null
+    - name: bin_addr_ack
+      variable: addr_ack
+      bins:
+      - name: ack
+        range:
+        - 0
+        - 0
+        expression: null
+      - name: nack
+        range:
+        - 1
+        - 1
+        expression: null
+    - name: bin_data_ack
+      variable: data_ack
+      bins:
+      - name: ack
+        range:
+        - 0
+        - 0
+        expression: null
+      - name: nack
+        range:
+        - 1
+        - 1
+        expression: null
+    crosses:
+    - name: cross_addr_data_ack
+      variables:
+      - addr_ack
+      - data_ack
+      description: Covers all four address-ACK / data-ACK combinations.
+scoreboard_reference_model_strategy:
+  description: The scoreboard compares every completed transaction against the independent
+    Python reference model and the protocol timeline defined by the specification.
+    DUT outputs (done, busy, ack_error, rx_data) and the reconstructed serial stream
+    are checked per transaction; protocol timing is decoupled from cycle counts and
+    completion is keyed on the done/STOP semantics.
+  architecture:
+  - type: transaction_scoreboard
+    description: In-order compare of each completed transaction record (start, slave_addr,
+      address_byte, rw, tx_data, expected slave ACK count, ack_error, rx_data, stop)
+      against the reference-model dictionaries produced by write_transaction()/read_transaction().
+  - type: stream_checker
+    description: Reconstructs the DUT-driven serial stream from the open-drain drive
+      controls (sda_out/sda_oe, scl_out/scl_oe and external pull-up resolution) and
+      compares it bit-by-bit, MSB first, against expected_write_bytes()/address_bits()/byte_bits()
+      from the reference model.
+  - type: control_monitor
+    description: 'Tracks control-signal protocol: done is a one-cycle pulse, busy
+      spans the transaction, ack_error asserts exactly when an expected ACK is missing
+      and stays low otherwise, and the controller returns to IDLE after STOP.'
+  pass_criteria: All directed and randomized transactions must match the reference-model
+    prediction with no unexplained mismatches; coverage goals are met; any RTL deviation
+    from the specification/reference model is reported as a DUT defect (see discrepancies).
+  error_reporting: On mismatch, report transaction id, phase (address / write-data
+    / read-data / ACK / STOP), expected vs observed values, and a diff of the reference-model
+    dictionary; failures are attributed to the DUT, never to the reference model.
+useful_assertions:
+- name: a_reset_clears_outputs
+  description: After reset deassertion, all registered outputs are cleared.
+  severity: error
+  assertion: busy == 0 and done == 0 and ack_error == 0 and rx_data == 0 while idle
+    after reset.
+  note: ''
+- name: a_address_byte_correct
+  description: The transmitted address byte equals (slave_addr << 1) | rw (spec section
+    4).
+  severity: error
+  assertion: observed_address_byte == (slave_addr << 1) | rw for every transaction.
+  note: ''
+- name: a_address_msb_first
+  description: The address byte is transmitted MSB first (spec section 4).
+  severity: error
+  assertion: address bit order on the reconstructed stream equals reference model
+    address_bits(), MSB first.
+  note: ''
+- name: a_rw_bit_correct
+  description: The R/W bit in the address byte matches the rw input (rw=0 write, rw=1
+    read).
+  severity: error
+  assertion: address_byte[0] == rw.
+  note: ''
+- name: a_write_data_correct
+  description: The write data byte transmitted equals tx_data.
+  severity: error
+  assertion: data byte transmitted during the write-data phase equals tx_data.
+  note: ''
+- name: a_rx_data_correct
+  description: rx_data holds the byte the slave drove during a read.
+  severity: error
+  assertion: rx_data == data driven on sda_in during the read-data phase, sampled
+    MSB first.
+  note: ''
+- name: a_addr_ack_error
+  description: If the slave NACKs the address, ack_error asserts at/after the address
+    ACK sample.
+  severity: error
+  assertion: sda_in == 1 at the address ACK sample implies ack_error asserted before
+    the next phase.
+  note: ''
+- name: a_data_ack_error
+  description: If the slave NACKs the write data, ack_error asserts at/after the data
+    ACK sample.
+  severity: error
+  assertion: sda_in == 1 at the write-data ACK sample implies ack_error asserted.
+  note: ''
+- name: a_ack_error_clear_on_success
+  description: A fully acknowledged transaction leaves ack_error low.
+  severity: error
+  assertion: ack_error == 0 at completion when all expected ACKs were observed.
+  note: ''
+- name: a_done_is_pulse
+  description: done is a one-cycle pulse at transaction completion, not a level.
+  severity: error
+  assertion: done is high for exactly one clock per transaction and low during idle.
+  note: ''
+- name: a_busy_spans_transaction
+  description: busy is asserted when the transaction starts and stays asserted until
+    completion.
+  severity: error
+  assertion: busy == 1 from start acceptance until the STOP/completion, then busy
+    == 0.
+  note: ''
+- name: a_start_ignored_while_busy
+  description: start asserted while busy must not corrupt or overwrite the active
+    transaction.
+  severity: error
+  assertion: start while busy causes no new capture; the in-flight transaction completes
+    unchanged.
+  note: ''
+- name: a_stop_returns_idle
+  description: After STOP the controller returns to IDLE and is ready for the next
+    start.
+  severity: error
+  assertion: busy deasserts and a subsequent start begins a clean new transaction.
+  note: ''
+- name: a_open_drain_release
+  description: SDA/SCL drive-enables deassert when the line is released so the pull-up
+    drives high (spec section 10).
+  severity: error
+  assertion: sda_oe/scl_oe == 0 (or sda_out/scl_out high via pull-up) whenever the
+    controller does not actively drive low.
+  note: ''
+- name: a_clk_div_advance_timing
+  description: The transaction-engine state advances every CLK_DIV system-clock cycles
+    (spec section 9).
+  severity: error
+  assertion: state-advance cadence respects CLK_DIV; completion is detected via done,
+    not fixed latency.
+  note: ''
+discrepancies:
+- id: DIS-01
+  severity: high
+  title: Address R/W bit transmitted inverted
+  rtl: shift_reg <= {slave_addr, ~rw};
+  spec: address_byte = (slave_addr << 1) | rw; the R/W bit must equal the rw input
+    (spec sections 4/5/6).
+  impact: Write transactions transmit the read bit and read transactions transmit
+    the write bit; the address phase targets the wrong direction for every transaction.
+  recommendation: Transmit {slave_addr, rw} exactly as captured at start.
+- id: DIS-02
+  severity: high
+  title: Address bit counter initialized to 6 instead of 7
+  rtl: IDLE start path loads bit_cnt <= 4'd6.
+  spec: The 8-bit address byte is transmitted MSB first, so the address bit counter
+    must start at 7.
+  impact: The first address bit is skipped and the address phase content is shifted.
+  recommendation: Initialize bit_cnt to 4'd7 when a transaction starts.
+- id: DIS-03
+  severity: high
+  title: Address bit counter increments instead of decrementing
+  rtl: SEND_ADDR executes bit_cnt <= bit_cnt + 1'b1.
+  spec: Address bits are transmitted MSB first (7 down to 0), requiring a decrementing
+    counter.
+  impact: Address bits are produced in the wrong order and the phase length is wrong.
+  recommendation: Decrement bit_cnt during the address phase.
+- id: DIS-04
+  severity: medium
+  title: Address phase terminal condition off by one
+  rtl: SEND_ADDR leaves when bit_cnt == 1.
+  spec: All eight address bits must be transmitted before the address ACK phase (terminal
+    at bit_cnt == 0).
+  impact: The address phase terminates before all bits are sent.
+  recommendation: Terminate the address phase when bit_cnt == 0.
+- id: DIS-05
+  severity: high
+  title: Address ACK sampling inverted
+  rtl: ADDR_ACK asserts ack_error when sda_in == 1'b0.
+  spec: A low SDA is a valid ACK; ack_error must assert when SDA is high at the address
+    ACK sample.
+  impact: A valid address ACK is recorded as an error; error polarity is inverted.
+  recommendation: Assert ack_error when sda_in == 1'b1 at the address ACK sample.
+- id: DIS-06
+  severity: high
+  title: Write-data ACK sampling inverted
+  rtl: DATA_ACK asserts ack_error when sda_in == 1'b0.
+  spec: A low SDA is a valid ACK; ack_error must assert when SDA is high at the data
+    ACK sample.
+  impact: A valid write-data ACK is recorded as an error.
+  recommendation: Assert ack_error when sda_in == 1'b1 at the data ACK sample.
+- id: DIS-07
+  severity: high
+  title: Read/write data-path selection swapped
+  rtl: 'ADDR_ACK branches: if (!rw) state <= READ_DATA else state <= SEND_DATA.'
+  spec: rw=0 selects the write path (SEND_DATA); rw=1 selects the read path (READ_DATA).
+  impact: Write transactions enter the read data phase and read transactions enter
+    the write data phase.
+  recommendation: Select SEND_DATA for rw==0 and READ_DATA for rw==1.
+- id: DIS-08
+  severity: high
+  title: Write data complemented before transmission
+  rtl: shift_reg <= ~tx_data;
+  spec: The write-data byte must equal tx_data.
+  impact: The transmitted data byte is the bitwise NOT of tx_data.
+  recommendation: Load shift_reg with tx_data unmodified.
+- id: DIS-09
+  severity: high
+  title: Received byte complemented on rx_data
+  rtl: rx_data <= ~rx_shift;
+  spec: rx_data must hold the byte received during a read.
+  impact: rx_data is the bitwise NOT of the byte the slave drove on SDA.
+  recommendation: Present rx_shift directly on rx_data.
+- id: DIS-10
+  severity: medium
+  title: Read data phase terminates one bit early
+  rtl: READ_DATA leaves when bit_cnt == 1.
+  spec: All eight data bits must be sampled before the NACK/STOP phase.
+  impact: Only seven bits are captured and the read data is incomplete.
+  recommendation: Terminate the read-data phase when bit_cnt == 0.
+- id: DIS-11
+  severity: medium
+  title: ack_error forced high in IDLE
+  rtl: IDLE assigns ack_error <= 1'b1 on every cycle.
+  spec: ack_error must be low unless an expected ACK is missing.
+  impact: ack_error never clears, so the success path cannot be distinguished from
+    an error.
+  recommendation: Clear ack_error in IDLE and only set it on a missing ACK.
+- id: DIS-12
+  severity: high
+  title: busy deasserted mid-transaction at address ACK
+  rtl: ADDR_ACK executes busy <= 1'b0.
+  spec: busy must stay asserted for the whole active transaction until completion.
+  impact: busy does not reflect an active transaction; start while busy is effectively
+    allowed again.
+  recommendation: Keep busy asserted until the transaction completes.
+- id: DIS-13
+  severity: high
+  title: Write completion loops into the read path instead of STOP
+  rtl: DATA_ACK sets state <= READ_DATA.
+  spec: After the write-data ACK the controller proceeds to STOP, pulses done, and
+    returns to IDLE.
+  impact: Write transactions never reach STOP/IDLE; the FSM loops into the read data
+    path.
+  recommendation: Transition to STOP_COND after the write-data ACK.
+- id: DIS-14
+  severity: high
+  title: Read completion loops back to DATA_ACK instead of STOP
+  rtl: READ_ACK sets state <= DATA_ACK.
+  spec: After the read byte and master NACK the controller proceeds to STOP.
+  impact: Read transactions never reach STOP/IDLE; the FSM re-enters the ACK path.
+  recommendation: Transition to STOP_COND after the read master NACK.
+- id: DIS-15
+  severity: high
+  title: done asserted by default instead of a one-cycle pulse
+  rtl: The always_ff block executes done <= 1'b1 unconditionally every active cycle.
+  spec: done is a one-cycle pulse at transaction completion and low otherwise.
+  impact: done is a permanent level; completion cannot be detected reliably and the
+    pulse property is broken.
+  recommendation: Default done to 0 and pulse it high for one cycle at completion.
+- id: DIS-16
+  severity: high
+  title: busy kept asserted at STOP/completion
+  rtl: STOP_COND assigns busy <= 1'b1.
+  spec: busy returns low when the transaction completes.
+  impact: busy never deasserts after a transaction.
+  recommendation: Clear busy at transaction completion.
+- id: DIS-17
+  severity: high
+  title: STOP state re-enters START_COND instead of returning to IDLE
+  rtl: STOP_COND sets state <= START_COND.
+  spec: After STOP the controller returns to IDLE and waits for the next start.
+  impact: Another transaction begins immediately with no idle gap, violating the start-while-idle
+    rule.
+  recommendation: Return to IDLE after STOP.
+- id: DIS-18
+  severity: medium
+  title: Clock divider terminal count off by one
+  rtl: State engine advances when div_cnt == CLK_DIV.
+  spec: The engine advances every CLK_DIV cycles, i.e., the divider counts 0..CLK_DIV-1.
+  impact: The state-advance period deviates from the specified CLK_DIV timing.
+  recommendation: Compare div_cnt against CLK_DIV-1.
+- id: DIS-19
+  severity: medium
+  title: Clock divider increments by two instead of one
+  rtl: div_cnt <= div_cnt + 2'd2.
+  spec: The divider counts up by one from 0 to CLK_DIV-1.
+  impact: With a narrow div_cnt the counter can skip the terminal value, stalling
+    the state engine for some CLK_DIV settings.
+  recommendation: Increment div_cnt by one.
+- id: DIS-20
+  severity: low
+  title: SDA/SCL drive controls hardwired active with outputs tied low
+  rtl: sda_oe = 1'b1; scl_oe = 1'b1; sda_out = 1'b0; scl_out = 1'b0; are assigned
+    constantly.
+  spec: 'Open-drain signaling: drive low (oe=1, out=0) or release (oe=0) so the external
+    pull-up drives the line high (spec section 10).'
+  impact: The controller never releases SDA/SCL; real shared-bus behavior cannot be
+    observed on the drive outputs and a released/high bus state is never represented.
+  recommendation: Deassert sda_oe/scl_oe and let the pull-up drive the line high when
+    the controller releases the bus; the verification environment must model SDA/SCL
+    as shared open-drain signals resolved with external pull-ups.

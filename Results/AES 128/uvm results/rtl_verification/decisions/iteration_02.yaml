@@ -1,0 +1,74 @@
+schema_version: '1.0'
+action: repair
+root_cause: 'The RTL''s AES-128 datapath is functionally corrupted. Multiple 
+  independent RTL defects jointly corrupt the ciphertext
+  of every transaction: (1) 10 SBOX entries differ from FIPS-197; (2) RCON has wrong
+  values (0x03, 0x81) and is declared [1:10] while indexed with round 0..9 (RCON[0]
+  out-of-bounds / off-by-one Rcon); (3) gm2 reduces with 8''h1d instead of 8''h1b;
+  (4) gm3 = gm2(a)^gm2(a) so gm3≡0; (5) mix_columns uses wrong/swapped xtime-2/xtime-3
+  coefficients (incl. gm3 on b[4c+3]); (6) shift_rows mis-maps 5 byte lanes; (7) next_round_key
+  slices words at k[126:95]/k[94:63]/k[62:31]/k[30:0], swaps the two RotWord bytes,
+  and chains n1=w1^w0, n3=w3^n1; (8) aes_round applies MixColumns only in the final
+  round on the pre-round state, omits it for non-final rounds, and XORs ~k instead
+  of k; (9) the control FSM loads round_key <= ~key on start and the round==9 state
+  update uses the previous round key (K9) instead of the next round key (K10). Net
+  effect: known-answer, corner, and randomized transactions all emit wrong ciphertext
+  (FIPS-197 vector: 0x31de... instead of 0x69c4...).'
+evidence:
+- 'Frozen cocotb/pyuvm results (tb/.chia_sim/*.xml) show functional ciphertext mismatches
+  against the spec/reference model: TC01/TC02/TC05/TC09 FIPS-197 vector expected 0x69c4e0d86a7b0430d8cdb78070b4c55a,
+  got 0x31de36532b58fd22ec1cc2c6a3794f5e; TC03 all-zero expected 0x66e94bd4ef8a2c3b884cfa59ca342b2e,
+  got 0xd9f2b607052c98bf25693d0d5abc1069; TC04 incrementing expected 0x0a940bb5416ef045f1c39458c653ea5a,
+  got 0x63d554b5894a82b57a3b6aba5581f0c1; all-ones corner expected 0xbcbf217cb280cf30b2517052193ab979,
+  got 0x2531b8823221b92e98692c7f189c2226; key/plaintext sensitivity, determinism and
+  randomized scenarios fail the ''ciphertext_matches_reference'' assertion. No timeouts/watchdogs
+  or X-states are reported, so this is an RTL functional defect, not a TB/toolchain
+  fault.'
+- An exact Python re-simulation of the RTL as written (replicating its SBOX, RCON,
+  gm2=0x1d, gm3=0, shift_rows indices, mix_columns coefficients, key expansion, ~k
+  rounds, and control flow) reproduces every reported wrong ciphertext byte-for-byte
+  (31de..., d9f2..., 63d5..., 2531...), proving the observed failures are generated
+  by this RTL.
+- Applying the listed repairs to the re-simulation makes the RTL logic match the reference
+  model on all three KAT vectors, the all-ones corner vector, and 20 randomized inputs
+  (reference_model.py self-check passes), confirming the spec/reference model (not
+  the current RTL) defines intended behavior and that the repair set is exactly sufficient.
+confidence: high
+changes:
+- file: rtl.sv
+  action: modify
+  instructions:
+  - 'SBOX (lines 21-38): correct the 10 non-FIPS-197 entries: SBOX[0]=8''h63, SBOX[1]=8''h7c,
+    SBOX[5]=8''h6b, SBOX[10]=8''h67, SBOX[15]=8''h76, SBOX[32]=8''hb7, SBOX[47]=8''h15,
+    SBOX[64]=8''h09, SBOX[127]=8''hd2, SBOX[200]=8''he8 (all other entries already
+    match FIPS-197).'
+  - 'RCON (lines 40-43): redeclare as ''localparam logic [7:0] RCON [0:9]'' with values
+    ''{8''h01,8''h02,8''h04,8''h08,8''h10,8''h20,8''h40,8''h80,8''h1b,8''h36}'' so
+    that RCON[r] with r=round (0..9) supplies Rcon 1..10 (fixes the wrong 0x03/0x81
+    values and the out-of-bounds RCON[0] read).'
+  - 'gm2 (line 51): fix the reduction polynomial to the AES constant: gm2 = {a[6:0],1''b0}
+    ^ (8''h1b & {8{a[7]}}).'
+  - 'gm3 (line 55): fix to gm3 = gm2(a) ^ a (currently gm2(a)^gm2(a) makes gm3 always
+    0).'
+  - 'shift_rows (lines 76-79): correct the byte-lane indices: o[1]=b[5], o[6]=b[14],
+    o[11]=b[7], o[12]=b[12], o[15]=b[11] (keep o[0]=b[0], o[2]=b[10], o[3]=b[15],
+    o[4]=b[4], o[5]=b[9], o[7]=b[3], o[8]=b[8], o[9]=b[13], o[10]=b[2], o[13]=b[1],
+    o[14]=b[6]).'
+  - 'mix_columns (lines 96-99): use the correct FIPS-197 coefficients: o[4*c+0] =
+    gm2(b[4*c+0]) ^ gm3(b[4*c+1]) ^ b[4*c+2] ^ b[4*c+3]; o[4*c+1] = b[4*c+0] ^ gm2(b[4*c+1])
+    ^ gm3(b[4*c+2]) ^ b[4*c+3]; o[4*c+2] = b[4*c+0] ^ b[4*c+1] ^ gm2(b[4*c+2]) ^ gm3(b[4*c+3]);
+    o[4*c+3] = gm3(b[4*c+0]) ^ b[4*c+1] ^ b[4*c+2] ^ gm2(b[4*c+3]).'
+  - 'next_round_key (lines 111-124): slice the current round key as w0=k[127:96],
+    w1=k[95:64], w2=k[63:32], w3=k[31:0]; build the RotWord+SubWord word as t = {SBOX[w3[23:16]],
+    SBOX[w3[15:8]], SBOX[w3[7:0]], SBOX[w3[31:24]]}; apply the Rcon as t[31:24] =
+    t[31:24] ^ RCON[r] (drop the spurious ''^ 32''h00000100''); and chain the round-key
+    words as n1 = w1 ^ n0, n3 = w3 ^ n2 (n0 = w0 ^ t, n2 = w2 ^ n1 unchanged).'
+  - 'aes_round (lines 135-140): match FIPS-197 round semantics: after shift_rows/sub_bytes
+    apply MixColumns only for non-final rounds and on the transformed state (''if
+    (!final_round) t = mix_columns(t);''), and return ''t ^ k'' instead of ''t ^ ~k''.'
+  - 'Control FSM (lines 154, 162-164): on start capture ''round_key <= key'' instead
+    of ''round_key <= ~key'', and in the round==4''d9 completion branch drive both
+    state and ciphertext from the next round key: ''state <= aes_round(state, next_round_key(round_key,
+    round), 1''b1)'' (same expression as the ciphertext assignment) so the 10th round
+    uses K10 rather than the stale round_key (K9). (ciphertext assignment already
+    uses next_round_key(...); state must match.) No other changes are required.'

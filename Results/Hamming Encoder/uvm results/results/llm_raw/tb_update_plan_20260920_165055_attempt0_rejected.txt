@@ -1,0 +1,14 @@
+# model: nvidia3/nvidia/nemotron-3-ultra-550b-a55b
+# error: Invalid YAML: mapping values are not allowed here
+  in "<unicode string>", line 3, column 40:
+     ... dence from the XML logs confirms:
+                                         ^
+# ---- raw response ----
+The diagnosis is complete. The root cause is a **generation_bug** in `tb/sequences.py` where the `check_codeword` method uses a raw Python `assert` statement (line 59) that raises an uncaught `AssertionError` when the DUT output mismatches the reference model. This causes all tests to fail with `runtime_error` instead of properly reporting UVM errors and completing.
+
+The evidence from the XML logs confirms:
+- All 11 tests fail with `AssertionError` at `sequences.py:59` in `check_codeword`
+- TestRandomized shows `scoreboard_mismatches: 1` proving the scoreboard (which correctly uses `logger.error` + error counting) would report errors properly if the sequence didn't crash first
+- The DUT is intentionally corrupted (benchmark name), so mismatches are expected and should be reported as UVM errors, not test crashes
+
+The fix replaces the raw assert with UVM error reporting (`self.uvm_report_error`) in both `sequences.py` and `assertions.py` to match the pattern already used correctly in `scoreboard.py`.

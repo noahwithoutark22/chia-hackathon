@@ -1,0 +1,41 @@
+# model: nvidia/nvidia/nemotron-3-super-120b-a12b
+# error: validation must be a mapping.
+# ---- raw response ----
+{
+  "version": "1.0",
+  "verdict": "generation_bug",
+  "root_cause": {
+    "category": "other",
+    "file": "tb/sequences.py",
+    "line": 69,
+    "function": "SeqAllZerosInput.body",
+    "summary": "The testbench attempts to convert a BinaryValue containing unresolvable bits (x or z) to an integer using the deprecated .integer property, which raises a ValueError and causes the simulation to exit with a runtime error.",
+    "evidence": "The verification plan discrepancy DISCREPANCY_003 indicates that RTL leaves codeword[10] uninitialized, resulting in an x or z value. When the TB accesses .integer on such a BinaryValue, a ValueError is raised. This is observed in multiple sequences and the monitor, causing runtime errors in all tests."
+  },
+  "changes": [
+    {
+      "file": "tb/monitor.py",
+      "action": "modify",
+      "reason": "To prevent ValueError when converting BinaryValue with x/z to integer.",
+      "instructions": [
+        "Replace the block sampling data_in and codeword with a try-except block that logs an error and defaults to 0 on ValueError."
+      ]
+    },
+    {
+      "file": "tb/scoreboard.py",
+      "action": "modify",
+      "reason": "To prevent ValueError when converting BinaryValue with x/z to integer.",
+      "instructions": [
+        "Replace the line `actual_codeword = self.helper.codeword.value.integer` with a try-except block that logs an error and defaults to 0 on ValueError."
+      ]
+    },
+    {
+      "file": "tb/sequences.py",
+      "action": "modify",
+      "reason": "To prevent ValueError when converting BinaryValue with x/z to integer in all sequences.",
+      "instructions": [
+        "For each occurrence of `dut_helper.codeword.value.integer` in the sequences, replace it with a try-except block that logs an error and defaults to 0 on ValueError. This includes all directed sequences and corner-case sequences."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,83 @@
+schema_version: '1.0'
+action: repair
+root_cause: 'The DUT control FSM is corrupted so no transaction can ever complete.
+
+  Three related RTL defects jointly cause the observed failure: (DISC-01) the
+
+  synchronous-reset branch sets busy <= 1''b1, so after reset release the start
+
+  gate "start && !busy" is permanently closed and no transaction is ever
+
+  accepted; (DISC-02) the round counter is incremented by 2 ("round + 2''b10"),
+
+  so round never equals 4''d9 and an accepted transaction would never reach the
+
+  completion branch; and in the round==4''d9 completion branch done is explicitly
+
+  driven to 1''b0, so a done pulse is never emitted even on completion. Net
+
+  effect: after reset release the DUT never returns to idle, never honors start,
+
+  and never pulses done -- exactly the observed failure.'
+evidence:
+- 'Every one of the 11 tests (all .chia_sim/*.xml result files recorded in
+
+  simulation_result.json) fails with the identical AssertionError:
+
+  "assertion ''reset_returns_dut_to_idle'' failed: a start sampled after reset
+
+  release produced no done pulse within 80 clock cycles; the DUT did not
+
+  return to idle so the start was never honored (plan reset_returns_dut_to_idle;
+
+  cf. DISC-01 reset leaving the DUT busy)" (assertions.py _check_reset_returns_dut_to_idle,
+
+  lines 382-449).'
+- 'The TB itself documents these as the intended detection targets:
+
+  tb/tests.py lines 45-47 "(DISC-01/DISC-02: busy stays high after reset and
+
+  the round counter increments by 2 so done is never asserted)" and
+
+  tb/CONTRACT.md lines 347-351; tb/assertions.py lines 18-19, 385-390.'
+- 'Source-grounded RTL analysis of rtl.sv confirms all three defects:
+
+  line 148 reset branch "busy <= 1''b1;" (start gated on "start && !busy" at
+
+  line 154), line 169 "round <= round + 2''b10;" (round never reaches 9), and
+
+  line 165 "done <= 1''b0;" in the round==4''d9 branch (done never asserted).
+
+  With busy stuck at 1 after reset, not even the first start is accepted.'
+- 'The failure is functional and RTL-caused, not a TB/toolchain defect: the
+
+  verilator build succeeded (build/970c340b7b80), cocotb ran normally,
+
+  reached the assertion checker (sim ~890-910 ns), and the TB''s reference
+
+  model/scoreboard infrastructure was never at fault. simulation_result.json
+
+  labels these runtime_error only because the harness classifies non-zero
+
+  returncode 2 runs that way; the XML results are the authoritative
+
+  failure evidence.'
+confidence: high
+changes:
+- file: rtl.sv
+  action: modify
+  instructions:
+  - 'Fix DISC-01: in the !rst_n reset branch change ''busy <= 1''b1;'' (line 148)
+    to ''busy <= 1''b0;'' so the DUT is idle after reset release and ''start && !busy''
+    can accept a new transaction.'
+  - 'Fix DISC-02 round counter: in the non-final busy branch change ''round <= round
+    + 2''b10;'' (line 169) to ''round <= round + 1''b1;'' so round counts 0..9 and
+    the round==4''d9 completion branch is reached.'
+  - 'Emit the completion pulse: in the round==4''d9 branch change ''done <= 1''b0;''
+    (line 165) to ''done <= 1''b1;'' so done pulses for one cycle when ciphertext
+    is valid (the branch already clears busy and the top-of-block ''done <= 1''b0''
+    makes the pulse exactly one cycle wide).'
+  - 'Leave the datapath (SBOX, RCON, gm/gm3, shift_rows, mix_columns, next_round_key,
+    aes_round, round_key <= ~key) unchanged: those were not exercised by the demonstrated
+    failure (no transaction ever completed), so they are out of scope for this smallest
+    evidence-backed repair.'
