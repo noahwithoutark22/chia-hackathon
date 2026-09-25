@@ -15,32 +15,6 @@ workers; LLM access via `chia.models.opencode.OpenCodeLLM`). They share no
 code — treat each subdirectory as its own project, with its own `cluster.yaml`,
 and run commands from inside it.
 
-## Results
-
-From the `paper_eval_20260916` campaign, on deliberately fault-injected
-benchmarks (`*_corrupted`), sky130hd:
-
-| Design | UVM verdict | ORFS | Final GDS |
-|---|---|---|---|
-| `hamming_encoder` | verified at iteration 1 (68 min) | closed (8 min) | yes |
-| `aes128` | verified at iteration 5 (3.4 h) | closed (12 min) | yes |
-| `sha256` | verified at iteration 4 | closed (18.2 h) | yes |
-| `i2c` | **not verified — handoff refused** (11.5 h) | not run | no |
-
-The `i2c` row is the intended behaviour, not a crash. The loop exhausted its
-repair budget and exited through the `no_repair` branch, and the handoff gate
-refused to promote unverified RTL:
-
-```
-RTL is not verified ({'status': 'complete', 'verified': False,
-'rtl_outcome': 'no_repair', 'stop_reason': 'no_repair'}); refusing to send it
-to ORFS. Re-run the UVM stage, or pass --allow-unverified to proceed anyway.
-```
-
-That gate exists because the LLM had previously learned to reach ORFS through
-`no_repair` without passing all tests — see
-[Troubleshooting #4](docs/TROUBLESHOOTING.md#4-no_repair-used-as-a-loophole-to-reach-orfs).
-
 ## Setup
 
 ### Prerequisites
@@ -176,18 +150,16 @@ into the testbench. Failures drive RTL repair, then re-verification.
   Specification + Reference Model
               │
               ▼
-         CHIA + LLM  ──►  Cocotb + pyUVM testbench
-                                    │
-                                    ▼
-                               Verify RTL
-                                    │
-                            ┌───────┴───────┐
-                          PASS            FAIL
-                            │               │
-                            ▼               ▼
-                       Verified      Analyse → Modify RTL ──┐
-                                                            │
-                            ▲───────────────────────────────┘
+         CHIA + LLM  ──►  Cocotb + pyUVM testbench  ◄───────┐
+                                    │                       │
+                                    ▼                       │
+                               Verify RTL                   │
+                                    │                       │
+                            ┌───────┴───────┐               │
+                          PASS            FAIL              │
+                            │               │               │
+                            ▼               ▼               │
+                       Verified      Analyse → Modify RTL ──┘
 ```
 
 Covers reference-model scoreboarding, directed and randomised stimulus,
