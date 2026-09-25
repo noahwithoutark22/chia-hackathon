@@ -1,4 +1,4 @@
-# CHIA — LLM-Driven Hardware Automation
+# CHIA-Based UVM Verification and Physical Design
 
 Two independent LLM-driven hardware loops, plus an orchestrator that chains
 them into one RTL-to-GDS run.
