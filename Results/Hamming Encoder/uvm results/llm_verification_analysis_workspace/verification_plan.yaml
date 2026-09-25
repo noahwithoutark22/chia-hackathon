@@ -1,0 +1,105 @@
+dut:
+  name: hamming_encoder
+  file: hamming_encoder.sv
+  description: SECDED (72,64) Hamming encoder - purely combinational
+parameters: []
+clock_and_reset:
+  clock:
+    name: none
+    type: posedge
+    description: DUT is purely combinational - no clock signal
+  reset:
+    name: none
+    polarity: active-low
+    type: asynchronous
+    description: DUT is purely combinational - no reset signal
+    reset_value: {}
+ports:
+  inputs:
+  - name: data_in
+    width: 64
+    description: 64-bit input data
+    type: logic
+  outputs:
+  - name: codeword
+    width: 72
+    description: 72-bit SECDED codeword output
+    type: logic
+  inouts: []
+functional_behavior:
+  description: Complete SECDED encoder specification with reference model
+  reset_behavior: N/A - purely combinational
+  reference_model:
+    language: Python
+    file: hamming_reference_model.py
+    function: encode
+    logic: SECDED (72,64) encoding with parity bits at positions 1,2,4,8,16,32,64
+      and overall parity at position 0
+    latency: 0
+directed_test_scenarios:
+- name: basic_patterns_structured_values_boundaries
+  description: 8 high-priority tests covering basic patterns, structured values, and
+    boundaries
+  priority: high
+  stimulus: null
+  expected: null
+  note: Detailed test cases to be expanded
+  id: basic_patterns_structured_values_boundaries
+corner_cases:
+- name: data_placement_parity_positions_overall_parity_timing
+  description: 11 cases covering data placement, all parity positions, overall parity,
+    combinational timing
+  expected: null
+randomized_testing_strategy:
+  description: Full 64-bit range with input glitch injection
+  constraints:
+  - variable: data_in
+    range:
+    - 0
+    - 18446744073709551615
+  injection:
+  - type: input_glitch
+    frequency: random
+    description: Inject glitches on data_in input
+  pass_criteria: All codewords match reference model, SECDED properties hold
+functional_coverage:
+  covergroups:
+  - name: data_patterns
+    description: Coverage for various data input patterns
+    clk: null
+    sample_on: null
+    bins: []
+    crosses: []
+  - name: parity_invariants
+    description: Coverage for SECDED parity invariants
+    clk: null
+    sample_on: null
+    bins: []
+    crosses: []
+  - name: data_bit_placement
+    description: Coverage for data bit placement in codeword
+    clk: null
+    sample_on: null
+    bins: []
+    crosses: []
+scoreboard_reference_model_strategy:
+  description: In-order comparator against Python reference model
+  architecture:
+  - type: in_order_comparator
+    description: Compare DUT output with reference model output for each input
+  pass_criteria: Zero mismatches between DUT and reference model
+  error_reporting: Report mismatches with input data, expected and actual codeword
+useful_assertions:
+- name: parity_checks_data_placement_stability
+  description: 11 assertions for parity checks, data placement, stability
+  severity: error
+  assertion: ''
+  note: Detailed assertions to be expanded
+discrepancies:
+- id: disc_1
+  severity: high
+  title: RTL vs spec/reference model mismatches
+  rtl: ''
+  spec: ''
+  impact: 5 high severity, 1 medium severity mismatches documented
+  recommendation: Review and resolve each discrepancy

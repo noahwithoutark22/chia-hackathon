@@ -1,0 +1,51 @@
+schema_version: '1.0'
+action: repair
+root_cause: "RTL defect DIS-15 (verification_plan.yaml lines 1366-1373, CONTRACT.md\
+  \ \xA77.3/\xA79): rtl.sv line 62 executes `done <= 1'b1;` unconditionally on every\
+  \ non-reset clock cycle inside the always_ff block. `done` is therefore a permanent\
+  \ high level instead of a one-cycle completion pulse, so it is high during idle\
+  \ and high on two consecutive sampled edges. The specification (specification.md\
+  \ \xA77 'done shall pulse for one clock', \xA711 'done must be a pulse rather than\
+  \ a permanent level') and the frozen plan assertion `a_done_is_pulse` define the\
+  \ intended behavior the RTL violates."
+evidence:
+- 'simulation_result.json: all 15 tests report status=runtime_error, returncode=2,
+  counts all zero; 14 of them (WriteBasic, WriteZero, WriteMax, ReadBasic, ReadMax,
+  WriteAddrNack, WriteDataNack, ReadAddrNack, StartWhileBusy, ResetDuringTransaction,
+  DonePulseCheck, AddressMsbFirstCheck, I2CCorner, I2CRandom) fail at ~160ns (250ns
+  for random) with the identical message: ''[assertion a_done_is_pulse] FAILED: done
+  stayed high for two consecutive clock cycles (cycle N and cycle N+1 both sampled
+  done==1); done must be a one-cycle completion pulse, low during idle'' (i2c_assertions.py
+  _check_a_done_is_pulse lines 699-722, which directly implements plan item a_done_is_pulse
+  lines 1216-1217).'
+- "simulation_result.json ResetIdleCheckTest (TC-01): 'ScenarioCheckFailure: scenario\
+  \ expect check failed (TC-01 post-reset idle state (expect action)): done: expected\
+  \ 0, got 1; full sample: {rx_data: 0, done: 1, busy: 0, ack_error: 0, sda_out: 0,\
+  \ sda_oe: 0, scl_out: 0, scl_oe: 0}' \u2014 done is already 1 in the idle window\
+  \ right after reset deassertion, exactly matching the unconditional `done <= 1'b1`\
+  \ in rtl.sv line 62, before any transaction stimulus is applied."
+- 'Source-grounded: rtl.sv line 62 is the only assignment to `done` outside reset
+  (other than STOP_COND line 139 which also sets it to 1), so `done` can never return
+  low; the repair recommendation in verification_plan.yaml DIS-15 states ''Default
+  done to 0 and pulse it high for one cycle at completion.'' This is a genuine RTL
+  defect, not a TB/toolchain issue: the cocotb+pyuvm environment compiled and ran
+  cleanly (only PyDeprecationWarnings), and the a_done_is_pulse checker is a frozen,
+  spec-grounded assertion. The DIS-18/19 divider stall is corroborated by the Verilator
+  WIDTHEXPAND warning but is NOT the cause of this iteration''s observed failure (a_done_is_pulse
+  fires while the FSM is still idle), so it is out of scope for this smallest repair.'
+confidence: high
+changes:
+- file: rtl.sv
+  action: modify
+  instructions:
+  - Replace the default `done` assignment on line 62 (`done <= 1'b1;`) with `done
+    <= 1'b0;` so that `done` is low except for exactly one state-advance cycle. This
+    is the first statement of the non-reset else branch of the always_ff block.
+  - "Keep the existing `done <= 1'b1;` in the STOP_COND arm (line 139) unchanged;\
+    \ with the default now 0, that arm produces the spec-required one-cycle completion\
+    \ pulse (high for one state advance, low the following cycle and throughout idle),\
+    \ satisfying specification.md \xA77/\xA711, the frozen a_done_is_pulse assertion,\
+    \ and TC-01's post-reset idle check (done=0)."
+  - 'Do not modify any other state/control logic: the divider (DIS-18/19), busy deassertion
+    (DIS-16/17), ACK sampling, and data-path discrepancies are not the demonstrated
+    cause of this iteration''s failure and remain out of scope.'

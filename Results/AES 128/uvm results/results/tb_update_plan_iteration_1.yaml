@@ -1,0 +1,21 @@
+version: '1.0'
+verdict: non_actionable
+root_cause:
+  category: reset
+  summary: DUT does not return to idle after reset release (DISC-01, the reset branch
+    leaves busy high), so a start sampled after reset release is never honored and
+    produces no done pulse within the 80-cycle window.
+  evidence: 'tb.assertions [assertion reset_returns_dut_to_idle] FAILED: a start sampled
+    after reset release produced no done pulse within 80 clock cycles; the DUT did
+    not return to idle so the start was never honored (plan reset_returns_dut_to_idle;
+    cf. DISC-01 reset leaving the DUT busy). Traceback: assertions.py line 442 in
+    _check_reset_returns_dut_to_idle -> line 365 in _fail -> AssertionError'
+changes: []
+validation:
+  tests:
+  - Aes128ResetReleaseIdleTest
+  - Aes128Fips197KnownAnswerTest
+  requirements:
+  - build succeeds
+  - no UVM_ERROR or UVM_FATAL
+  - no reference-model mismatch

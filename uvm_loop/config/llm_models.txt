@@ -10,6 +10,57 @@
 # 2026-09-17 (2026-09-18 for nvidia7/8/9) with a PONG smoke test before being
 # added here. nvidia9 was slow on its first call (90s, timed out at 60s) but
 # succeeded on retry -- not treated as a hang like nvidia2/gemma below.
+# opencode/big-pickle moved to first preference 2026-09-20: the nemotron
+# models were causing infra issues on a parallel SHA256-benchmark run;
+# big-pickle finished that design's UVM stage quickly and cleanly on the
+# same day. Kept as first choice until nemotron's issue is understood.
+# PAID MODELS -- first preference as of 2026-09-23, by explicit request.
+# Unlike everything below, these bill on every call. Key is the "google" entry
+# in ~/.local/share/opencode/auth.json (Google AI Studio, paid tier); opencode
+# picks it up by provider name, so no opencode.jsonc entry is needed.
+# Measured 2026-09-23 via an opencode smoke test: an 8.5k-token call cost
+# $0.00226875, i.e. roughly $0.27 per 1M input tokens. For scale, the 6.08M-token
+# call seen on 2026-09-22 would cost about $1.60 on its own.
+# Verified live 2026-09-23 through `opencode run --model ...` (returned PONG):
+#   google/gemini-3.1-flash-lite, google/gemini-3.5-flash, google/gemini-3-flash-preview
+# Move these below the free models to stop spending without losing the config.
+# Ordered cheapest-first within this block: a rotation reaches the pricier
+# models last instead of escalating spend on the first rate limit.
+google/gemini-3.1-flash-lite
+google/gemini-3.5-flash-lite
+google/gemini-flash-lite-latest
+google/gemini-3.5-flash
+google/gemini-3.6-flash
+google/gemini-3-flash-preview
+google/gemma-4-26b-a4b-it
+#
+# Verified NOT usable on this key, 2026-09-23 -- each was probed live through
+# `opencode run --model ...` and rejected on streamGenerateContent. They are
+# listed in the catalog and visible to the key, which makes them look
+# available; they are not. Do not re-add without re-probing.
+#   google/gemini-2.5-pro                       PRO - rejected
+#   google/gemini-3.1-pro-preview               PRO - rejected
+#   google/gemini-3.1-pro-preview-customtools   PRO - rejected
+#   google/gemini-2.5-flash       404 "no longer available to new users"
+#   google/gemini-2.5-flash-lite  rejected (same 2.5-family deprecation)
+#   google/gemini-flash-latest    rejected (the -lite-latest alias DOES work)
+#   google/gemini-3.7-flash       rejected (timed out first, then failed
+#                                 outright on retry -- not a cold-start blip)
+#   google/gemini-3.8-flash       rejected
+#   google/gemma-4-31b-it         timed out at 90s twice; NOT a cold start.
+#                                 The same model is already reachable as
+#                                 nvidia8/google/gemma-4-31b-it.
+#   (gemma-4-26b-a4b-it timed out once then PASSED on retry -- a genuine
+#    cold-start case, so it is in the active list above, not here)
+#
+# Deliberately excluded, not failures -- these cannot do agentic code
+# generation, so a rotation into one is a guaranteed dead end:
+#   *-image, *-tts, *-live-*, *-computer-use-*, gemini-embedding-*,
+#   lyria-* (music), veo-* (video), deep-research-*
+# openrouter/* -- NOT usable: the openrouter key in auth.json returns
+# 401 "User not found" (account gone), and every Gemini model there is paid
+# too, so it offers nothing this route does not. Checked 2026-09-23.
+opencode/big-pickle
 nvidia/nvidia/nemotron-3-super-120b-a12b
 nvidia3/nvidia/nemotron-3-ultra-550b-a55b
 nvidia4/openai/gpt-oss-20b
@@ -18,8 +69,39 @@ nvidia5/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning
 nvidia/nvidia/nemotron-3-ultra-550b-a55b
 nvidia8/google/gemma-4-31b-it
 nvidia9/mistralai/mistral-nemotron
-opencode/big-pickle
-opencode/mimo-v2.5-free
+opencode/nemotron-3.5-lightning-free
+
+# --- OpenRouter free tier: LAST RESORT ---------------------------------
+# Key is the "openrouter" entry in auth.json. All four verified live
+# 2026-09-23 through `opencode run --model ...`.
+#
+# Placed last on purpose. OpenRouter caps :free models at 50 requests/day
+# for accounts holding under $10 of credits. The /api/v1/key endpoint does
+# NOT reveal that counter -- it reports dollar spend, which stays at 0
+# because free models cost nothing -- so there is no way to see how much of
+# the daily allowance is left until calls start failing. A loop that makes
+# hundreds of calls would burn the allowance quickly and turn these into
+# dead slots, so they are useful only when everything above is down.
+openrouter/thinkingmachines/inkling:free
+openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+openrouter/cohere/north-mini-code:free
+openrouter/qwen/qwen3.8-27b:free
+# openrouter/z-ai/glm-5.2:free -- probed twice, fails (not the stale-key issue;
+# re-tested after the key was fixed).
+# tencent/hy3:free -- NOT on OpenRouter's free tier; not among its 21 :free
+# models on 2026-09-23. z-ai/glm-5.2 is the nearest GLM-family equivalent and
+# does not work either.
+# opencode/mimo-v2.5-free -- REMOVED 2026-09-23: no longer in the Zen catalog.
+# Zen's free line-up rotates with no public schedule, so an entry that worked
+# once can silently become a dead slot the rotation still tries. Re-check with
+# `docker exec chia-opencode-$USER-0 opencode models | grep ^opencode/`.
+# Catalog on 2026-09-23 also offered these, all timing out at 90s. Retried:
+# mimo-v2.6-flash-free, space-bunny-free and ling-3.0-flash-fin-free timed out
+# a SECOND time, so they are not cold starts. muse-spark-1.2/1.3 untried twice.
+# Note big-pickle also hung twice the same evening while Zen was degraded, so
+# these results describe that window -- re-probe before writing any of them
+# off permanently.
+# nemotron-3-ultra-free stays excluded (bare 404, see note above).
 # opencode/nemotron-3-ultra-free -- removed 2026-09-17: provider returns a bare
 # 404 ("Upstream request failed") on every call, confirmed live via i2c_benchmark;
 # not a rate limit, so retrying it never succeeds.

@@ -1,0 +1,48 @@
+schema_version: '1.0'
+action: repair
+root_cause: 'RTL defect (verification_plan.yaml DIS-12): the ADDR_ACK FSM arm in rtl.sv
+  executes `busy <= 1''b0;` unconditionally (rtl.sv line 94), deasserting `busy` mid-transaction
+  at the address-ACK phase. With the iteration-2/3/4 fixes already in place (done
+  default 0 at line 62, div_cnt advance at CLK_DIV-1 at line 69, and per-cycle start
+  sampling at lines 64-68), a start is now accepted (busy rises), but the very first
+  post-acceptance completion-state path drops busy before any STOP/done edge. This
+  violates specification.md sections 7 and 11 (`busy` shall remain asserted until
+  the transaction completes and return low only at STOP) and verification plan assertion
+  a_busy_spans_transaction; the frozen TB''s assertion `a_busy_spans_transaction`
+  correctly detects exactly this behavior, so the failure is caused by the RTL, not
+  the TB.'
+evidence:
+- 'simulation_result.json: 14/15 tests (WriteBasic, WriteZero, WriteMax, ReadBasic,
+  ReadMax, WriteAddrNack, WriteDataNack, ReadAddrNack, StartWhileBusy, ResetDuringTransaction,
+  DonePulseCheck, AddressMsbFirstCheck, I2CCorner, I2CRandom) report status=runtime_error/returncode=2,
+  all with the identical failure message from tb/i2c_assertions.py:750 a_busy_spans_transaction:
+  ''busy dropped to 0 before any done completion pulse (sampled busy=0 while a transaction
+  was active); busy must span the transaction until completion''.'
+- ResetIdleCheckTest passes (no start offered, 170ns sim); this isolates the defect
+  to the transaction path and confirms reset/idle outputs are already correct.
+- 'RTL trace of rtl.sv: start is captured at lines 64-65 (busy<=1, state<=START_COND);
+  the divider advances START_COND->SEND_ADDR->ADDR_ACK; the ADDR_ACK arm (lines 90-104)
+  is the only mid-transaction busy deassertion (line 94 busy<=0). The other busy<=0
+  sites are reset (line 59), the IDLE arm (line 74, unreachable during an active transaction),
+  and the default arm (line 143) - none fire here, so line 94 is the demonstrated
+  cause.'
+- 'Intended behavior is grounded in the specification/reference sources, not the TB:
+  specification.md section 7 (''busy shall become asserted... When the transaction
+  reaches STOP: busy shall return low'') and section 11; verification_plan.yaml `a_busy_spans_transaction`
+  (line 1221, ''busy == 1 from start acceptance until the STOP/completion, then busy
+  == 0'') and DIS-12 (line 1342, ''busy deasserted mid-transaction at address ACK...
+  Keep busy asserted until the transaction completes''). The frozen TB implements
+  this plan exactly, so the deviation is an RTL defect.'
+confidence: high
+changes:
+- file: rtl.sv
+  action: modify
+  instructions:
+  - Delete the unconditional `busy <= 1'b0;` assignment in the ADDR_ACK case arm (rtl.sv
+    line 94) so that busy remains asserted for the entire active transaction. Per
+    specification section 7 / plan DIS-12, busy must be deasserted only when the transaction
+    completes (STOP / return to IDLE), not at the address-ACK phase.
+  - 'Do not modify any other state logic: the address/RW capture (`{slave_addr, ~rw}`),
+    bit_cnt init/sequencing, ACK sampling, data path, done handling, and STOP behavior
+    are unchanged and remain out of scope for this demonstrated failure; this change
+    only prevents the mid-transaction busy drop detected by a_busy_spans_transaction.'

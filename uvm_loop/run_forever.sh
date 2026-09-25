@@ -5,8 +5,8 @@
 #   ./run_forever.sh <design-config> [max-iterations]
 #
 # Examples:
-#   ./run_forever.sh pipeline/designs/fifo.yaml 25
-#   ./run_forever.sh pipeline/designs/adder2.yaml 30
+#   ./run_forever.sh benchmarks/fifo/design.yaml 25
+#   ./run_forever.sh benchmarks/adder2/design.yaml 30
 #
 # The script is intentionally project/design agnostic:
 #   - uses the current directory as the project root
@@ -19,7 +19,7 @@ set -u
 
 if [[ $# -lt 1 || $# -gt 2 ]]; then
     echo "Usage: $0 <design-config> [max-iterations]"
-    echo "Example: $0 pipeline/designs/fifo.yaml 25"
+    echo "Example: $0 benchmarks/fifo/design.yaml 25"
     exit 2
 fi
 

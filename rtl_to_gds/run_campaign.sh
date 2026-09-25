@@ -81,7 +81,7 @@ for d in "${DESIGNS[@]}"; do
     # shellcheck disable=SC2086
     timeout --signal=INT --kill-after=10m "$DESIGN_TIMEOUT" \
         python3 "$REPO/rtl_to_gds/rtl_to_gds.py" \
-            --design-config "pipeline/designs/$d.yaml" \
+            --design-config "$d" \
             --orfs-repo "$CHIA_ORFS_REPO" \
             --uvm-supervised "$UVM_MAX_ITERS" \
             --result-json "$dout/rtl_to_gds.json" \

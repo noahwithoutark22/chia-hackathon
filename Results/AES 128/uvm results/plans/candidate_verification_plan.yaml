@@ -1,0 +1,644 @@
+dut:
+  name: aes128
+  file: benchmarks/aes128_benchmark_corrupted/aes128.sv
+  description: >
+    AES-128 single-block ECB encryption engine with a start/done transaction
+    interface. Ports: clk, rst_n, start, key[127:0], plaintext[127:0], done,
+    ciphertext[127:0]. One 128-bit block per transaction.
+
+parameters: []
+
+clock_and_reset:
+  clock:
+    name: clk
+    type: posedge
+    description: Rising-edge system clock; inputs sampled and outputs updated on the positive edge.
+  reset:
+    name: rst_n
+    polarity: active-low
+    type: synchronous
+    description: Active-low synchronous reset that clears the internal transaction state and leaves the DUT idle.
+    reset_value:
+      done: 0
+      ciphertext: 0
+
+ports:
+  inputs:
+    - name: clk
+      width: 1
+      type: logic
+      description: Rising-edge clock.
+    - name: rst_n
+      width: 1
+      type: logic
+      description: Active-low synchronous reset.
+    - name: start
+      width: 1
+      type: logic
+      description: Transaction start strobe; honored on the clock edge while the DUT is idle.
+    - name: key
+      width: 128
+      type: logic
+      description: 128-bit AES-128 encryption key; most-significant byte is AES state byte 0.
+    - name: plaintext
+      width: 128
+      type: logic
+      description: 128-bit plaintext block; most-significant byte is AES state byte 0.
+  outputs:
+    - name: done
+      width: 1
+      type: logic
+      description: Pulses high for one clock cycle when ciphertext is valid.
+    - name: ciphertext
+      width: 128
+      type: logic
+      description: 128-bit ciphertext output, valid to sample while done is high.
+  inouts: []
+
+functional_behavior:
+  description: >
+    AES-128 encryption of a single 128-bit plaintext block under a 128-bit key.
+    A transaction starts when start is asserted while the DUT is idle; key and
+    plaintext are captured at start, 10 AES encryption rounds are performed
+    (SubBytes, ShiftRows, MixColumns, AddRoundKey; the final round omits
+    MixColumns), and ciphertext is presented with a one-cycle done pulse.
+    A new transaction must only be started after the previous one completes.
+    Byte ordering is conventional AES: the most-significant byte of the 128-bit
+    vector is AES state byte 0 and the state is arranged column-major.
+  reset_behavior: >
+    Asserting rst_n low for at least one rising edge clears all internal
+    transaction state. After reset deassertion the DUT must be idle (ready to
+    accept start) with done low.
+  reference_model:
+    language: python
+    file: aes128_reference_model.py
+    function: aes128_encrypt
+    logic: >
+      Independent FIPS-197 pure-Python model with its own S-box, key expansion,
+      SubBytes, ShiftRows, MixColumns and AddRoundKey. aes128_encrypt(plaintext,
+      key) is the oracle for the expected ciphertext. TEST_VECTORS provide the
+      mandatory known answers used by the scoreboard and directed tests.
+    latency: null
+
+directed_test_scenarios:
+  - id: TC01
+    name: reset_release_idle
+    description: Assert and release reset; verify the DUT is idle with done low and that a transaction can be started afterwards.
+    priority: high
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 3
+          description: Force rst_n low for 3 clock cycles.
+        - action: wait
+          cycles: 2
+          description: Wait after reset deassertion.
+        - action: check
+          signals:
+            done: 0
+          description: done must be low after reset.
+    expected:
+      done: 0
+      idle: true
+    note: Detects reset-control defects such as the DUT not returning to the idle state after reset.
+
+  - id: TC02
+    name: fips197_known_answer
+    description: Encrypt the official FIPS-197 vector and compare against the mandated ciphertext.
+    priority: high
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 2
+        - action: drive
+          signals:
+            key: "000102030405060708090a0b0c0d0e0f"
+            plaintext: "00112233445566778899aabbccddeeff"
+          description: Drive key and plaintext before start.
+        - action: drive
+          signals:
+            start: 1
+          cycles: 1
+          description: Assert start for one cycle.
+        - action: drive
+          signals:
+            start: 0
+          description: Deassert start.
+        - action: wait_done
+          description: Wait until done pulses.
+        - action: check
+          signals:
+            ciphertext: "69c4e0d86a7b0430d8cdb78070b4c55a"
+          description: Sample ciphertext while done is high.
+    expected:
+      ciphertext: "69c4e0d86a7b0430d8cdb78070b4c55a"
+
+  - id: TC03
+    name: all_zero_known_answer
+    description: Encrypt the all-zero vector and compare against the mandated ciphertext.
+    priority: high
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 2
+        - action: drive
+          signals:
+            key: "00000000000000000000000000000000"
+            plaintext: "00000000000000000000000000000000"
+          description: All-zero key and plaintext.
+        - action: drive
+          signals:
+            start: 1
+          cycles: 1
+        - action: drive
+          signals:
+            start: 0
+        - action: wait_done
+        - action: check
+          signals:
+            ciphertext: "66e94bd4ef8a2c3b884cfa59ca342b2e"
+    expected:
+      ciphertext: "66e94bd4ef8a2c3b884cfa59ca342b2e"
+
+  - id: TC04
+    name: incrementing_known_answer
+    description: Encrypt the incrementing vector and compare against the mandated ciphertext.
+    priority: high
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 2
+        - action: drive
+          signals:
+            key: "000102030405060708090a0b0c0d0e0f"
+            plaintext: "000102030405060708090a0b0c0d0e0f"
+        - action: drive
+          signals:
+            start: 1
+          cycles: 1
+        - action: drive
+          signals:
+            start: 0
+        - action: wait_done
+        - action: check
+          signals:
+            ciphertext: "0a940bb5416ef045f1c39458c653ea5a"
+    expected:
+      ciphertext: "0a940bb5416ef045f1c39458c653ea5a"
+
+  - id: TC05
+    name: back_to_back_transactions
+    description: Run two complete transactions back to back; each must produce the reference ciphertext for its own key/plaintext pair.
+    priority: medium
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 2
+        - action: drive
+          signals:
+            key: "000102030405060708090a0b0c0d0e0f"
+            plaintext: "00112233445566778899aabbccddeeff"
+        - action: drive
+          signals:
+            start: 1
+          cycles: 1
+        - action: drive
+          signals:
+            start: 0
+        - action: wait_done
+        - action: check
+          signals:
+            ciphertext: "69c4e0d86a7b0430d8cdb78070b4c55a"
+        - action: drive
+          signals:
+            key: "00000000000000000000000000000000"
+            plaintext: "00000000000000000000000000000000"
+          description: Second transaction data.
+        - action: drive
+          signals:
+            start: 1
+          cycles: 1
+        - action: drive
+          signals:
+            start: 0
+        - action: wait_done
+        - action: check
+          signals:
+            ciphertext: "66e94bd4ef8a2c3b884cfa59ca342b2e"
+    expected:
+      description: "Second ciphertext equals the reference result for the second transaction and the first result is unaffected."
+    note: Also verifies the DUT accepts a new transaction once done is observed.
+
+  - id: TC06
+    name: key_sensitivity
+    description: Fix plaintext and use two different keys; the two ciphertexts must differ and each must match the reference model.
+    priority: medium
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 2
+        - action: drive
+          signals:
+            key: "000102030405060708090a0b0c0d0e0f"
+            plaintext: "00112233445566778899aabbccddeeff"
+        - action: drive
+          signals:
+            start: 1
+          cycles: 1
+        - action: drive
+          signals:
+            start: 0
+        - action: wait_done
+        - action: drive
+          signals:
+            key: "ffeeddccbbaa99887766554433221100"
+            plaintext: "00112233445566778899aabbccddeeff"
+        - action: drive
+          signals:
+            start: 1
+          cycles: 1
+        - action: drive
+          signals:
+            start: 0
+        - action: wait_done
+    expected:
+      description: "ciphertext(key_a) != ciphertext(key_b) and both equal aes128_encrypt(plaintext, key)."
+
+  - id: TC07
+    name: plaintext_sensitivity
+    description: Fix key and use two different plaintexts; the two ciphertexts must differ and each must match the reference model.
+    priority: medium
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 2
+        - action: drive
+          signals:
+            key: "000102030405060708090a0b0c0d0e0f"
+            plaintext: "00112233445566778899aabbccddeeff"
+        - action: drive
+          signals:
+            start: 1
+          cycles: 1
+        - action: drive
+          signals:
+            start: 0
+        - action: wait_done
+        - action: drive
+          signals:
+            key: "000102030405060708090a0b0c0d0e0f"
+            plaintext: "8899aabbccddeeff0011223344556677"
+        - action: drive
+          signals:
+            start: 1
+          cycles: 1
+        - action: drive
+          signals:
+            start: 0
+        - action: wait_done
+    expected:
+      description: "ciphertext(plaintext_a) != ciphertext(plaintext_b) and both equal aes128_encrypt(plaintext, key)."
+
+  - id: TC08
+    name: determinism_repeated_encryption
+    description: Encrypt the identical (key, plaintext) pair twice; both ciphertexts must be identical and equal the reference result.
+    priority: medium
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 2
+        - action: drive
+          signals:
+            key: "000102030405060708090a0b0c0d0e0f"
+            plaintext: "00112233445566778899aabbccddeeff"
+        - action: drive
+          signals:
+            start: 1
+          cycles: 1
+        - action: drive
+          signals:
+            start: 0
+        - action: wait_done
+        - action: drive
+          signals:
+            key: "000102030405060708090a0b0c0d0e0f"
+            plaintext: "00112233445566778899aabbccddeeff"
+        - action: drive
+          signals:
+            start: 1
+          cycles: 1
+        - action: drive
+          signals:
+            start: 0
+        - action: wait_done
+    expected:
+      description: "ciphertext_run_1 == ciphertext_run_2 == aes128_encrypt(plaintext, key)."
+
+  - id: TC09
+    name: done_pulse_and_start_ignored_while_busy
+    description: Verify done pulses for exactly one cycle and that a start asserted while a transaction is in flight is ignored and does not corrupt the running transaction.
+    priority: high
+    stimulus:
+      sequence:
+        - action: reset
+          cycles: 2
+        - action: drive
+          signals:
+            key: "000102030405060708090a0b0c0d0e0f"
+            plaintext: "00112233445566778899aabbccddeeff"
+        - action: drive
+          signals:
+            start: 1
+          cycles: 1
+        - action: drive
+          signals:
+            start: 0
+        - action: drive
+          signals:
+            start: 1
+          description: Illegal restart while transaction is busy; must be ignored.
+        - action: drive
+          signals:
+            start: 0
+        - action: wait_done
+        - action: check
+          signals:
+            ciphertext: "69c4e0d86a7b0430d8cdb78070b4c55a"
+          description: Running transaction must complete with the originally captured data.
+        - action: wait
+          cycles: 1
+        - action: check
+          signals:
+            done: 0
+          description: done must already be low again (single-cycle pulse).
+    expected:
+      done_pulse_width: 1
+      ciphertext: "69c4e0d86a7b0430d8cdb78070b4c55a"
+
+corner_cases:
+  - name: cc_all_ones
+    description: Key and plaintext both 128'hFF..FF; ciphertext must equal the reference-model result.
+    expected: "reference_model.aes128_encrypt(0xffffffffffffffffffffffffffffffff, 0xffffffffffffffffffffffffffffffff)"
+  - name: cc_alternating_patterns
+    description: Key and plaintext use alternating byte patterns 0xAA..AA and 0x55..55; results must match the reference model.
+    expected: "matches reference model for each pattern"
+  - name: cc_all_zero_key_nonzero_plaintext
+    description: Zero key with a non-zero plaintext (e.g. 0x0123456789abcdef0123456789abcdef).
+    expected: "matches reference model"
+  - name: cc_start_while_busy
+    description: Assert start mid-transaction; per spec it must be ignored and the running transaction must complete with the originally captured key/plaintext.
+    expected: "running transaction unchanged; no extra done pulse"
+  - name: cc_reset_mid_transaction
+    description: Assert reset during an in-progress encryption; the transaction state is cleared and a fresh transaction afterwards must run correctly.
+    expected: "DUT returns to idle after reset; subsequent transaction matches reference model"
+  - name: cc_immediate_restart_after_done
+    description: Start the next transaction in the cycle immediately after the done pulse of the previous transaction.
+    expected: "next transaction accepted and matches reference model"
+
+randomized_testing_strategy:
+  description: >
+    Directed-random testing over the full 128-bit key and plaintext spaces.
+    Each accepted transaction is predicted with the reference model and compared
+    when done pulses. Only valid protocol usage is randomized (start only while
+    idle); a small fraction of the run injects a reset between transactions to
+    exercise idle recovery.
+  constraints:
+    - variable: key
+      range: [0, 340282366920938463463374607431768211455]
+    - variable: plaintext
+      range: [0, 340282366920938463463374607431768211455]
+  injection:
+    - type: reset_between_transactions
+      frequency: "1 in 20 transactions"
+      duration_cycles: [1, 4]
+      description: Inject a low reset pulse between two transactions to verify the DUT returns to idle and accepts the next start.
+  pass_criteria: >
+    Every accepted transaction produces ciphertext equal to
+    aes128_encrypt(plaintext, key); done pulses exactly once per accepted
+    transaction; no protocol assertion fires.
+
+functional_coverage:
+  covergroups:
+    - name: cg_start_done_handshake
+      description: Coverage of the start/done transaction handshake.
+      clk: clk
+      sample_on: posedge clk
+      bins:
+        - name: start_state
+          variable: start
+          bins:
+            - name: deasserted
+              range: [0, 0]
+            - name: asserted
+              range: [1, 1]
+        - name: done_state
+          variable: done
+          bins:
+            - name: no_pulse
+              range: [0, 0]
+            - name: done_pulse
+              range: [1, 1]
+      crosses:
+        - name: start_done_cross
+          variables: [start_state, done_state]
+          description: Exercise start with and without a subsequent done pulse.
+    - name: cg_key_plaintext_patterns
+      description: Coverage of key and plaintext value classes exercised across all tests.
+      clk: clk
+      sample_on: posedge clk
+      bins:
+        - name: key_pattern
+          variable: key
+          bins:
+            - name: all_zero
+              range: [0, 0]
+            - name: all_ones
+              expression: "key == 2**128 - 1"
+            - name: fips197
+              expression: "key == 0x000102030405060708090a0b0c0d0e0f"
+            - name: other
+              expression: "not (all_zero or all_ones or fips197)"
+        - name: plaintext_pattern
+          variable: plaintext
+          bins:
+            - name: all_zero
+              range: [0, 0]
+            - name: all_ones
+              expression: "plaintext == 2**128 - 1"
+            - name: fips197
+              expression: "plaintext == 0x00112233445566778899aabbccddeeff"
+            - name: other
+              expression: "not (all_zero or all_ones or fips197)"
+      crosses:
+        - name: key_plaintext_cross
+          variables: [key_pattern, plaintext_pattern]
+          description: Ensure key and plaintext classes are exercised in combination.
+    - name: cg_ciphertext_classes
+      description: Coverage of observed ciphertext against the mandatory known-answer results.
+      clk: clk
+      sample_on: posedge clk
+      bins:
+        - name: ciphertext_class
+          variable: ciphertext
+          bins:
+            - name: fips197_ans
+              expression: "ciphertext == 0x69c4e0d86a7b0430d8cdb78070b4c55a"
+            - name: all_zero_ans
+              expression: "ciphertext == 0x66e94bd4ef8a2c3b884cfa59ca342b2e"
+            - name: increment_ans
+              expression: "ciphertext == 0x0a940bb5416ef045f1c39458c653ea5a"
+            - name: other
+              expression: "not (fips197_ans or all_zero_ans or increment_ans)"
+
+scoreboard_reference_model_strategy:
+  type: in-order predictive reference-model scoreboard
+  description: >
+    Transaction-level predictive scoreboard. On each accepted start the driver
+    records the captured key and plaintext and the reference model computes the
+    expected ciphertext. When done pulses, the scoreboard samples ciphertext and
+    compares it to the prediction. Exactly one transaction is in flight at a time,
+    so matching is strictly in order.
+  architecture:
+    - type: transaction_in_order_scoreboard
+      description: Each done maps to the single in-flight transaction; done without a pending transaction is flagged.
+    - type: reference_model_predictor
+      description: aes128_reference_model.aes128_encrypt(plaintext, key) generates the expected ciphertext from the data captured at start.
+  pass_criteria: >
+    100% of completed transactions match the reference-model prediction; no
+    unexpected done pulses; no done pulse without a pending transaction.
+  error_reporting: >
+    Report each mismatch with transaction ID, captured key and plaintext, expected
+    ciphertext (reference model) and actual ciphertext (DUT). Protocol violations
+    (done without start, extra done, stuck done) are reported separately.
+
+useful_assertions:
+  - name: reset_returns_dut_to_idle
+    description: After reset deassertion the DUT returns to the idle state with done low.
+    severity: error
+    assertion: "after reset release, done == 0 and a following start is accepted within a bounded time"
+    note: Detects the reset branch keeping the DUT busy so no transaction can start.
+  - name: start_requires_idle
+    description: A start is only honored while the DUT is idle; a start while busy must not alter the in-flight transaction.
+    severity: error
+    assertion: "start asserted during an active transaction must be ignored"
+  - name: done_pulse_width_one
+    description: done pulses for exactly one clock cycle per completed transaction and does not remain high.
+    severity: error
+    assertion: "done is high for exactly one cycle per completed transaction"
+  - name: transaction_terminates
+    description: Every accepted start eventually produces a done pulse (bounded latency after the 10 rounds).
+    severity: error
+    assertion: "accepted start implies done asserted within a bounded number of cycles"
+  - name: ciphertext_matches_reference
+    description: When done is sampled high, ciphertext equals aes128_encrypt(plaintext, key) for the transaction that started it.
+    severity: error
+    assertion: "done => ciphertext == reference_model.aes128_encrypt(plaintext, key)"
+  - name: fips197_known_answer
+    description: The FIPS-197 vector must produce the mandated ciphertext.
+    severity: error
+    assertion: "FIPS-197 key/plaintext => ciphertext == 0x69c4e0d86a7b0430d8cdb78070b4c55a"
+
+discrepancies:
+  - id: DISC-01
+    severity: critical
+    title: Reset leaves the DUT busy so no transaction can ever start
+    rtl: >
+      The reset branch sets busy <= 1'b1. Because the only paths that clear busy are
+      the round-9 completion branch and the start branch is gated on start && !busy,
+      the DUT is never idle after reset and start is never honored.
+    spec: >
+      Reset clears the internal transaction state and start initiates encryption
+      only while idle (Sections 3 and 7).
+    impact: >
+      The DUT can never accept a transaction after reset; done never pulses and no
+      ciphertext is produced for any input — all functional tests fail.
+    recommendation: >
+      Clear busy on reset (busy <= 1'b0) so the DUT returns to the idle state and
+      honors a subsequent start.
+  - id: DISC-02
+    severity: critical
+    title: Round counter increments by 2 and never reaches the final round
+    rtl: >
+      round <= round + 2'b10 and completion is gated on round == 4'd9. The sequence
+      0,2,4,6,8,10,... never equals 9, so the final-round completion branch is never
+      taken.
+    spec: >
+      AES-128 performs exactly 10 rounds and done is asserted when the output is
+      valid (Sections 4 and 7).
+    impact: Encryption never completes and done is never asserted.
+    recommendation: Increment the round counter by one per round and complete when the 10th round is reached.
+  - id: DISC-03
+    severity: high
+    title: S-box table does not match FIPS-197
+    rtl: >
+      Several SBOX entries are corrupted, e.g. SBOX[0]=0x62 (should be 0x63),
+      SBOX[5]=0x6a (should be 0x6b), SBOX[10]=0x66 (should be 0x67),
+      SBOX[15]=0x77 (should be 0x76).
+    spec: Standard FIPS-197 AES S-box.
+    impact: SubBytes produces wrong bytes in every round, corrupting the ciphertext.
+    recommendation: Replace the SBOX table with the standard FIPS-197 values.
+  - id: DISC-04
+    severity: high
+    title: RCON constants do not match FIPS-197
+    rtl: >
+      RCON = {01,03,04,08,10,20,40,81,1b,36}; the standard round constants for
+      rounds 1..10 are {01,02,04,08,10,20,40,80,1b,36} — the round-2 and round-8
+      entries are wrong.
+    spec: Standard FIPS-197 key-expansion round constants.
+    impact: Key expansion generates incorrect round keys.
+    recommendation: Correct the RCON table values.
+  - id: DISC-05
+    severity: high
+    title: Key expansion word slicing is misaligned and applies an extra constant
+    rtl: >
+      w0 = k[126:95], w1 = k[94:63], w2 = k[62:31], w3 = k[30:0] (bit 127 is dropped
+      and w3 is only 31 bits), and t[31:24] ^= RCON[r] ^ 32'h00000100 XORs a
+      spurious 0x00000100 term.
+    spec: >
+      Standard FIPS-197 key expansion operates on the full 128-bit key as four
+      aligned 32-bit words with no extra constant.
+    impact: All round keys derived after the initial key are incorrect.
+    recommendation: Slice the key into aligned 32-bit words and remove the spurious XOR constant.
+  - id: DISC-06
+    severity: high
+    title: MixColumns gm3 multiplier is wrong (always zero)
+    rtl: >
+      gm3(a) = gm2(a) ^ gm2(a), which is identically 0, instead of gm2(a) ^ a —
+      the 3x product required by the AES {02,03,01,01} matrix.
+    spec: Standard FIPS-197 MixColumns uses the {02,03,01,01} matrix.
+    impact: MixColumns arithmetic is wrong in every non-final round.
+    recommendation: Implement gm3(a) as xtime(a) ^ a.
+  - id: DISC-07
+    severity: high
+    title: ShiftRows permutation does not implement the FIPS-197 row shift
+    rtl: >
+      The o[] mapping in shift_rows (e.g. o[1]=b[4], o[6]=b[13], o[11]=b[6],
+      o[12]=b[13], o[15]=b[10]) does not match the standard column-major ShiftRows
+      rotation.
+    spec: >
+      Standard FIPS-197 ShiftRows rotates state rows left by their row index
+      (0, 1, 2, 3 bytes).
+    impact: The state permutation is wrong in every round.
+    recommendation: Replace with the standard ShiftRows byte mapping.
+  - id: DISC-08
+    severity: high
+    title: AddRoundKey uses the bitwise-inverted key
+    rtl: >
+      aes_round returns t ^ ~k and the initial round key is loaded as ~key.
+    spec: >
+      AddRoundKey XORs the actual round key without inversion (state = state XOR
+      round_key); the initial transformation uses the key itself (Sections 4 and 5).
+    impact: Every AddRoundKey combines the state with an inverted round key, corrupting the ciphertext.
+    recommendation: Use k instead of ~k in AddRoundKey and load the initial round key as key.
+  - id: DISC-09
+    severity: high
+    title: Final round applies MixColumns and discards the transformed state
+    rtl: >
+      In aes_round, when final_round is set the code executes t = mix_columns(s),
+      overwriting the ShiftRows/SubBytes result with the raw input s — the
+      opposite of omitting MixColumns in the final round.
+    spec: >
+      Round 10 performs SubBytes, ShiftRows, AddRoundKey; MixColumns is omitted
+      (Section 4).
+    impact: The final-round state is computed from untransformed data, corrupting the ciphertext.
+    recommendation: Preserve the SubBytes/ShiftRows result in the final round and skip MixColumns.
