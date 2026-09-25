@@ -1,0 +1,549 @@
+dut:
+  name: sha256
+  file: sha256.sv
+  description: SHA-256 single-block compression function implementing FIPS 180-4 for one 512-bit padded message block
+parameters: []
+clock_and_reset:
+  clock:
+    name: clk
+    type: posedge
+    description: Rising-edge clock for all sequential logic
+  reset:
+    name: rst_n
+    polarity: active-low
+    type: asynchronous
+    description: Active-low asynchronous reset initializes internal hash state, message schedule, round counter, and control
+      signals
+    reset_value:
+      done: 1
+      digest: 0
+      busy: 0
+      round: 0
+      H0: 32'h6a09e667
+      H1: 32'hbb67ae85
+      H2: 32'h3c6ef372
+      H3: 32'ha54ff53a
+      H4: 32'h510e527f
+      H5: 32'h9b05688c
+      H6: 32'h1f83d9ab
+      H7: 32'h5be0cd19
+ports:
+  inputs:
+  - name: clk
+    width: 1
+    description: Rising-edge clock
+  - name: rst_n
+    width: 1
+    description: Active-low asynchronous reset
+  - name: start
+    width: 1
+    description: Pulse to begin a new SHA-256 compression; captures block on same cycle
+  - name: block
+    width: 512
+    description: 512-bit pre-padded message block in big-endian word order (block[511:480] = first 32-bit word)
+  outputs:
+  - name: done
+    width: 1
+    description: Asserted when digest is valid; RTL drives done=1 continuously after reset (DISC-001), not a one-cycle pulse
+  - name: digest
+    width: 256
+    description: 256-bit SHA-256 digest = H0||H1||H2||H3||H4||H5||H6||H7 (each word big-endian)
+  inouts: []
+functional_behavior:
+  description: 'The RTL has multiple fatal bugs (documented in discrepancies) and does not implement a correct SHA-256 compression
+    function. On reset: internal state (H0-H7, message schedule W, round counter, busy, digest) initializes to SHA-256 initial
+    hash values; done is set to 1 (DISC-001). On start pulse: captures 512-bit block, reinitializes working variables a-h to
+    initial hash values, loads first 16 words of message schedule with byte-swapped endianness conversion AND word-order reversal
+    (W[0] gets block[31:0] i.e. last word), sets busy=1, round=1. While busy: each cycle computes a round using message schedule
+    W, round constants K, and SHA-256 functions (Ch, Maj, BigSigma0, BigSigma1, SmallSigma0, SmallSigma1) but all functions have
+    incorrect constants/implementations (DISC-002 through DISC-007, DISC-010, DISC-011). Round counter starts at 1 and increments
+    by 2 (DISC-008, DISC-014), so it sequences 1, 3, 5...63, 65... The completion check `if (round == 62)` (line 199) is never
+    true, so the digest assignment (lines 200-209) never executes, busy stays 1 forever (DISC-013), and done remains 1 continuously.
+    Start is NOT gated by busy (new discrepancy); a new start while busy restarts the transaction.'
+  reset_behavior: "Active-low asynchronous reset sets done=1, clears digest=0, busy=0, round=0; initializes H0-H7 to SHA-256 IVs; zeros working variables a-h and message schedule W. RTL drives done=1 on reset and on every non-reset cycle (line 126); done never pulses. Verification must use fixed-cycle latency (64 rounds + margin) to determine transaction completion, not wait for done."
+  reference_model:
+    language: python
+    file: sha256_reference_model.py
+    function: block_to_digest
+    logic: Uses Python hashlib.sha256 as golden reference. Accepts 64-byte padded block, validates canonical SHA-256 padding
+      structure, extracts original message, returns hashlib.sha256(message).digest().
+    latency: 64
+directed_test_scenarios:
+- name: reset_initialization
+  description: Verify reset brings DUT to correct idle state with done=1 (RTL behavior), digest=0, internal state at IVs
+  priority: high
+  stimulus:
+    sequence:
+    - action: reset
+      cycles: 5
+      description: Hold reset active for 5 cycles
+    - action: wait
+      cycles: 2
+      description: Release reset and wait for idle
+    - action: check
+      signals:
+        done: 1
+        digest: 0
+      description: Verify outputs at reset values (RTL drives done=1 on reset per DISC-001)
+- name: empty_message
+  description: Known-answer test for empty string (SHA-256 of "")
+  priority: high
+  stimulus:
+    sequence:
+    - action: reset
+      cycles: 2
+    - action: drive
+      signals:
+        start: 1
+        block: '0x800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
+      description: Padded block for empty message
+    - action: wait
+      cycles: 1
+      signals:
+        start: 0
+    - action: wait
+      cycles: 70
+      description: Wait for computation to complete (64 rounds + margin; done stays 1 per RTL)
+    - action: check
+      signals:
+        digest: '0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
+        done: 1
+      description: Verify digest matches expected
+- name: single_byte_a
+  description: Known-answer test for single-byte message "a"
+  priority: high
+  stimulus:
+    sequence:
+    - action: reset
+      cycles: 2
+    - action: drive
+      signals:
+        start: 1
+        block: '0x618000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008'
+      description: Padded block for "a" (1 byte = 8 bits, length field = 0x0000000000000008)
+    - action: wait
+      cycles: 1
+      signals:
+        start: 0
+    - action: wait
+      cycles: 70
+      description: Wait for computation to complete (64 rounds + margin; done stays 1 per RTL)
+    - action: check
+      signals:
+        digest: '0xca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb'
+        done: 1
+- name: abc_message
+  description: Known-answer test for "abc" (FIPS 180-4 example)
+  priority: high
+  stimulus:
+    sequence:
+    - action: reset
+      cycles: 2
+    - action: drive
+      signals:
+        start: 1
+        block: '0x6162638000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000018'
+      description: Padded block for "abc" (3 bytes = 24 bits = 0x18, length field = 0x0000000000000018)
+    - action: wait
+      cycles: 1
+      signals:
+        start: 0
+    - action: wait
+      cycles: 70
+      description: Wait for computation to complete (64 rounds + margin; done stays 1 per RTL)
+    - action: check
+      signals:
+        digest: '0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad'
+        done: 1
+- name: hello_world
+  description: Known-answer test for "hello world"
+  priority: high
+  stimulus:
+    sequence:
+    - action: reset
+      cycles: 2
+    - action: drive
+      signals:
+        start: 1
+        block: '0x68656c6c6f20776f726c6480000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000058'
+      description: Padded block for "hello world" (11 bytes = 88 bits = 0x58, length field = 0x0000000000000058)
+    - action: wait
+      cycles: 1
+      signals:
+        start: 0
+    - action: wait
+      cycles: 70
+      description: Wait for computation to complete (64 rounds + margin; done stays 1 per RTL)
+    - action: check
+      signals:
+        digest: '0xb94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9'
+        done: 1
+- name: quick_brown_fox
+  description: Known-answer test for "The quick brown fox jumps over the lazy dog"
+  priority: high
+  stimulus:
+    sequence:
+    - action: reset
+      cycles: 2
+    - action: drive
+      signals:
+        start: 1
+        block: '0x54686520717569636b2062726f776e20666f78206a756d7073206f76657220746865206c617a7920646f67800000000000000000000000000000000000000000000000000000000000000158'
+      description: Padded block for pangram (43 bytes = 344 bits = 0x158, length field = 0x0000000000000158)
+    - action: wait
+      cycles: 1
+      signals:
+        start: 0
+    - action: wait
+      cycles: 70
+      description: Wait for computation to complete (64 rounds + margin; done stays 1 per RTL)
+    - action: check
+      signals:
+        digest: '0xd7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592'
+        done: 1
+- name: back_to_back_transactions
+  description: Verify transaction independence - two consecutive blocks produce independent digests
+  priority: medium
+  stimulus:
+    sequence:
+    - action: reset
+      cycles: 2
+    - action: drive
+      signals:
+        start: 1
+        block: '0x616263800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000018'
+      description: 'First transaction: abc (3 bytes = 24 bits = 0x18, length field = 0x0000000000000018)'
+    - action: wait
+      cycles: 1
+      signals:
+        start: 0
+    - action: wait
+      cycles: 70
+      description: Wait for first transaction to complete
+    - action: check
+      signals:
+        digest: '0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad'
+    - action: drive
+      signals:
+        start: 1
+        block: '0x8000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
+      description: 'Second transaction: empty message (length field = 0x0000000000000000)'
+    - action: wait
+      cycles: 1
+      signals:
+        start: 0
+    - action: wait
+      cycles: 70
+      description: Wait for second transaction to complete
+    - action: check
+      signals:
+        digest: '0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
+- name: start_while_busy_restarts
+  description: "Verify start asserted while busy restarts the transaction (RTL behavior: start not gated by busy)"
+  priority: medium
+  stimulus:
+    sequence:
+    - action: reset
+      cycles: 2
+    - action: drive
+      signals:
+        start: 1
+        block: '0x6162638000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000018'
+      description: 'First transaction: abc (3 bytes = 24 bits = 0x18, length field = 0x0000000000000018)'
+    - action: wait
+      cycles: 1
+      signals:
+        start: 0
+    - action: drive
+      signals:
+        start: 1
+        block: '0x80000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000'
+      cycles: 10
+      description: Assert start with different block while busy (restarts transaction)
+    - action: wait
+      cycles: 70
+      description: Wait for restarted transaction to complete
+    - action: check
+      signals:
+        digest: '0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
+      description: Digest should match second block (empty message), not first, because start while busy restarts
+- name: done_behavior_continuous
+  description: Verify done behavior (RTL drives done=1 continuously after reset, not a one-cycle pulse)
+  priority: medium
+  stimulus:
+    sequence:
+    - action: reset
+      cycles: 2
+    - action: drive
+      signals:
+        start: 1
+        block: '0x616263800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000018'
+      description: 'Transaction: abc (3 bytes = 24 bits = 0x18, length field = 0x0000000000000018)'
+    - action: wait
+      cycles: 1
+      signals:
+        start: 0
+    - action: wait
+      cycles: 70
+      description: Wait for computation to complete (done stays 1 throughout per RTL)
+    - action: check
+      signals:
+        done: 1
+        digest: '0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad'
+      description: "Done remains asserted (RTL: done <= 1'b1 every non-reset cycle); digest holds correct value"
+    - action: wait
+      cycles: 5
+    - action: check
+      signals:
+        done: 1
+        digest: '0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad'
+      description: Done stays 1, digest holds value
+corner_cases:
+- name: maximum_message_length
+  description: Message of exactly 55 bytes (maximum that fits in one block)
+  expected: Digest computed correctly per reference model
+- name: block_with_all_ones
+  description: Input block of all 1s (not a valid padded message but exercises all datapaths)
+  expected: Deterministic digest per reference model
+- name: block_with_alternating_pattern
+  description: Input block with alternating 0xAA/0x55 pattern
+  expected: Deterministic digest per reference model
+- name: reset_during_processing
+  description: Assert reset while busy processing a block
+  expected: DUT returns to idle state, done=1 (RTL behavior), digest=0
+- name: start_deasserted_same_cycle
+  description: Start pulse lasts only one cycle (minimum pulse width)
+  expected: Transaction accepted and completes normally
+- name: block_changes_during_processing
+  description: Block input changes after start while busy
+  expected: No effect on current transaction (block captured at start)
+randomized_testing_strategy:
+  description: Generate random messages < 56 bytes, pad per SHA-256, drive to DUT, compare digest to hashlib
+  constraints:
+  - variable: message_length
+    range:
+    - 0
+    - 55
+  - variable: message_bytes
+    range:
+    - 0
+    - 255
+  injection:
+  - type: reset_during_processing
+    frequency: "0.1"
+    duration_cycles:
+    - 1
+    - 3
+    description: Randomly inject reset during computation
+  - type: back_to_back
+    frequency: "0.2"
+    duration_cycles: null
+    description: Randomly start new transaction immediately after done
+  pass_criteria: All directed and randomized tests produce digests matching reference model; done asserts after each transaction (RTL holds done=1 continuously); reset sets done=1, digest=0
+functional_coverage:
+  covergroups:
+  - name: message_length_cg
+    description: Coverage of input message lengths in bits (derived from block[63:0] length field at start)
+    clk: clk
+    sample_on: start
+    bins:
+    - name: msg_len_bits
+      variable: block[63:0]
+      bins:
+      - name: zero_len
+        range:
+        - 0
+        - 0
+      - name: short_len
+        range:
+        - 1
+        - 128
+      - name: medium_len
+        range:
+        - 129
+        - 256
+      - name: long_len
+        range:
+        - 257
+        - 384
+      - name: max_len
+        range:
+        - 385
+        - 440
+    crosses: []
+  - name: control_signals_cg
+    description: Coverage of control signal transitions
+    clk: clk
+    sample_on: clk
+    bins:
+    - name: start_pulse
+      variable: start
+      bins:
+      - name: asserted
+        range:
+        - 1
+        - 1
+      - name: deasserted
+        range:
+        - 0
+        - 0
+    - name: done_pulse
+      variable: done
+      bins:
+      - name: asserted
+        range:
+        - 1
+        - 1
+      - name: deasserted
+        range:
+        - 0
+        - 0
+    crosses:
+    - name: start_done_cross
+      variables:
+      - start
+      - done
+      description: Cross coverage of start and done timing
+scoreboard_reference_model_strategy:
+  description: Scoreboard compares DUT digest against Python hashlib reference for each transaction
+  architecture:
+  - type: in_order
+    description: Transactions complete in order; scoreboard matches each transaction (start pulse) to corresponding reference digest; done is always 1 after reset (RTL behavior)
+  pass_criteria: Every start pulse followed by digest matching reference model after expected latency; no extra/missing transactions
+  error_reporting: Report transaction ID, input block, expected digest, actual digest, and cycle of mismatch
+useful_assertions:
+- name: digest_holds_until_next
+  description: Digest remains stable between transactions
+  severity: error
+  assertion: '(!start && $past(start, 1, 70)) |=> (digest == $past(digest))'
+  note: Digest should hold value until next transaction completes; qualified with past start to avoid reset
+- name: transaction_completes_within_latency
+  description: After valid start, digest becomes valid within expected latency (checked via cycle count, not done)
+  severity: error
+  assertion: 'start & !$past(start) |-> ##[64:70] (digest != 0)'
+  note: DUT should produce non-zero digest within 64-70 cycles after start; qualified to avoid reset
+- name: reset_sets_done_high
+  description: Reset asserts done=1 (RTL behavior per DISC-001)
+  severity: error
+  assertion: '!rst_n |-> (done == 1)'
+  note: RTL drives done=1 on reset; this assertion documents actual RTL behavior
+discrepancies:
+- id: DISC-001
+  severity: high
+  title: Reset behavior mismatch - done initializes to 1 instead of 0
+  rtl: On reset, done <= 1'b1 (line 100)
+  spec: Reset shall clear done to 0 (Section 5, spec.md)
+  impact: Scoreboard may see spurious done pulse at time zero; verification must wait for first real done pulse after start
+  recommendation: Fix RTL to set done <= 1'b0 on reset
+- id: DISC-002
+  severity: critical
+  title: Ch function implementation incorrect
+  rtl: Ch = (x & y) ^ (x & z) (line 56)
+  spec: Ch(x,y,z) = (x & y) ^ (~x & z) per FIPS 180-4
+  impact: All round computations produce incorrect results; no test vector will pass
+  recommendation: Fix Ch function to (x & y) ^ (~x & z)
+- id: DISC-003
+  severity: critical
+  title: Maj function implementation incorrect
+  rtl: Maj = (x & y) ^ (x & z) (line 64)
+  spec: Maj(x,y,z) = (x & y) ^ (x & z) ^ (y & z) per FIPS 180-4
+  impact: All round computations produce incorrect results
+  recommendation: Fix Maj function to (x & y) ^ (x & z) ^ (y & z)
+- id: DISC-004
+  severity: critical
+  title: BigSigma0 (Sigma0) rotation constants wrong
+  rtl: rotr(x,3) ^ rotr(x,12) ^ rotr(x,21) (line 70)
+  spec: ROTR2(x) ^ ROTR13(x) ^ ROTR22(x) (Section 3, spec.md)
+  impact: Incorrect Sigma0 values in all rounds
+  recommendation: Fix to rotr(x,2) ^ rotr(x,13) ^ rotr(x,22)
+- id: DISC-005
+  severity: critical
+  title: BigSigma1 (Sigma1) rotation constants wrong
+  rtl: rotr(x,7) ^ rotr(x,12) ^ rotr(x,24) (line 76)
+  spec: ROTR6(x) ^ ROTR11(x) ^ ROTR25(x) (Section 3, spec.md)
+  impact: Incorrect Sigma1 values in all rounds
+  recommendation: Fix to rotr(x,6) ^ rotr(x,11) ^ rotr(x,25)
+- id: DISC-006
+  severity: critical
+  title: SmallSigma0 (sigma0) rotation/shift constants wrong
+  rtl: rotr(x,8) ^ rotr(x,17) ^ (x >> 2) (line 82)
+  spec: ROTR7(x) ^ ROTR18(x) ^ SHR3(x) (Section 3, spec.md)
+  impact: Incorrect message schedule expansion for rounds 16-63
+  recommendation: Fix to rotr(x,7) ^ rotr(x,18) ^ (x >> 3)
+- id: DISC-007
+  severity: critical
+  title: SmallSigma1 (sigma1) rotation/shift constants wrong
+  rtl: rotr(x,16) ^ rotr(x,20) ^ (x >> 9) (line 88)
+  spec: ROTR17(x) ^ ROTR19(x) ^ SHR10(x) (Section 3, spec.md)
+  impact: Incorrect message schedule expansion for rounds 16-63
+  recommendation: Fix to rotr(x,17) ^ rotr(x,19) ^ (x >> 10)
+- id: DISC-008
+  severity: critical
+  title: Round counter increments by 2 instead of 1
+  rtl: round <= round + 2'd2 (line 214)
+  spec: One SHA-256 round per clock cycle (Section 5, spec.md)
+  impact: Only 32 rounds executed instead of 64; K indexing also wrong
+  recommendation: Change to round <= round + 1; start round at 0, run 64 cycles
+- id: DISC-009
+  severity: critical
+  title: Round constant K indexing incorrect
+  rtl: K[(round+1) & 7'd63] (line 176)
+  spec: K[round] for round 0..63
+  impact: Wrong round constants used; with round increment of 2, accesses K[1], K[3], K[5]...
+  recommendation: Use K[round] with round 0..63
+- id: DISC-010
+  severity: critical
+  title: t2 computation uses BigSigma1 instead of BigSigma0 and wrong Maj arguments
+  rtl: next_t2 = BigSigma1(a) - Maj(a,c,b) (line 179)
+  spec: t2 = Sigma0(a) + Maj(a,b,c)
+  impact: Incorrect state update for a,b registers
+  recommendation: Fix to BigSigma0(a) + Maj(a,b,c)
+- id: DISC-011
+  severity: critical
+  title: Working variable state updates completely wrong
+  rtl: na = next_t1 ^ next_t2; nb=b; nc=c; nd=b; ne=d+next_t2; nf=f; ng=g; nh=h (lines 181-188)
+  spec: a=t1+t2; b=a; c=b; d=c; e=d+t1; f=e; g=f; h=g
+  impact: No correct SHA-256 state evolution; digest will be wrong
+  recommendation: Implement correct state rotation per FIPS 180-4
+- id: DISC-012
+  severity: critical
+  title: Digest computation uses wrong initial values and working variables
+  rtl: digest = {IV0+nb, IV1+nb, IV2+nb, IV3+nc, IV4+nf, IV5+nf, IV6+ng, IV7+ng} (lines 200-209)
+  spec: digest = H0+H0_initial || ... || H7+H7_initial where H are final working vars (Section 6, spec.md)
+  impact: Final digest bears no relation to correct SHA-256 output
+  recommendation: 'Feed forward final a-h into H0-H7: digest = {H0+a, H1+b, H2+c, H3+d, H4+e, H5+f, H6+g, H7+h}'
+- id: DISC-013
+  severity: medium
+  title: Busy remains asserted after done
+  rtl: busy <= 1'b1 at completion (line 211)
+  spec: DUT should return to idle (busy=0) after done (Section 5, spec.md)
+  impact: DUT appears permanently busy; cannot accept new transactions
+  recommendation: Set busy <= 1'b0 when done asserts
+- id: DISC-014
+  severity: medium
+  title: Round initialization starts at 1 instead of 0
+  rtl: round <= 7'd1 on start (line 157)
+  spec: 64 rounds numbered 0..63
+  impact: Off-by-one in round counting; combined with +2 increment executes rounds 1,3,5...63
+  recommendation: Initialize round to 0; increment by 1; run while round < 64
+- id: DISC-015
+  severity: low
+  title: Message schedule loading uses byte-swapped endianness conversion AND reverses word order
+  rtl: "W[i] <= {message_word[7:0], message_word[15:8], message_word[23:16], message_word[31:24]} with message_word = block[i*32 +: 32] (lines 129-137)"
+  spec: Input block already in big-endian word order (block[511:480] = first word) (Section 2, spec.md)
+  impact: Loop index i=0..15 loads block[31:0] (word 15) into W[0], block[63:32] (word 14) into W[1], ... block[511:480] (word 0) into W[15] -- reversing word order -- then byte-swaps each word. If testbench provides correctly formatted block, this corrupts message schedule.
+  recommendation: "Remove byte swap and word-order reversal; load W[i] = block[511-i*32 -: 32] directly"
+- id: DISC-016
+  severity: low
+  title: Localparam K array defined but not configurable
+  rtl: K defined as localparam logic [31:0] K [0:63]
+  spec: Constants per FIPS 180-4 (fixed)
+  impact: None for verification; values match FIPS 180-4
+  recommendation: No change needed; values are correct
+- id: DISC-017
+  severity: medium
+  title: Start signal not gated by busy
+  rtl: if (start) executes regardless of busy state (line 128); else if (busy) is separate branch (line 160)
+  spec: DUT should ignore start while busy (Section 5, spec.md)
+  impact: A new start while busy restarts the transaction, losing the in-progress computation
+  recommendation: "Gate start with !busy: if (start && !busy)"
